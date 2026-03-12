@@ -551,7 +551,7 @@ class FirebaseService {
     return getInstitutions().map((list) => list
         .where((i) =>
             i.name.toLowerCase().contains(query.toLowerCase()) ||
-            (i.address.toLowerCase().contains(query.toLowerCase()) ?? false))
+            (i.address.toLowerCase().contains(query.toLowerCase())))
         .toList());
   }
 

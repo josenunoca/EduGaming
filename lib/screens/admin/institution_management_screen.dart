@@ -70,9 +70,12 @@ class _InstitutionManagementScreenState extends State<InstitutionManagementScree
                   educationLevels: ['Ensino Básico', 'Ensino Secundário'],
                   createdAt: DateTime.now(),
                 );
-                await context.read<FirebaseService>().saveInstitution(institution);
-                Navigator.pop(context);
-                _clearControllers();
+                final service = context.read<FirebaseService>();
+                await service.saveInstitution(institution);
+                if (mounted) {
+                  Navigator.pop(context);
+                  _clearControllers();
+                }
               }
             },
              child: const AiTranslatedText('Guardar'),
