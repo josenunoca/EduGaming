@@ -5,6 +5,7 @@ import '../../widgets/ai_translated_text.dart';
 import '../../widgets/glass_card.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'virtual_classroom_teacher_screen.dart';
 
 class SyllabusManagementScreen extends StatefulWidget {
   final Subject subject;
@@ -139,7 +140,27 @@ class _SyllabusManagementScreenState extends State<SyllabusManagementScreen> {
                               ),
                           ],
                         ),
-                        trailing: const Icon(Icons.edit, color: Colors.white24, size: 20),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.video_call, color: Color(0xFF00D1FF)),
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => VirtualClassroomTeacherScreen(
+                                      subject: widget.subject,
+                                      session: session,
+                                    ),
+                                  ),
+                                );
+                              },
+                              tooltip: 'Iniciar Aula em Direto',
+                            ),
+                            const Icon(Icons.edit, color: Colors.white24, size: 20),
+                          ],
+                        ),
                       ),
                     ),
                   );

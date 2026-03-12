@@ -3,12 +3,14 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../models/subject_model.dart';
+import '../../../models/live_session_model.dart';
 import '../../../services/firebase_service.dart';
 import '../../../widgets/glass_card.dart';
 import '../../../widgets/ai_translated_text.dart';
 import '../../../widgets/ai_chat_dialog.dart';
 import 'ai_game_player_screen.dart';
 import 'student_syllabus_screen.dart';
+import 'virtual_classroom_student_screen.dart';
 
 class StudentSubjectScreen extends StatefulWidget {
   final String subjectId;
@@ -53,50 +55,75 @@ class _StudentSubjectScreenState extends State<StudentSubjectScreen>
               body: Center(child: Text('Disciplina não encontrada')));
         }
 
-        return Scaffold(
-          backgroundColor: const Color(0xFF0F172A),
-          appBar: AppBar(
-            title: AiTranslatedText(subject.name),
-            bottom: TabBar(
-              controller: _tabController,
-              tabs: const [
-                Tab(
-                    icon: Icon(Icons.library_books),
-                    child: AiTranslatedText('Conteúdos')),
-                Tab(
-                    icon: Icon(Icons.auto_awesome),
-                    child: AiTranslatedText('IA Gamer')),
-                Tab(
-                    icon: Icon(Icons.assignment_turned_in),
-                    child: AiTranslatedText('Avaliação')),
-                Tab(
-                    icon: Icon(Icons.grade),
-                    child: AiTranslatedText('Notas')),
-                Tab(
-                    icon: Icon(Icons.menu_book),
-                    child: AiTranslatedText('Programa e Sumários')),
-              ],
-            ),
-          ),
-          body: Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
+        return StreamBuilder<LiveSession?>(
+          stream: service.getActiveSessionStream(widget.subjectId),
+          builder: (context, liveSnapshot) {
+            final liveSession = liveSnapshot.data;
+            
+            return Scaffold(
+              backgroundColor: const Color(0xFF0F172A),
+              appBar: AppBar(
+                title: AiTranslatedText(subject.name),
+                bottom: TabBar(
+                  controller: _tabController,
+                  tabs: const [
+                    Tab(
+                        icon: Icon(Icons.library_books),
+                        child: AiTranslatedText('Conteúdos')),
+                    Tab(
+                        icon: Icon(Icons.auto_awesome),
+                        child: AiTranslatedText('IA Gamer')),
+                    Tab(
+                        icon: Icon(Icons.assignment_turned_in),
+                        child: AiTranslatedText('Avaliação')),
+                    Tab(
+                        icon: Icon(Icons.grade),
+                        child: AiTranslatedText('Notas')),
+                    Tab(
+                        icon: Icon(Icons.menu_book),
+                        child: AiTranslatedText('Programa e Sumários')),
+                  ],
+                ),
               ),
-            ),
-            child: TabBarView(
-              controller: _tabController,
-              children: [
-                _buildContentsTab(subject),
-                _buildGamesTab(subject),
-                _buildEvaluationTab(subject),
-                _buildGradesTab(subject),
-                StudentSyllabusScreen(subject: subject),
-              ],
-            ),
-          ),
+              floatingActionButton: liveSession != null
+                  ? FloatingActionButton.extended(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => VirtualClassroomStudentScreen(
+                              subject: subject,
+                              liveSession: liveSession,
+                            ),
+                          ),
+                        );
+                      },
+                      label: const AiTranslatedText('Entrar na Aula em Direto'),
+                      icon: const Icon(Icons.video_call),
+                      backgroundColor: Colors.redAccent,
+                    )
+                  : null,
+              body: Container(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
+                  ),
+                ),
+                child: TabBarView(
+                  controller: _tabController,
+                  children: [
+                    _buildContentsTab(subject),
+                    _buildGamesTab(subject),
+                    _buildEvaluationTab(subject),
+                    _buildGradesTab(subject),
+                    StudentSyllabusScreen(subject: subject),
+                  ],
+                ),
+              ),
+            );
+          },
         );
       },
     );

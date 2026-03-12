@@ -7,6 +7,7 @@ import '../models/user_model.dart';
 import '../models/institution_model.dart';
 import '../models/internal_message.dart';
 import '../models/subject_model.dart';
+import '../models/live_session_model.dart';
 
 class FirebaseService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -847,5 +848,36 @@ class FirebaseService {
 
   Future<void> toggleEnrollmentSuspension(String enrollmentId, bool suspended) async {
     await _db.collection('enrollments').doc(enrollmentId).update({'isSuspended': suspended});
+  }
+
+  // --- Live Session Logic ---
+
+  Future<void> startLiveSession(LiveSession session) async {
+    await _db.collection('live_sessions').doc(session.id).set(session.toMap());
+  }
+
+  Future<void> endLiveSession(String sessionId) async {
+    await _db.collection('live_sessions').doc(sessionId).update({
+      'status': 'ended',
+      'endTime': DateTime.now().toIso8601String(),
+    });
+  }
+
+  Stream<LiveSession?> getActiveSessionStream(String subjectId) {
+    return _db
+        .collection('live_sessions')
+        .where('subjectId', isEqualTo: subjectId)
+        .where('status', isEqualTo: 'live')
+        .snapshots()
+        .map((snapshot) {
+      if (snapshot.docs.isEmpty) return null;
+      return LiveSession.fromMap(snapshot.docs.first.data());
+    });
+  }
+
+  Future<void> updateStudentPermissions(String sessionId, Map<String, bool> permissions) async {
+    await _db.collection('live_sessions').doc(sessionId).update({
+      'studentPermissions': permissions,
+    });
   }
 }
