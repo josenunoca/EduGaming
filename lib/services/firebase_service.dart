@@ -35,6 +35,16 @@ class FirebaseService {
     }
   }
 
+  Future<UserCredential?> signInWithGoogle() async {
+    debugPrint('Google Sign-In logic placeholder');
+    return null;
+  }
+
+  Future<UserCredential?> signInWithFacebook() async {
+    debugPrint('Facebook Sign-In logic placeholder');
+    return null;
+  }
+
   Future<void> updatePassword(String newPassword) async {
     await _auth.currentUser!.updatePassword(newPassword);
   }
@@ -68,6 +78,8 @@ class FirebaseService {
       String id, Map<String, dynamic> data) async {
     await _db.collection('institutions').doc(id).update(data);
   }
+
+  Future<UserModel?> getUserData(String uid) => getUserModel(uid);
 
   Stream<UserModel?> getUserStream(String uid) {
     return _db.collection('users').doc(uid).snapshots().map((doc) {
