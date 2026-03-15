@@ -7,7 +7,8 @@ import '../../models/live_session_model.dart';
 import '../../services/firebase_service.dart';
 import '../../widgets/ai_translated_text.dart';
 import '../../widgets/glass_card.dart';
-import '../../widgets/jitsi_web_widget.dart';
+import '../../widgets/jitsi_stub.dart'
+    if (dart.library.js_interop) '../../widgets/jitsi_web_widget.dart';
 import 'package:uuid/uuid.dart';
 
 class VirtualClassroomTeacherScreen extends StatefulWidget {
@@ -85,6 +86,7 @@ class _VirtualClassroomTeacherScreenState
     if (_currentSession != null) {
       await context.read<FirebaseService>().endLiveSession(_currentSession!.id);
     }
+    if (!mounted) return;
     Navigator.pop(context);
   }
 

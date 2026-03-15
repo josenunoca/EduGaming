@@ -5,7 +5,8 @@ import '../../models/subject_model.dart';
 import '../../models/live_session_model.dart';
 import '../../widgets/ai_translated_text.dart';
 import '../../widgets/glass_card.dart';
-import '../../widgets/jitsi_web_widget.dart';
+import '../../widgets/jitsi_stub.dart'
+    if (dart.library.js_interop) '../../widgets/jitsi_web_widget.dart';
 
 class VirtualClassroomStudentScreen extends StatefulWidget {
   final Subject subject;
