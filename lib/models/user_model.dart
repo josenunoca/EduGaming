@@ -84,14 +84,18 @@ class UserModel {
       id: map['id'],
       email: map['email'],
       name: map['name'],
-      role: UserRole.values.firstWhere((e) => e.toString().split('.').last == map['role']),
+      role: UserRole.values
+          .firstWhere((e) => e.toString().split('.').last == map['role']),
       institutionId: map['institutionId'],
-      educationLevels: map['educationLevels'] != null ? List<String>.from(map['educationLevels']) : null,
+      educationLevels: map['educationLevels'] != null
+          ? List<String>.from(map['educationLevels'])
+          : null,
       nif: map['nif'],
       phone: map['phone'],
       address: map['address'],
       postalCode: map['postalCode'],
-      birthDate: map['birthDate'] != null ? DateTime.parse(map['birthDate']) : null,
+      birthDate:
+          map['birthDate'] != null ? DateTime.parse(map['birthDate']) : null,
       parentId: map['parentId'],
       adConsent: map['adConsent'] ?? false,
       dataConsent: map['dataConsent'] ?? false,

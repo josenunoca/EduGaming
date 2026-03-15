@@ -43,9 +43,11 @@ class LiveSession {
       topic: map['topic'] ?? '',
       jitsiRoomName: map['jitsiRoomName'] ?? '',
       status: map['status'] ?? 'live',
-      startTime: DateTime.parse(map['startTime'] ?? DateTime.now().toIso8601String()),
+      startTime:
+          DateTime.parse(map['startTime'] ?? DateTime.now().toIso8601String()),
       endTime: map['endTime'] != null ? DateTime.parse(map['endTime']) : null,
-      studentPermissions: Map<String, bool>.from(map['studentPermissions'] ?? {}),
+      studentPermissions:
+          Map<String, bool>.from(map['studentPermissions'] ?? {}),
     );
   }
 }

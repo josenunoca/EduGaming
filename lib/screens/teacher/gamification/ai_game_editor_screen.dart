@@ -78,7 +78,8 @@ class _AiGameEditorScreenState extends State<AiGameEditorScreen> {
         q.options.map((opt) => TextEditingController(text: opt)).toList();
     int correctIdx = q.correctOptionIndex;
     List<String> allowedTypes = List.from(q.allowedAnswerTypes);
-    final criteriaController = TextEditingController(text: q.evaluationCriteria);
+    final criteriaController =
+        TextEditingController(text: q.evaluationCriteria);
 
     showDialog(
       context: context,
@@ -161,7 +162,8 @@ class _AiGameEditorScreenState extends State<AiGameEditorScreen> {
                         setDialogState(() {
                           if (val) {
                             allowedTypes.add('options');
-                          } else if (allowedTypes.length > 1) allowedTypes.remove('options');
+                          } else if (allowedTypes.length > 1)
+                            allowedTypes.remove('options');
                         });
                       },
                     ),
@@ -172,7 +174,8 @@ class _AiGameEditorScreenState extends State<AiGameEditorScreen> {
                         setDialogState(() {
                           if (val) {
                             allowedTypes.add('text');
-                          } else if (allowedTypes.length > 1) allowedTypes.remove('text');
+                          } else if (allowedTypes.length > 1)
+                            allowedTypes.remove('text');
                         });
                       },
                     ),
@@ -183,7 +186,8 @@ class _AiGameEditorScreenState extends State<AiGameEditorScreen> {
                         setDialogState(() {
                           if (val) {
                             allowedTypes.add('audio');
-                          } else if (allowedTypes.length > 1) allowedTypes.remove('audio');
+                          } else if (allowedTypes.length > 1)
+                            allowedTypes.remove('audio');
                         });
                       },
                     ),
@@ -194,13 +198,15 @@ class _AiGameEditorScreenState extends State<AiGameEditorScreen> {
                         setDialogState(() {
                           if (val) {
                             allowedTypes.add('image');
-                          } else if (allowedTypes.length > 1) allowedTypes.remove('image');
+                          } else if (allowedTypes.length > 1)
+                            allowedTypes.remove('image');
                         });
                       },
                     ),
                   ],
                 ),
-                if (!allowedTypes.contains('options') || allowedTypes.length > 1) ...[
+                if (!allowedTypes.contains('options') ||
+                    allowedTypes.length > 1) ...[
                   const SizedBox(height: 16),
                   TextField(
                     controller: criteriaController,
@@ -208,7 +214,8 @@ class _AiGameEditorScreenState extends State<AiGameEditorScreen> {
                     style: const TextStyle(color: Colors.white, fontSize: 13),
                     decoration: const InputDecoration(
                       labelText: 'Critérios de Avaliação / Resposta Esperada',
-                      hintText: 'Explique o que a IA deve procurar na resposta...',
+                      hintText:
+                          'Explique o que a IA deve procurar na resposta...',
                     ),
                   ),
                 ],
@@ -230,8 +237,8 @@ class _AiGameEditorScreenState extends State<AiGameEditorScreen> {
                     points: double.tryParse(pointsController.text) ?? 10.0,
                     timeLimitSeconds: int.tryParse(timeController.text) ?? 20,
                     allowedAnswerTypes: allowedTypes,
-                    evaluationCriteria: criteriaController.text.isNotEmpty 
-                        ? criteriaController.text 
+                    evaluationCriteria: criteriaController.text.isNotEmpty
+                        ? criteriaController.text
                         : null,
                   );
                 });

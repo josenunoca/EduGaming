@@ -40,6 +40,10 @@ dependencies:
   path_provider: ^2.1.5
   path: ^1.9.1
   jitsi_meet_flutter_sdk: ^11.6.0
+  doc_text_extractor: 2.1.0
+  archive: ^4.0.9
+  xml: ^6.6.1
+  syncfusion_flutter_pdf: 31.2.18
 
 dev_dependencies:
   flutter_test:

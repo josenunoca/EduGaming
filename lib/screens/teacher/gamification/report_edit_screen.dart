@@ -51,16 +51,13 @@ class _ReportEditScreenState extends State<ReportEditScreen> {
         isSynthetic: widget.isSynthetic,
         stats: widget.stats,
       );
-      
-      await PdfService.downloadPdf(
-        bytes, 
-        'Relatorio_${widget.title.replaceAll(' ', '_').replaceAll(':', '')}.pdf'
-      );
+
+      await PdfService.downloadPdf(bytes,
+          'Relatorio_${widget.title.replaceAll(' ', '_').replaceAll(':', '')}.pdf');
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erro ao gerar PDF: $e'))
-        );
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Erro ao gerar PDF: $e')));
       }
     } finally {
       if (mounted) setState(() => _isGenerating = false);
@@ -75,7 +72,12 @@ class _ReportEditScreenState extends State<ReportEditScreen> {
         title: const AiTranslatedText('Editar Relatório'),
         actions: [
           IconButton(
-            icon: _isGenerating ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.download),
+            icon: _isGenerating
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2))
+                : const Icon(Icons.download),
             onPressed: _isGenerating ? null : _generateAndDownload,
             tooltip: 'Download PDF',
           ),
@@ -104,7 +106,8 @@ class _ReportEditScreenState extends State<ReportEditScreen> {
                   controller: _controller,
                   maxLines: null,
                   expands: true,
-                  style: const TextStyle(color: Colors.white, fontSize: 14, height: 1.5),
+                  style: const TextStyle(
+                      color: Colors.white, fontSize: 14, height: 1.5),
                   decoration: const InputDecoration(
                     border: InputBorder.none,
                     hintText: 'Conteúdo do relatório...',
@@ -119,14 +122,21 @@ class _ReportEditScreenState extends State<ReportEditScreen> {
               height: 56,
               child: ElevatedButton.icon(
                 onPressed: _isGenerating ? null : _generateAndDownload,
-                icon: _isGenerating 
-                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) 
-                  : const Icon(Icons.picture_as_pdf),
-                label: AiTranslatedText(_isGenerating ? 'A GERAR PDF...' : 'DESCARREGAR RELATÓRIO PDF'),
+                icon: _isGenerating
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                            color: Colors.white, strokeWidth: 2))
+                    : const Icon(Icons.picture_as_pdf),
+                label: AiTranslatedText(_isGenerating
+                    ? 'A GERAR PDF...'
+                    : 'DESCARREGAR RELATÓRIO PDF'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF00D1FF),
                   foregroundColor: const Color(0xFF0F172A),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
                 ),
               ),
             ),

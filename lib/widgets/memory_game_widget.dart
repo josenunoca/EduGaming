@@ -38,7 +38,9 @@ class _MemoryGameWidgetState extends State<MemoryGameWidget> {
   }
 
   void _onCardTap(int index) {
-    if (_isProcessing || _cards[index].isFlipped || _cards[index].isMatched) return;
+    if (_isProcessing || _cards[index].isFlipped || _cards[index].isMatched) {
+      return;
+    }
 
     setState(() {
       _cards[index].isFlipped = true;
@@ -117,8 +119,12 @@ class _MemoryGameWidgetState extends State<MemoryGameWidget> {
                         fontWeight: FontWeight.bold,
                       ),
                     ).animate().scale().fadeIn()
-                  : const Icon(Icons.help_outline, color: Colors.white54, size: 30),
-            ).animate(target: card.isMatched ? 1 : 0).shimmer(duration: 1.seconds, color: Colors.white24).scale(end: const Offset(1.05, 1.05)),
+                  : const Icon(Icons.help_outline,
+                      color: Colors.white54, size: 30),
+            )
+                .animate(target: card.isMatched ? 1 : 0)
+                .shimmer(duration: 1.seconds, color: Colors.white24)
+                .scale(end: const Offset(1.05, 1.05)),
           );
         },
       );

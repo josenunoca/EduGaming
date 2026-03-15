@@ -53,7 +53,7 @@ class _MarketingCommunicationScreenState
     setState(() {
       _filteredUsers = users;
       _isLoading = false;
-      // Reset selection if users change significantly? 
+      // Reset selection if users change significantly?
       // For now, keep selection if the user is still in the list
       _selectedUserIds.retainWhere((id) => users.any((u) => u.id == id));
     });
@@ -77,8 +77,9 @@ class _MarketingCommunicationScreenState
       );
       return;
     }
-    
-    final selectedUsers = _filteredUsers.where((u) => _selectedUserIds.contains(u.id)).toList();
+
+    final selectedUsers =
+        _filteredUsers.where((u) => _selectedUserIds.contains(u.id)).toList();
 
     showDialog(
       context: context,
@@ -192,9 +193,10 @@ class _MarketingCommunicationScreenState
                           labelText: 'Área Científica (via Disciplina)',
                           border: OutlineInputBorder()),
                       items: [
-                        const DropdownMenuItem(value: null, child: Text('Qualquer')),
-                        ...scientificAreas
-                            .map((a) => DropdownMenuItem(value: a, child: Text(a))),
+                        const DropdownMenuItem(
+                            value: null, child: Text('Qualquer')),
+                        ...scientificAreas.map(
+                            (a) => DropdownMenuItem(value: a, child: Text(a))),
                       ],
                       onChanged: (v) {
                         setState(() => _filterScientificArea = v);
@@ -214,8 +216,8 @@ class _MarketingCommunicationScreenState
                               label: Text(i,
                                   style: const TextStyle(
                                       fontSize: 10, color: Colors.white)),
-                              backgroundColor:
-                                  const Color(0xFF7B61FF).withValues(alpha: 0.3),
+                              backgroundColor: const Color(0xFF7B61FF)
+                                  .withValues(alpha: 0.3),
                               onDeleted: () {
                                 setState(() => _selectedInterests.remove(i));
                                 _runFilter();
@@ -236,11 +238,13 @@ class _MarketingCommunicationScreenState
                                 content: TextField(
                                     controller: controller,
                                     autofocus: true,
-                                    style: const TextStyle(color: Colors.white)),
+                                    style:
+                                        const TextStyle(color: Colors.white)),
                                 actions: [
                                   TextButton(
                                       onPressed: () => Navigator.pop(context),
-                                      child: const AiTranslatedText('Cancelar')),
+                                      child:
+                                          const AiTranslatedText('Cancelar')),
                                   ElevatedButton(
                                     onPressed: () {
                                       _addInterest(controller.text);
@@ -266,15 +270,19 @@ class _MarketingCommunicationScreenState
                           AiTranslatedText(
                             'Destinatários Encontrados: ${_filteredUsers.length}',
                             style: const TextStyle(
-                                color: Colors.white70, fontWeight: FontWeight.bold),
+                                color: Colors.white70,
+                                fontWeight: FontWeight.bold),
                           ),
                           if (_filteredUsers.isNotEmpty)
                             Row(
                               children: [
                                 const AiTranslatedText('Selecionar Todos',
-                                    style: TextStyle(color: Colors.white54, fontSize: 12)),
+                                    style: TextStyle(
+                                        color: Colors.white54, fontSize: 12)),
                                 Checkbox(
-                                  value: _selectedUserIds.length == _filteredUsers.length && _filteredUsers.isNotEmpty,
+                                  value: _selectedUserIds.length ==
+                                          _filteredUsers.length &&
+                                      _filteredUsers.isNotEmpty,
                                   onChanged: _toggleSelectAll,
                                   activeColor: const Color(0xFF7B61FF),
                                 ),
@@ -284,25 +292,29 @@ class _MarketingCommunicationScreenState
                       ),
                       const Divider(color: Colors.white10),
                       ..._filteredUsers.map((user) => Card(
-                        color: Colors.white.withValues(alpha: 0.05),
-                        margin: const EdgeInsets.only(bottom: 8),
-                        child: CheckboxListTile(
-                          value: _selectedUserIds.contains(user.id),
-                          onChanged: (bool? value) {
-                            setState(() {
-                              if (value == true) {
-                                _selectedUserIds.add(user.id);
-                              } else {
-                                _selectedUserIds.remove(user.id);
-                              }
-                            });
-                          },
-                          title: Text(user.name, style: const TextStyle(color: Colors.white)),
-                          subtitle: Text('${user.email} • ${user.role.toString().split('.').last}', style: const TextStyle(color: Colors.white54, fontSize: 12)),
-                          activeColor: const Color(0xFF7B61FF),
-                          checkColor: Colors.white,
-                        ),
-                      )),
+                            color: Colors.white.withValues(alpha: 0.05),
+                            margin: const EdgeInsets.only(bottom: 8),
+                            child: CheckboxListTile(
+                              value: _selectedUserIds.contains(user.id),
+                              onChanged: (bool? value) {
+                                setState(() {
+                                  if (value == true) {
+                                    _selectedUserIds.add(user.id);
+                                  } else {
+                                    _selectedUserIds.remove(user.id);
+                                  }
+                                });
+                              },
+                              title: Text(user.name,
+                                  style: const TextStyle(color: Colors.white)),
+                              subtitle: Text(
+                                  '${user.email} • ${user.role.toString().split('.').last}',
+                                  style: const TextStyle(
+                                      color: Colors.white54, fontSize: 12)),
+                              activeColor: const Color(0xFF7B61FF),
+                              checkColor: Colors.white,
+                            ),
+                          )),
                     ],
                     const SizedBox(height: 24),
 
@@ -338,21 +350,24 @@ class _MarketingCommunicationScreenState
             ),
             Container(
               padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: const Color(0xFF0F172A),
-                boxShadow: [
-                  BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 10, offset: const Offset(0, -2))
-                ]
-              ),
+              decoration:
+                  BoxDecoration(color: const Color(0xFF0F172A), boxShadow: [
+                BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.3),
+                    blurRadius: 10,
+                    offset: const Offset(0, -2))
+              ]),
               child: ElevatedButton.icon(
                 onPressed: _sendCommunication,
                 icon: const Icon(Icons.send),
-                label: AiTranslatedText('Enviar para o Grupo (${_selectedUserIds.length})'),
+                label: AiTranslatedText(
+                    'Enviar para o Grupo (${_selectedUserIds.length})'),
                 style: ElevatedButton.styleFrom(
                   minimumSize: const Size(double.infinity, 54),
                   backgroundColor: const Color(0xFF7B61FF),
                   foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16)),
                 ),
               ),
             ),

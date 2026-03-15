@@ -48,7 +48,9 @@ class _MatchingPairsWidgetState extends State<MatchingPairsWidget> {
       }
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Tenta novamente!'), duration: Duration(milliseconds: 500)),
+        const SnackBar(
+            content: Text('Tenta novamente!'),
+            duration: Duration(milliseconds: 500)),
       );
       setState(() => _selectedLeft = null);
     }
@@ -66,25 +68,32 @@ class _MatchingPairsWidgetState extends State<MatchingPairsWidget> {
               final isMatched = _matches.containsKey(item);
               final isSelected = _selectedLeft == item;
               return GestureDetector(
-                onTap: isMatched ? null : () => setState(() => _selectedLeft = item),
+                onTap: isMatched
+                    ? null
+                    : () => setState(() => _selectedLeft = item),
                 child: Container(
                   margin: const EdgeInsets.only(bottom: 12),
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: isMatched 
-                        ? Colors.green.withValues(alpha: 0.2) 
-                        : (isSelected ? const Color(0xFF00D1FF).withValues(alpha: 0.2) : Colors.white.withValues(alpha: 0.05)),
+                    color: isMatched
+                        ? Colors.green.withValues(alpha: 0.2)
+                        : (isSelected
+                            ? const Color(0xFF00D1FF).withValues(alpha: 0.2)
+                            : Colors.white.withValues(alpha: 0.05)),
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
-                      color: isMatched 
-                          ? Colors.greenAccent 
-                          : (isSelected ? const Color(0xFF00D1FF) : Colors.white10),
+                      color: isMatched
+                          ? Colors.greenAccent
+                          : (isSelected
+                              ? const Color(0xFF00D1FF)
+                              : Colors.white10),
                     ),
                   ),
-                  child: Text(item, 
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: isMatched ? Colors.white54 : Colors.white, fontSize: 12)
-                  ),
+                  child: Text(item,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                          color: isMatched ? Colors.white54 : Colors.white,
+                          fontSize: 12)),
                 ),
               );
             }).toList(),
@@ -99,19 +108,27 @@ class _MatchingPairsWidgetState extends State<MatchingPairsWidget> {
             children: _rightItems.map((item) {
               final isMatched = _matches.containsValue(item);
               return GestureDetector(
-                onTap: (isMatched || _selectedLeft == null) ? null : () => _onMatch(_selectedLeft!, item),
+                onTap: (isMatched || _selectedLeft == null)
+                    ? null
+                    : () => _onMatch(_selectedLeft!, item),
                 child: Container(
                   margin: const EdgeInsets.only(bottom: 12),
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: isMatched ? Colors.green.withValues(alpha: 0.2) : Colors.white.withValues(alpha: 0.05),
+                    color: isMatched
+                        ? Colors.green.withValues(alpha: 0.2)
+                        : Colors.white.withValues(alpha: 0.05),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: isMatched ? Colors.greenAccent : Colors.white10),
+                    border: Border.all(
+                        color: isMatched ? Colors.greenAccent : Colors.white10),
                   ),
-                  child: Text(item, 
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: isMatched ? Colors.white54 : Colors.white, fontSize: 12)
-                  ).animate(target: isMatched ? 1 : 0).fadeOut(duration: 200.ms),
+                  child: Text(item,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                              color: isMatched ? Colors.white54 : Colors.white,
+                              fontSize: 12))
+                      .animate(target: isMatched ? 1 : 0)
+                      .fadeOut(duration: 200.ms),
                 ),
               );
             }).toList(),

@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import '../../models/user_model.dart';
 import '../../services/firebase_service.dart';
 import '../../models/institution_model.dart';
+import '../../models/credit_pricing_model.dart';
+import '../../widgets/ai_translated_text.dart';
 import 'package:image_picker/image_picker.dart';
 
 class PersonalProfileScreen extends StatefulWidget {
@@ -18,11 +20,17 @@ class _PersonalProfileScreenState extends State<PersonalProfileScreen> {
   final TextEditingController _interestController = TextEditingController();
 
   final List<String> _suggestions = [
-    'História', 'Literatura', 'Música', 'Desporto', 'IA', 'Sustentabilidade'
+    'História',
+    'Literatura',
+    'Música',
+    'Desporto',
+    'IA',
+    'Sustentabilidade'
   ];
-  
+
   final _nameController = TextEditingController();
   final _nifController = TextEditingController();
+  final _phoneController = TextEditingController();
   final _addressController = TextEditingController();
   final _postalCodeController = TextEditingController();
   String? _signatureUrl;
@@ -35,11 +43,13 @@ class _PersonalProfileScreenState extends State<PersonalProfileScreen> {
     _tempInterests = List.from(widget.user.interests);
     _nameController.text = widget.user.name;
     _nifController.text = widget.user.nif ?? '';
+    _phoneController.text = widget.user.phone ?? '';
     _addressController.text = widget.user.address ?? '';
     _postalCodeController.text = widget.user.postalCode ?? '';
     _signatureUrl = widget.user.signatureUrl;
-    
-    if (widget.user.role == UserRole.institution && widget.user.institutionId != null) {
+
+    if (widget.user.role == UserRole.institution &&
+        widget.user.institutionId != null) {
       _loadInstitution();
     }
   }
@@ -52,6 +62,7 @@ class _PersonalProfileScreenState extends State<PersonalProfileScreen> {
         _institution = inst;
         _nameController.text = inst.name;
         _nifController.text = inst.nif;
+        _phoneController.text = inst.phone;
         _addressController.text = inst.address;
         _signatureUrl = inst.signatureUrl;
       });
@@ -62,10 +73,10 @@ class _PersonalProfileScreenState extends State<PersonalProfileScreen> {
     final picker = ImagePicker();
     final image = await picker.pickImage(source: ImageSource.gallery);
     if (image != null) {
+      final service = context.read<FirebaseService>();
       setState(() => _isUploading = true);
       try {
         final bytes = await image.readAsBytes();
-        final service = context.read<FirebaseService>();
         final url = await service.uploadSignature(widget.user.id, bytes);
         setState(() {
           _signatureUrl = url;
@@ -93,11 +104,12 @@ class _PersonalProfileScreenState extends State<PersonalProfileScreen> {
 
   Future<void> _save() async {
     final service = context.read<FirebaseService>();
-    
+
     if (widget.user.role == UserRole.institution && _institution != null) {
       await service.updateInstitutionProfile(_institution!.id, {
         'name': _nameController.text,
         'nif': _nifController.text,
+        'phone': _phoneController.text,
         'address': _addressController.text,
         'signatureUrl': _signatureUrl,
       });
@@ -105,6 +117,7 @@ class _PersonalProfileScreenState extends State<PersonalProfileScreen> {
       await service.updateUserProfile(widget.user.id, {
         'name': _nameController.text,
         'nif': _nifController.text,
+        'phone': _phoneController.text,
         'address': _addressController.text,
         'postalCode': _postalCodeController.text,
         'signatureUrl': _signatureUrl,
@@ -122,6 +135,7 @@ class _PersonalProfileScreenState extends State<PersonalProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final service = context.read<FirebaseService>();
     return Scaffold(
       appBar: AppBar(title: const Text('Área Pessoal')),
       body: Container(
@@ -141,36 +155,55 @@ class _PersonalProfileScreenState extends State<PersonalProfileScreen> {
                   children: [
                     const Text(
                       'Dados Pessoais / Fiscais',
-                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
+                      style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white),
                     ),
                     const SizedBox(height: 16),
                     TextField(
                       controller: _nameController,
                       style: const TextStyle(color: Colors.white),
-                      decoration: const InputDecoration(labelText: 'Nome Completo / Social', border: OutlineInputBorder()),
+                      decoration: const InputDecoration(
+                          labelText: 'Nome Completo / Social',
+                          border: OutlineInputBorder()),
                     ),
                     const SizedBox(height: 12),
                     TextField(
                       controller: _nifController,
                       style: const TextStyle(color: Colors.white),
-                      decoration: const InputDecoration(labelText: 'NIF', border: OutlineInputBorder()),
+                      decoration: const InputDecoration(
+                          labelText: 'NIF', border: OutlineInputBorder()),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _phoneController,
+                      style: const TextStyle(color: Colors.white),
+                      decoration: const InputDecoration(
+                          labelText: 'Telefone', border: OutlineInputBorder()),
                     ),
                     const SizedBox(height: 12),
                     TextField(
                       controller: _addressController,
                       style: const TextStyle(color: Colors.white),
-                      decoration: const InputDecoration(labelText: 'Morada', border: OutlineInputBorder()),
+                      decoration: const InputDecoration(
+                          labelText: 'Morada', border: OutlineInputBorder()),
                     ),
                     const SizedBox(height: 12),
                     TextField(
                       controller: _postalCodeController,
                       style: const TextStyle(color: Colors.white),
-                      decoration: const InputDecoration(labelText: 'Código Postal', border: OutlineInputBorder()),
+                      decoration: const InputDecoration(
+                          labelText: 'Código Postal',
+                          border: OutlineInputBorder()),
                     ),
                     const SizedBox(height: 24),
                     const Text(
                       'Assinatura Digital',
-                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
+                      style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white),
                     ),
                     const SizedBox(height: 12),
                     Center(
@@ -185,10 +218,36 @@ class _PersonalProfileScreenState extends State<PersonalProfileScreen> {
                                 borderRadius: BorderRadius.circular(8),
                                 color: Colors.white.withOpacity(0.05),
                               ),
-                              child: Image.network(_signatureUrl!, fit: BoxFit.contain),
+                              child: Image.network(
+                                _signatureUrl!,
+                                fit: BoxFit.contain,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Container(
+                                    color: Colors.red.withOpacity(0.1),
+                                    child: const Center(
+                                      child: Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Icon(Icons.error_outline,
+                                              color: Colors.redAccent),
+                                          SizedBox(height: 4),
+                                          Text(
+                                            'Erro ao carregar (CORS)',
+                                            style: TextStyle(
+                                                color: Colors.redAccent,
+                                                fontSize: 12),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
                             )
                           else
-                            const Text('Nenhuma assinatura carregada', style: TextStyle(color: Colors.white54)),
+                            const Text('Nenhuma assinatura carregada',
+                                style: TextStyle(color: Colors.white54)),
                           const SizedBox(height: 12),
                           if (_isUploading)
                             const CircularProgressIndicator()
@@ -197,7 +256,8 @@ class _PersonalProfileScreenState extends State<PersonalProfileScreen> {
                               onPressed: _pickSignature,
                               icon: const Icon(Icons.upload),
                               label: const Text('Carregar Assinatura'),
-                              style: ElevatedButton.styleFrom(backgroundColor: Colors.blueGrey),
+                              style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.blueGrey),
                             ),
                         ],
                       ),
@@ -205,7 +265,10 @@ class _PersonalProfileScreenState extends State<PersonalProfileScreen> {
                     const SizedBox(height: 32),
                     const Text(
                       'Os Meus Interesses',
-                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
+                      style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white),
                     ),
                     const SizedBox(height: 12),
                     Row(
@@ -224,32 +287,155 @@ class _PersonalProfileScreenState extends State<PersonalProfileScreen> {
                         ),
                         const SizedBox(width: 8),
                         IconButton.filled(
-                          onPressed: () => _addInterest(_interestController.text),
+                          onPressed: () =>
+                              _addInterest(_interestController.text),
                           icon: const Icon(Icons.add),
-                          style: IconButton.styleFrom(backgroundColor: const Color(0xFF7B61FF)),
+                          style: IconButton.styleFrom(
+                              backgroundColor: const Color(0xFF7B61FF)),
                         ),
                       ],
                     ),
                     const SizedBox(height: 16),
                     Wrap(
                       spacing: 8,
-                      children: _suggestions.where((s) => !_tempInterests.contains(s)).map((s) => ActionChip(
-                        label: Text(s, style: const TextStyle(fontSize: 11)),
-                        onPressed: () => _addInterest(s),
-                        backgroundColor: Colors.white.withOpacity(0.05),
-                        labelStyle: const TextStyle(color: Colors.white70),
-                      )).toList(),
+                      children: _suggestions
+                          .where((s) => !_tempInterests.contains(s))
+                          .map((s) => ActionChip(
+                                label: Text(s,
+                                    style: const TextStyle(fontSize: 11)),
+                                onPressed: () => _addInterest(s),
+                                backgroundColor: Colors.white.withOpacity(0.05),
+                                labelStyle:
+                                    const TextStyle(color: Colors.white70),
+                              ))
+                          .toList(),
                     ),
                     const SizedBox(height: 16),
                     Wrap(
                       spacing: 8,
                       runSpacing: 8,
-                      children: _tempInterests.map((interest) => Chip(
-                            label: Text(interest, style: const TextStyle(color: Colors.white)),
-                            backgroundColor: const Color(0xFF7B61FF).withOpacity(0.2),
-                            deleteIcon: const Icon(Icons.close, size: 14, color: Colors.white70),
-                            onDeleted: () => setState(() => _tempInterests.remove(interest)),
-                          )).toList(),
+                      children: _tempInterests
+                          .map((interest) => Chip(
+                                label: Text(interest,
+                                    style:
+                                        const TextStyle(color: Colors.white)),
+                                backgroundColor:
+                                    const Color(0xFF7B61FF).withOpacity(0.2),
+                                deleteIcon: const Icon(Icons.close,
+                                    size: 14, color: Colors.white70),
+                                onDeleted: () => setState(
+                                    () => _tempInterests.remove(interest)),
+                              ))
+                          .toList(),
+                    ),
+                    const SizedBox(height: 32),
+                    const AiTranslatedText(
+                      'Créditos e Tabela de Preços',
+                      style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white),
+                    ),
+                    const SizedBox(height: 16),
+                    StreamBuilder<UserModel?>(
+                        stream: service.getUserStream(widget.user.id),
+                        builder: (context, snapshot) {
+                          final user = snapshot.data ?? widget.user;
+                          return Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF00D1FF).withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                  color:
+                                      const Color(0xFF00D1FF).withOpacity(0.3)),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const AiTranslatedText(
+                                        'Créditos Disponíveis',
+                                        style: TextStyle(
+                                            color: Colors.white70,
+                                            fontSize: 12)),
+                                    Text('${user.aiCredits}',
+                                        style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 24,
+                                            fontWeight: FontWeight.bold)),
+                                  ],
+                                ),
+                                ElevatedButton(
+                                  onPressed: () {
+                                    // Placeholder for recharging credits
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                            content: AiTranslatedText(
+                                                'Funcionalidade de recarga em breve.')));
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                      backgroundColor: const Color(0xFF00D1FF)),
+                                  child: const AiTranslatedText(
+                                      'Comprar Créditos'),
+                                )
+                              ],
+                            ),
+                          );
+                        }),
+                    const SizedBox(height: 24),
+                    const AiTranslatedText(
+                      'Preçário (Consumo por Ação)',
+                      style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white70),
+                    ),
+                    const SizedBox(height: 12),
+                    StreamBuilder<List<CreditPricing>>(
+                      stream: service.getCreditPricingStream(),
+                      builder: (context, snapshot) {
+                        if (!snapshot.hasData) {
+                          return const Center(
+                              child: CircularProgressIndicator());
+                        }
+                        final pricing = snapshot.data!;
+
+                        return Theme(
+                          data: Theme.of(context)
+                              .copyWith(cardColor: Colors.transparent),
+                          child: DataTable(
+                            horizontalMargin: 0,
+                            columnSpacing: 10,
+                            columns: const [
+                              DataColumn(
+                                  label: AiTranslatedText('Ação',
+                                      style: TextStyle(
+                                          color: Colors.white54,
+                                          fontSize: 12))),
+                              DataColumn(
+                                  label: AiTranslatedText('Custo (Créditos)',
+                                      style: TextStyle(
+                                          color: Colors.white54,
+                                          fontSize: 12))),
+                            ],
+                            rows: pricing.map((p) {
+                              final price = p.prices[widget.user.role] ?? 0;
+                              return DataRow(cells: [
+                                DataCell(AiTranslatedText(p.actionName,
+                                    style: const TextStyle(
+                                        color: Colors.white, fontSize: 12))),
+                                DataCell(Text('$price',
+                                    style: const TextStyle(
+                                        color: Color(0xFF00D1FF),
+                                        fontWeight: FontWeight.bold))),
+                              ]);
+                            }).toList(),
+                          ),
+                        );
+                      },
                     ),
                   ],
                 ),
@@ -260,9 +446,12 @@ class _PersonalProfileScreenState extends State<PersonalProfileScreen> {
                 style: ElevatedButton.styleFrom(
                   minimumSize: const Size(double.infinity, 54),
                   backgroundColor: const Color(0xFF7B61FF),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16)),
                 ),
-                child: const Text('Guardar Alterações', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                child: const Text('Guardar Alterações',
+                    style:
+                        TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               ),
             ],
           ),

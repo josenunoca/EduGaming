@@ -21,8 +21,9 @@ import 'package:markdown/markdown.dart' as md;
 class AiChatDialog extends StatefulWidget {
   final List<SubjectContent> selectedContents;
   final bool isStudent;
-  
-  const AiChatDialog({super.key, required this.selectedContents, this.isStudent = false});
+
+  const AiChatDialog(
+      {super.key, required this.selectedContents, this.isStudent = false});
 
   @override
   State<AiChatDialog> createState() => _AiChatDialogState();
@@ -34,7 +35,7 @@ class _AiChatDialogState extends State<AiChatDialog> {
   bool _isInitializing = true;
   bool _isTyping = false;
   final ScrollController _scrollController = ScrollController();
-  
+
   // Voice features
   final stt.SpeechToText _speech = stt.SpeechToText();
   final FlutterTts _tts = FlutterTts();
@@ -56,7 +57,7 @@ class _AiChatDialogState extends State<AiChatDialog> {
         onError: (error) => debugPrint('STT Error: $error'),
       );
       debugPrint('STT Available: $available');
-      
+
       if (!kIsWeb) {
         await _tts.setLanguage('pt-PT');
       }
@@ -86,14 +87,14 @@ class _AiChatDialogState extends State<AiChatDialog> {
           statusGranted = status.isGranted;
           debugPrint('Microphone permission: $statusGranted');
         }
-        
+
         if (statusGranted) {
           bool available = _speech.isAvailable;
           if (!available) {
             debugPrint('Speech not available, re-initializing...');
             available = await _speech.initialize();
           }
-          
+
           if (available) {
             setState(() => _isListening = true);
             _speech.listen(
@@ -112,8 +113,7 @@ class _AiChatDialogState extends State<AiChatDialog> {
           }
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Permissão de microfone negada'))
-          );
+              const SnackBar(content: Text('Permissão de microfone negada')));
         }
       } else {
         debugPrint('Stopping listening...');
@@ -133,7 +133,8 @@ class _AiChatDialogState extends State<AiChatDialog> {
         _isInitializing = false;
         _messages.add({
           'role': 'assistant',
-          'text': 'Olá! Analisei os ${widget.selectedContents.length} documentos selecionados. Estou pronto para discutir o conteúdo de forma profissional. O que gostaria de explorar?'
+          'text':
+              'Olá! Analisei os ${widget.selectedContents.length} documentos selecionados. Estou pronto para discutir o conteúdo de forma profissional. O que gostaria de explorar?'
         });
       });
     }
@@ -165,7 +166,7 @@ class _AiChatDialogState extends State<AiChatDialog> {
 
     final chatService = context.read<AiChatService>();
     String responseAccumulated = '';
-    
+
     try {
       await for (final chunk in chatService.sendMessage(text)) {
         responseAccumulated += chunk;
@@ -189,7 +190,7 @@ class _AiChatDialogState extends State<AiChatDialog> {
 
   Future<void> _exportToPdf() async {
     debugPrint('[PDF] Starting export...');
-    
+
     // Function to sanitize text for PDF (removing emojis but PRESERVING math symbols and LaTeX)
     String sanitizeForPdf(String input) {
       if (input.isEmpty) return '';
@@ -197,9 +198,12 @@ class _AiChatDialogState extends State<AiChatDialog> {
       // E.g. Beta (β), Delta (Δ), Pi (π), cdot (·), etc.
       // Standard Helvetica is replaced by NotoSans which covers most of these.
       return input
-        .replaceAll(RegExp(r'[^\x00-\xFF\u00A0-\u024F\u0370-\u03FF\u2000-\u206F\u2100-\u214F\u2200-\u22FF\n]'), '?')
-        .replaceAll('  ', ' ') 
-        .trim();
+          .replaceAll(
+              RegExp(
+                  r'[^\x00-\xFF\u00A0-\u024F\u0370-\u03FF\u2000-\u206F\u2100-\u214F\u2200-\u22FF\n]'),
+              '?')
+          .replaceAll('  ', ' ')
+          .trim();
     }
 
     final font = await PdfGoogleFonts.notoSansRegular();
@@ -208,7 +212,7 @@ class _AiChatDialogState extends State<AiChatDialog> {
     final fontBoldItalic = await PdfGoogleFonts.notoSansBoldItalic();
 
     final pdf = pw.Document();
-    
+
     // Header information
     final dateStr = DateTime.now().toString().split('.')[0];
     final contentsStr = widget.selectedContents.map((c) => c.name).join(', ');
@@ -230,24 +234,28 @@ class _AiChatDialogState extends State<AiChatDialog> {
               child: pw.Row(
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 children: [
-                  pw.Text('Relatório DocTalk AI', style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold)),
-                  pw.Text(dateStr, style: const pw.TextStyle(color: PdfColors.grey)),
+                  pw.Text('Relatório DocTalk AI',
+                      style: pw.TextStyle(
+                          fontSize: 24, fontWeight: pw.FontWeight.bold)),
+                  pw.Text(dateStr,
+                      style: const pw.TextStyle(color: PdfColors.grey)),
                 ],
               ),
             ),
             pw.Paragraph(
               text: sanitizeForPdf('Documentos selecionados: $contentsStr'),
-              style: pw.TextStyle(fontStyle: pw.FontStyle.italic, color: PdfColors.grey700),
+              style: pw.TextStyle(
+                  fontStyle: pw.FontStyle.italic, color: PdfColors.grey700),
             ),
             pw.Divider(thickness: 0.5, color: PdfColors.grey300),
             pw.SizedBox(height: 15),
-            
+
             // Generate list of blocks that can flow across pages
             ..._messages.expand((msg) {
               final isUser = msg['role'] == 'user';
               final roleName = isUser ? 'VOCÊ' : 'IA PROFESSOR';
               final content = msg['text'] ?? '';
-              
+
               return [
                 // Role Header
                 pw.Header(
@@ -263,9 +271,11 @@ class _AiChatDialogState extends State<AiChatDialog> {
                 ..._buildPdfRichContent(content, font, fontBold, fontItalic),
               ];
             }),
-            
+
             pw.Footer(
-              trailing: pw.Text('Gerado por EduGaming Platform', style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey)),
+              trailing: pw.Text('Gerado por EduGaming Platform',
+                  style:
+                      const pw.TextStyle(fontSize: 8, color: PdfColors.grey)),
             ),
           ];
         },
@@ -286,7 +296,9 @@ class _AiChatDialogState extends State<AiChatDialog> {
       debugPrint('[PDF] Error saving or downloading: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erro ao exportar PDF: $e'), backgroundColor: Colors.red),
+          SnackBar(
+              content: Text('Erro ao exportar PDF: $e'),
+              backgroundColor: Colors.red),
         );
       }
     }
@@ -294,26 +306,25 @@ class _AiChatDialogState extends State<AiChatDialog> {
 
   Future<void> _generatePodcastAudio() async {
     setState(() => _isTyping = true);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('A criar roteiro do podcast (pode demorar alguns segundos)...'))
-    );
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text(
+            'A criar roteiro do podcast (pode demorar alguns segundos)...')));
 
     try {
       final chatService = context.read<AiChatService>();
-      
+
       // Step 1: Generate Script
       final script = await chatService.generatePodcastScript();
       if (script.isEmpty) throw 'Não foi possível gerar o roteiro.';
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('A sintetizar vozes profissionais...'))
-        );
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('A sintetizar vozes profissionais...')));
       }
 
       // Step 2: Synthesize Audio
       final audioBytes = await chatService.synthesizePodcastAudio(script);
-      
+
       if (audioBytes != null) {
         // Step 3: Trigger Download using robust DownloadHelper
         await DownloadHelper.downloadFile(
@@ -325,9 +336,8 @@ class _AiChatDialogState extends State<AiChatDialog> {
         throw 'A síntese de áudio falhou. Verifique se a API de Text-to-Speech está ativa.';
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro ao gerar podcast: $e'))
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Erro ao gerar podcast: $e')));
     } finally {
       if (mounted) setState(() => _isTyping = false);
     }
@@ -335,13 +345,13 @@ class _AiChatDialogState extends State<AiChatDialog> {
 
   Future<void> _generateInterviewVideo() async {
     setState(() => _isTyping = true);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('A criar roteiro do vídeo...'), duration: Duration(seconds: 5))
-    );
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('A criar roteiro do vídeo...'),
+        duration: Duration(seconds: 5)));
 
     try {
       final chatService = context.read<AiChatService>();
-      
+
       // Step 1: Generate the dialogue script reusing the podcast script generator
       final script = await chatService.generatePodcastScript();
       if (script.isEmpty) throw 'Não foi possível gerar o guião do vídeo.';
@@ -353,9 +363,8 @@ class _AiChatDialogState extends State<AiChatDialog> {
         script,
         onStatusUpdate: (status) {
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(status), duration: const Duration(seconds: 4))
-            );
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                content: Text(status), duration: const Duration(seconds: 4)));
           }
         },
       );
@@ -367,33 +376,34 @@ class _AiChatDialogState extends State<AiChatDialog> {
           'DocTalk_Interview_${DateTime.now().millisecondsSinceEpoch}.mp4',
         );
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('🎬 Vídeo descarregado com sucesso!'), backgroundColor: Colors.green)
-          );
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+              content: Text('🎬 Vídeo descarregado com sucesso!'),
+              backgroundColor: Colors.green));
         }
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erro ao gerar vídeo: $e'), backgroundColor: Colors.red)
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text('Erro ao gerar vídeo: $e'),
+            backgroundColor: Colors.red));
       }
     } finally {
       if (mounted) setState(() => _isTyping = false);
     }
   }
 
-
   Future<void> _generateImageFromChat() async {
     if (_messages.isEmpty) return;
-    
+
     setState(() => _isTyping = true);
-    final lastAiMessage = _messages.lastWhere((m) => m['role'] == 'assistant')['text'] ?? '';
-    final prompt = 'A high-quality educational illustration based on this concept: $lastAiMessage. Professional, clean, and clear.';
-    
+    final lastAiMessage =
+        _messages.lastWhere((m) => m['role'] == 'assistant')['text'] ?? '';
+    final prompt =
+        'A high-quality educational illustration based on this concept: $lastAiMessage. Professional, clean, and clear.';
+
     final chatService = context.read<AiChatService>();
     final base64Image = await chatService.generateImage(prompt);
-    
+
     if (mounted) {
       setState(() => _isTyping = false);
       if (base64Image != null) {
@@ -404,14 +414,16 @@ class _AiChatDialogState extends State<AiChatDialog> {
             title: const AiTranslatedText('Imagem Gerada'),
             content: Image.memory(base64Decode(base64Image)),
             actions: [
-              TextButton(onPressed: () => Navigator.pop(context), child: const Text('Fechar')),
+              TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Fechar')),
             ],
           ),
         );
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Falha ao gerar imagem. Verifique se o modelo Imagen está ativo.'))
-        );
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text(
+                'Falha ao gerar imagem. Verifique se o modelo Imagen está ativo.')));
       }
     }
   }
@@ -424,7 +436,8 @@ class _AiChatDialogState extends State<AiChatDialog> {
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const AiTranslatedText('DocTalk AI', style: TextStyle(fontSize: 16)),
+            const AiTranslatedText('DocTalk AI',
+                style: TextStyle(fontSize: 16)),
             Text(
               '${widget.selectedContents.length} conteúdos selecionados',
               style: const TextStyle(fontSize: 11, color: Colors.white54),
@@ -433,7 +446,8 @@ class _AiChatDialogState extends State<AiChatDialog> {
         ),
         actions: [
           PopupMenuButton<String>(
-            icon: const Icon(Icons.download_for_offline, color: Color(0xFF00D1FF)),
+            icon: const Icon(Icons.download_for_offline,
+                color: Color(0xFF00D1FF)),
             tooltip: 'Exportar & Gerar',
             onSelected: (value) {
               if (value == 'pdf') _exportToPdf();
@@ -446,7 +460,8 @@ class _AiChatDialogState extends State<AiChatDialog> {
                 value: 'pdf',
                 child: Row(
                   children: [
-                    Icon(Icons.picture_as_pdf, color: Colors.redAccent, size: 20),
+                    Icon(Icons.picture_as_pdf,
+                        color: Colors.redAccent, size: 20),
                     SizedBox(width: 12),
                     AiTranslatedText('Exportar para PDF'),
                   ],
@@ -467,7 +482,8 @@ class _AiChatDialogState extends State<AiChatDialog> {
                   value: 'video',
                   child: Row(
                     children: [
-                      Icon(Icons.video_camera_front, color: Colors.purpleAccent, size: 20),
+                      Icon(Icons.video_camera_front,
+                          color: Colors.purpleAccent, size: 20),
                       SizedBox(width: 12),
                       AiTranslatedText('Gerar Vídeo Entrevista (MP4)'),
                     ],
@@ -486,7 +502,9 @@ class _AiChatDialogState extends State<AiChatDialog> {
                 ),
             ],
           ),
-          IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close)),
+          IconButton(
+              onPressed: () => Navigator.pop(context),
+              icon: const Icon(Icons.close)),
         ],
       ),
       body: Column(
@@ -499,7 +517,9 @@ class _AiChatDialogState extends State<AiChatDialog> {
                       children: [
                         CircularProgressIndicator(color: Color(0xFF7B61FF)),
                         SizedBox(height: 16),
-                        AiTranslatedText('Preparando contexto dos documentos...', style: TextStyle(color: Colors.white54)),
+                        AiTranslatedText(
+                            'Preparando contexto dos documentos...',
+                            style: TextStyle(color: Colors.white54)),
                       ],
                     ),
                   )
@@ -518,7 +538,9 @@ class _AiChatDialogState extends State<AiChatDialog> {
                     ),
                   ),
           ),
-          if (_messages.isNotEmpty && _messages.last['isUser'] == 'false' && _messages.last['text']!.contains('Erro técnico')) 
+          if (_messages.isNotEmpty &&
+              _messages.last['isUser'] == 'false' &&
+              _messages.last['text']!.contains('Erro técnico'))
             Container(
               padding: const EdgeInsets.all(8),
               margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -540,13 +562,14 @@ class _AiChatDialogState extends State<AiChatDialog> {
   Widget _buildMessageBubble(String text, bool isUser) {
     // Process text to handle LaTeX delimiters if necessary
     // Here we ensure $...$ and $$...$$ are preserved for the markdown renderer
-    final processedText = text; 
+    final processedText = text;
 
     return Align(
       alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
         margin: const EdgeInsets.only(bottom: 16),
-        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.8),
+        constraints:
+            BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.8),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: isUser ? const Color(0xFF7B61FF) : const Color(0xFF1E293B),
@@ -571,8 +594,12 @@ class _AiChatDialogState extends State<AiChatDialog> {
               data: processedText,
               selectable: true,
               styleSheet: MarkdownStyleSheet(
-                p: TextStyle(color: isUser ? Colors.white : Colors.white70, fontSize: 14),
-                strong: TextStyle(color: isUser ? Colors.white : Colors.white, fontWeight: FontWeight.bold),
+                p: TextStyle(
+                    color: isUser ? Colors.white : Colors.white70,
+                    fontSize: 14),
+                strong: TextStyle(
+                    color: isUser ? Colors.white : Colors.white,
+                    fontWeight: FontWeight.bold),
                 em: const TextStyle(fontStyle: FontStyle.italic),
                 code: TextStyle(
                   backgroundColor: Colors.black.withValues(alpha: 0.3),
@@ -594,7 +621,8 @@ class _AiChatDialogState extends State<AiChatDialog> {
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.volume_up, color: Colors.white54, size: 18),
+                    icon: const Icon(Icons.volume_up,
+                        color: Colors.white54, size: 18),
                     onPressed: () => _speak(text),
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),
@@ -613,7 +641,8 @@ class _AiChatDialogState extends State<AiChatDialog> {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: const Color(0xFF1E293B),
-        border: Border(top: BorderSide(color: Colors.white.withValues(alpha: 0.05))),
+        border: Border(
+            top: BorderSide(color: Colors.white.withValues(alpha: 0.05))),
       ),
       child: SafeArea(
         child: Column(
@@ -630,7 +659,8 @@ class _AiChatDialogState extends State<AiChatDialog> {
                     Expanded(
                       child: Text(
                         'Captado: $_lastWords',
-                        style: const TextStyle(color: Color(0xFF00D1FF), fontSize: 12),
+                        style: const TextStyle(
+                            color: Color(0xFF00D1FF), fontSize: 12),
                       ),
                     ),
                   ],
@@ -651,9 +681,12 @@ class _AiChatDialogState extends State<AiChatDialog> {
                     controller: _msgController,
                     style: const TextStyle(color: Colors.white),
                     decoration: InputDecoration(
-                      hintText: _isListening ? 'A ouvir...' : 'Pergunte sobre os documentos...',
+                      hintText: _isListening
+                          ? 'A ouvir...'
+                          : 'Pergunte sobre os documentos...',
                       hintStyle: const TextStyle(color: Colors.white30),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 20, vertical: 12),
                       fillColor: Colors.white.withValues(alpha: 0.05),
                     ),
                     onSubmitted: (_) => _sendMessage(),
@@ -690,7 +723,8 @@ class _AiChatDialogState extends State<AiChatDialog> {
   }
 
   /// Parses text into a mix of plain text and math widgets for PDF
-  List<pw.Widget> _buildPdfRichContent(String text, pw.Font font, pw.Font boldFont, pw.Font italicFont) {
+  List<pw.Widget> _buildPdfRichContent(
+      String text, pw.Font font, pw.Font boldFont, pw.Font italicFont) {
     final List<pw.Widget> blocks = [];
     final lines = text.split('\n');
 
@@ -702,10 +736,12 @@ class _AiChatDialogState extends State<AiChatDialog> {
       }
 
       // Check if line contains LaTeX-like patterns even without $
-      final hasRawMath = line.contains(r'\frac') || line.contains(r'\times') || line.contains('_');
+      final hasRawMath = line.contains(r'\frac') ||
+          line.contains(r'\times') ||
+          line.contains('_');
       final mathLayers = line.split(RegExp(r'\$'));
       final List<pw.Widget> lineWidgets = [];
-      
+
       int k = 0;
       while (k < mathLayers.length) {
         final segment = _cleanLatex(mathLayers[k]);
@@ -721,9 +757,12 @@ class _AiChatDialogState extends State<AiChatDialog> {
               if (t.isNotEmpty) {
                 // Check if this "normal" segment has subscripts or symbols
                 if (t.contains('_') || t.contains(r'\times')) {
-                   lineWidgets.add(_buildMathWidget(t, m % 2 == 1 ? boldFont : font));
+                  lineWidgets
+                      .add(_buildMathWidget(t, m % 2 == 1 ? boldFont : font));
                 } else {
-                   lineWidgets.add(pw.Text(t, style: pw.TextStyle(font: m % 2 == 1 ? boldFont : font, fontSize: 11)));
+                  lineWidgets.add(pw.Text(t,
+                      style: pw.TextStyle(
+                          font: m % 2 == 1 ? boldFont : font, fontSize: 11)));
                 }
               }
               m = m + 1;
@@ -771,7 +810,8 @@ class _AiChatDialogState extends State<AiChatDialog> {
 
       for (final match in fracRegex.allMatches(p)) {
         if (match.start > lastEnd) {
-          rowParts.add(_buildMathWidget(p.substring(lastEnd, match.start), mathFont));
+          rowParts.add(
+              _buildMathWidget(p.substring(lastEnd, match.start), mathFont));
         }
 
         final n = match.group(1) ?? '';
@@ -784,7 +824,10 @@ class _AiChatDialogState extends State<AiChatDialog> {
               mainAxisSize: pw.MainAxisSize.min,
               children: [
                 _buildMathWidget(n, mathFont),
-                pw.Container(height: 0.5, width: (n.length > d.length ? n.length : d.length) * 5.5, color: PdfColors.black),
+                pw.Container(
+                    height: 0.5,
+                    width: (n.length > d.length ? n.length : d.length) * 5.5,
+                    color: PdfColors.black),
                 _buildMathWidget(d, mathFont),
               ],
             ),
@@ -805,7 +848,8 @@ class _AiChatDialogState extends State<AiChatDialog> {
     }
 
     // Subscript handling (e.g. R_d or R_{sub})
-    final RegExp subRegex = RegExp(r'([a-zA-Z0-9])_(\{([^}]*)\}|([a-zA-Z0-9]))');
+    final RegExp subRegex =
+        RegExp(r'([a-zA-Z0-9])_(\{([^}]*)\}|([a-zA-Z0-9]))');
     if (subRegex.hasMatch(p)) {
       final List<pw.Widget> subParts = [];
       int lastEnd = 0;
@@ -813,10 +857,10 @@ class _AiChatDialogState extends State<AiChatDialog> {
         if (match.start > lastEnd) {
           subParts.add(_mathText(p.substring(lastEnd, match.start), mathFont));
         }
-        
+
         final base = match.group(1) ?? '';
         final subscript = match.group(3) ?? match.group(4) ?? '';
-        
+
         subParts.add(
           pw.Row(
             mainAxisSize: pw.MainAxisSize.min,
@@ -825,7 +869,9 @@ class _AiChatDialogState extends State<AiChatDialog> {
               _mathText(base, mathFont),
               pw.Padding(
                 padding: const pw.EdgeInsets.only(bottom: -2),
-                child: pw.Text(subscript, style: pw.TextStyle(font: mathFont, fontSize: 7, color: PdfColors.blue900)),
+                child: pw.Text(subscript,
+                    style: pw.TextStyle(
+                        font: mathFont, fontSize: 7, color: PdfColors.blue900)),
               ),
             ],
           ),

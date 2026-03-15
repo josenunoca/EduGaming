@@ -16,7 +16,8 @@ class AiGameRankingScreen extends StatefulWidget {
   State<AiGameRankingScreen> createState() => _AiGameRankingScreenState();
 }
 
-class _AiGameRankingScreenState extends State<AiGameRankingScreen> with SingleTickerProviderStateMixin {
+class _AiGameRankingScreenState extends State<AiGameRankingScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
   List<AiGameResult> _results = [];
   bool _isLoading = true;
@@ -45,25 +46,28 @@ class _AiGameRankingScreenState extends State<AiGameRankingScreen> with SingleTi
     setState(() => _isGeneratingAnalysis = true);
     try {
       final chatService = context.read<AiChatService>();
-      
+
       final stats = _calculateAdvancedStats();
-      
+
       String statsText = 'Jogo: ${widget.game.title}\n';
       statsText += 'Total de jogadas: ${stats.totalParticipants}\n';
       statsText += 'Média de pontuação: ${stats.average.toStringAsFixed(1)}\n';
       statsText += 'Mediana: ${stats.median.toStringAsFixed(1)}\n';
       statsText += 'Moda: ${stats.modes.join(', ')}\n';
-      statsText += 'Quartis: Q1=${stats.q1.toStringAsFixed(1)}, Q3=${stats.q3.toStringAsFixed(1)}\n';
-      statsText += 'Distribuição (Histograma): ${stats.histogramBins.join(' | ')}\n';
-      
+      statsText +=
+          'Quartis: Q1=${stats.q1.toStringAsFixed(1)}, Q3=${stats.q3.toStringAsFixed(1)}\n';
+      statsText +=
+          'Distribuição (Histograma): ${stats.histogramBins.join(' | ')}\n';
+
       statsText += '\nTaxas de Acerto por Pergunta:\n';
       for (int i = 0; i < widget.game.questions.length; i++) {
         int correct = 0;
-        for(var r in _results) {
-          if(r.correctAnswers.contains(i)) correct++;
+        for (var r in _results) {
+          if (r.correctAnswers.contains(i)) correct++;
         }
         double r = (correct / _results.length) * 100;
-        statsText += '- P${i+1} (${widget.game.questions[i].question}): ${r.toStringAsFixed(0)}% de acerto\n';
+        statsText +=
+            '- P${i + 1} (${widget.game.questions[i].question}): ${r.toStringAsFixed(0)}% de acerto\n';
       }
 
       final prompt = '''
@@ -82,7 +86,7 @@ $statsText
 
       List<SubjectContent> contextContent = [];
       await chatService.initializeSession(contextContent);
-      
+
       String response = '';
       await for (final chunk in chatService.sendMessage(prompt)) {
         response += chunk;
@@ -90,7 +94,8 @@ $statsText
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erro: $e')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Erro: $e')));
       }
     } finally {
       if (mounted) setState(() => _isGeneratingAnalysis = false);
@@ -102,13 +107,20 @@ $statsText
     return Scaffold(
       backgroundColor: const Color(0xFF0F172A),
       appBar: AppBar(
-        title: AiTranslatedText('Estatísticas e Ranking: ${widget.game.title}', style: const TextStyle(fontSize: 16)),
+        title: AiTranslatedText('Estatísticas e Ranking: ${widget.game.title}',
+            style: const TextStyle(fontSize: 16)),
         bottom: TabBar(
           controller: _tabController,
           tabs: const [
-            Tab(icon: Icon(Icons.dashboard), child: AiTranslatedText('Dashboard')),
-            Tab(icon: Icon(Icons.leaderboard), child: AiTranslatedText('Ranking')),
-            Tab(icon: Icon(Icons.analytics), child: AiTranslatedText('Estatísticas e IA')),
+            Tab(
+                icon: Icon(Icons.dashboard),
+                child: AiTranslatedText('Dashboard')),
+            Tab(
+                icon: Icon(Icons.leaderboard),
+                child: AiTranslatedText('Ranking')),
+            Tab(
+                icon: Icon(Icons.analytics),
+                child: AiTranslatedText('Estatísticas e IA')),
           ],
         ),
       ),
@@ -120,7 +132,7 @@ $statsText
             colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
           ),
         ),
-        child: _isLoading 
+        child: _isLoading
             ? const Center(child: CircularProgressIndicator())
             : TabBarView(
                 controller: _tabController,
@@ -136,7 +148,9 @@ $statsText
 
   Widget _buildRankingTab() {
     if (_results.isEmpty) {
-      return const Center(child: AiTranslatedText('Nenhum aluno jogou este jogo ainda.', style: TextStyle(color: Colors.white38)));
+      return const Center(
+          child: AiTranslatedText('Nenhum aluno jogou este jogo ainda.',
+              style: TextStyle(color: Colors.white38)));
     }
 
     // Group by best score per student
@@ -144,7 +158,8 @@ $statsText
     Map<String, int> playCounts = {};
     for (var r in _results) {
       playCounts[r.studentId] = (playCounts[r.studentId] ?? 0) + 1;
-      if (!bestResults.containsKey(r.studentId) || bestResults[r.studentId]!.score < r.score) {
+      if (!bestResults.containsKey(r.studentId) ||
+          bestResults[r.studentId]!.score < r.score) {
         bestResults[r.studentId] = r;
       }
     }
@@ -161,24 +176,39 @@ $statsText
         Color medalColor = Colors.transparent;
         if (index == 0) {
           medalColor = Colors.amber;
-        } else if (index == 1) medalColor = Colors.blueGrey[300]!;
+        } else if (index == 1)
+          medalColor = Colors.blueGrey[300]!;
         else if (index == 2) medalColor = Colors.brown[400]!;
 
         return Padding(
           padding: const EdgeInsets.only(bottom: 12.0),
           child: GlassCard(
             child: ListTile(
-              leading: isTop3 
-                ? CircleAvatar(backgroundColor: medalColor.withValues(alpha: 0.2), child: Icon(Icons.emoji_events, color: medalColor))
-                : CircleAvatar(backgroundColor: Colors.white10, child: Text('${index + 1}', style: const TextStyle(color: Colors.white54))),
-              title: Text(r.studentName, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-              subtitle: Text('Jogado ${playCounts[r.studentId]} vezes • Última vez: ${DateFormat('dd/MM HH:mm').format(r.playedAt)}', style: const TextStyle(color: Colors.white38, fontSize: 11)),
+              leading: isTop3
+                  ? CircleAvatar(
+                      backgroundColor: medalColor.withValues(alpha: 0.2),
+                      child: Icon(Icons.emoji_events, color: medalColor))
+                  : CircleAvatar(
+                      backgroundColor: Colors.white10,
+                      child: Text('${index + 1}',
+                          style: const TextStyle(color: Colors.white54))),
+              title: Text(r.studentName,
+                  style: const TextStyle(
+                      color: Colors.white, fontWeight: FontWeight.bold)),
+              subtitle: Text(
+                  'Jogado ${playCounts[r.studentId]} vezes • Última vez: ${DateFormat('dd/MM HH:mm').format(r.playedAt)}',
+                  style: const TextStyle(color: Colors.white38, fontSize: 11)),
               trailing: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  const AiTranslatedText('Classificação Máx', style: TextStyle(color: Colors.white54, fontSize: 9)),
-                  Text('${r.score.toStringAsFixed(0)} pts', style: const TextStyle(color: Color(0xFF00D1FF), fontWeight: FontWeight.bold, fontSize: 16)),
+                  const AiTranslatedText('Classificação Máx',
+                      style: TextStyle(color: Colors.white54, fontSize: 9)),
+                  Text('${r.score.toStringAsFixed(0)} pts',
+                      style: const TextStyle(
+                          color: Color(0xFF00D1FF),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16)),
                 ],
               ),
             ),
@@ -189,8 +219,10 @@ $statsText
   }
 
   Widget _buildStatisticsTab() {
-     if (_results.isEmpty) {
-      return const Center(child: AiTranslatedText('Estatísticas indisponíveis (sem dados).', style: TextStyle(color: Colors.white38)));
+    if (_results.isEmpty) {
+      return const Center(
+          child: AiTranslatedText('Estatísticas indisponíveis (sem dados).',
+              style: TextStyle(color: Colors.white38)));
     }
 
     // Question difficulty analysis
@@ -221,9 +253,15 @@ $statsText
                   padding: const EdgeInsets.all(16),
                   child: Column(
                     children: [
-                      const AiTranslatedText('Total de Jogadas', style: TextStyle(color: Colors.white54, fontSize: 12)),
+                      const AiTranslatedText('Total de Jogadas',
+                          style:
+                              TextStyle(color: Colors.white54, fontSize: 12)),
                       const SizedBox(height: 8),
-                      Text('${_results.length}', style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+                      Text('${_results.length}',
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold)),
                     ],
                   ),
                 ),
@@ -234,9 +272,16 @@ $statsText
                   padding: const EdgeInsets.all(16),
                   child: Column(
                     children: [
-                      const AiTranslatedText('Média Global', style: TextStyle(color: Colors.white54, fontSize: 12)),
+                      const AiTranslatedText('Média Global',
+                          style:
+                              TextStyle(color: Colors.white54, fontSize: 12)),
                       const SizedBox(height: 8),
-                      Text('${(_results.map((r) => r.score).reduce((a, b) => a + b) / _results.length).toStringAsFixed(0)} pts', style: const TextStyle(color: Color(0xFF00D1FF), fontSize: 24, fontWeight: FontWeight.bold)),
+                      Text(
+                          '${(_results.map((r) => r.score).reduce((a, b) => a + b) / _results.length).toStringAsFixed(0)} pts',
+                          style: const TextStyle(
+                              color: Color(0xFF00D1FF),
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold)),
                     ],
                   ),
                 ),
@@ -244,7 +289,11 @@ $statsText
             ],
           ),
           const SizedBox(height: 24),
-          const AiTranslatedText('Análise por Questões', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+          const AiTranslatedText('Análise por Questões',
+              style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white)),
           const SizedBox(height: 12),
           ListView.builder(
             shrinkWrap: true,
@@ -256,7 +305,7 @@ $statsText
               final incorrects = incorrectCounts[index] ?? 0;
               final total = corrects + incorrects;
               final correctRatio = total > 0 ? corrects / total : 0.0;
-              
+
               Color barColor = Colors.greenAccent;
               if (correctRatio < 0.5) {
                 barColor = Colors.redAccent;
@@ -269,7 +318,11 @@ $statsText
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('P${index+1}: ${q.question}', style: const TextStyle(color: Colors.white, fontSize: 13), maxLines: 2, overflow: TextOverflow.ellipsis),
+                      Text('P${index + 1}: ${q.question}',
+                          style: const TextStyle(
+                              color: Colors.white, fontSize: 13),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis),
                       const SizedBox(height: 8),
                       Row(
                         children: [
@@ -281,7 +334,12 @@ $statsText
                             ),
                           ),
                           const SizedBox(width: 12),
-                          Text('${(correctRatio * 100).toStringAsFixed(0)}% Acerto', style: TextStyle(color: barColor, fontSize: 11, fontWeight: FontWeight.bold)),
+                          Text(
+                              '${(correctRatio * 100).toStringAsFixed(0)}% Acerto',
+                              style: TextStyle(
+                                  color: barColor,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold)),
                         ],
                       ),
                     ],
@@ -295,26 +353,37 @@ $statsText
             width: double.infinity,
             child: ElevatedButton.icon(
               onPressed: _isGeneratingAnalysis ? null : _generateAnalysis,
-              icon: _isGeneratingAnalysis ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) : const Icon(Icons.auto_awesome),
-              label: const AiTranslatedText('Gerar Análise Qualitativa com Inteligência Artificial'),
+              icon: _isGeneratingAnalysis
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                          color: Colors.white, strokeWidth: 2))
+                  : const Icon(Icons.auto_awesome),
+              label: const AiTranslatedText(
+                  'Gerar Análise Qualitativa com Inteligência Artificial'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF7B61FF),
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 16)
-              ),
+                  backgroundColor: const Color(0xFF7B61FF),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16)),
             ),
           ),
           const SizedBox(height: 24),
           if (_aiAnalysis != null) ...[
-             const AiTranslatedText('Análise do AI Assistant:', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF00D1FF))),
-             const SizedBox(height: 12),
-             GlassCard(
-               padding: const EdgeInsets.all(16),
-               child: Text(_aiAnalysis!, style: const TextStyle(color: Colors.white, fontSize: 13, height: 1.5)),
-             ),
-             const SizedBox(height: 24),
+            const AiTranslatedText('Análise do AI Assistant:',
+                style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF00D1FF))),
+            const SizedBox(height: 12),
+            GlassCard(
+              padding: const EdgeInsets.all(16),
+              child: Text(_aiAnalysis!,
+                  style: const TextStyle(
+                      color: Colors.white, fontSize: 13, height: 1.5)),
+            ),
+            const SizedBox(height: 24),
           ],
-          
           if (_results.isNotEmpty) ...[
             Row(
               children: [
@@ -327,7 +396,8 @@ $statsText
                       backgroundColor: const Color(0xFF00D1FF),
                       foregroundColor: const Color(0xFF0F172A),
                       padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
                     ),
                   ),
                 ),
@@ -351,7 +421,8 @@ $statsText
                       style: OutlinedButton.styleFrom(
                         foregroundColor: const Color(0xFF00D1FF),
                         side: const BorderSide(color: Color(0xFF00D1FF)),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
                       ),
                       child: const Icon(Icons.edit_note),
                     ),
@@ -368,16 +439,22 @@ $statsText
   AdvancedScoreStats _calculateAdvancedStats() {
     if (_results.isEmpty) {
       return AdvancedScoreStats(
-        average: 0, median: 0, modes: [], min: 0, max: 0, q1: 0, q3: 0, 
-        histogramBins: [0, 0, 0, 0, 0], totalParticipants: 0
-      );
+          average: 0,
+          median: 0,
+          modes: [],
+          min: 0,
+          max: 0,
+          q1: 0,
+          q3: 0,
+          histogramBins: [0, 0, 0, 0, 0],
+          totalParticipants: 0);
     }
 
     final scores = _results.map((r) => r.score).toList()..sort();
     final total = scores.length;
-    
+
     double avg = scores.reduce((a, b) => a + b) / total;
-    
+
     // Median
     double median;
     if (total % 2 == 0) {
@@ -385,7 +462,7 @@ $statsText
     } else {
       median = scores[total ~/ 2];
     }
-    
+
     // Mode
     Map<double, int> counts = {};
     for (var s in scores) {
@@ -396,15 +473,16 @@ $statsText
         .where((e) => e.value == maxCount)
         .map((e) => e.key)
         .toList();
-    
+
     // Quartiles
     double getPercentile(double p) {
       int index = (p * (total - 1)).floor();
       return scores[index];
     }
+
     double q1 = getPercentile(0.25);
     double q3 = getPercentile(0.75);
-    
+
     // Question-specific stats
     List<QuestionStat> qStats = [];
     for (int i = 0; i < widget.game.questions.length; i++) {
@@ -414,7 +492,7 @@ $statsText
       }
       int incorrect = _results.length - correct;
       double percentage = (correct / _results.length) * 100;
-      
+
       qStats.add(QuestionStat(
         questionText: widget.game.questions[i].question,
         correctCount: correct,
@@ -428,32 +506,37 @@ $statsText
     for (var s in scores) {
       if (s < 20) {
         bins[0]++;
-      } else if (s < 40) bins[1]++;
-      else if (s < 60) bins[2]++;
-      else if (s < 80) bins[3]++;
-      else bins[4]++;
+      } else if (s < 40)
+        bins[1]++;
+      else if (s < 60)
+        bins[2]++;
+      else if (s < 80)
+        bins[3]++;
+      else
+        bins[4]++;
     }
 
     // Sort to find top and bottom questions
     final sortedQStats = List<QuestionStat>.from(qStats)
       ..sort((a, b) => b.percentage.compareTo(a.percentage));
-    
+
     final topQ = sortedQStats.take(3).toList();
     final bottomQ = sortedQStats.reversed.take(3).toList().reversed.toList();
 
     // Student ranking for dash
     Map<String, AiGameResult> bestResults = {};
     for (var r in _results) {
-      if (!bestResults.containsKey(r.studentId) || bestResults[r.studentId]!.score < r.score) {
+      if (!bestResults.containsKey(r.studentId) ||
+          bestResults[r.studentId]!.score < r.score) {
         bestResults[r.studentId] = r;
       }
     }
     final rankedStudents = bestResults.values.toList()
       ..sort((a, b) => b.score.compareTo(a.score));
-    
+
     final topStudents = rankedStudents.take(3).toList();
-    final bottomStudents = rankedStudents.length > 3 
-        ? rankedStudents.reversed.take(3).toList().reversed.toList() 
+    final bottomStudents = rankedStudents.length > 3
+        ? rankedStudents.reversed.take(3).toList().reversed.toList()
         : <AiGameResult>[];
 
     return AdvancedScoreStats(
@@ -476,7 +559,10 @@ $statsText
 
   Widget _buildDashboardTab() {
     if (_results.isEmpty) {
-      return const Center(child: AiTranslatedText('Sem dados suficientes para gerar o Dashboard.', style: TextStyle(color: Colors.white38)));
+      return const Center(
+          child: AiTranslatedText(
+              'Sem dados suficientes para gerar o Dashboard.',
+              style: TextStyle(color: Colors.white38)));
     }
 
     final stats = _calculateAdvancedStats();
@@ -489,17 +575,36 @@ $statsText
           // Row 1: Key Indicators
           Row(
             children: [
-              Expanded(child: _buildDashboardIndicator('Média Pontuação', '${stats.average.toStringAsFixed(0)} pts', Icons.analytics_outlined, const Color(0xFF00D1FF))),
+              Expanded(
+                  child: _buildDashboardIndicator(
+                      'Média Pontuação',
+                      '${stats.average.toStringAsFixed(0)} pts',
+                      Icons.analytics_outlined,
+                      const Color(0xFF00D1FF))),
               const SizedBox(width: 12),
-              Expanded(child: _buildDashboardIndicator('Total Jogadas', '${stats.totalParticipants}', Icons.people_outline, const Color(0xFF7B61FF))),
+              Expanded(
+                  child: _buildDashboardIndicator(
+                      'Total Jogadas',
+                      '${stats.totalParticipants}',
+                      Icons.people_outline,
+                      const Color(0xFF7B61FF))),
               const SizedBox(width: 12),
-              Expanded(child: _buildDashboardIndicator('Taxa Sucesso', '${((stats.average / 100) * 100).toStringAsFixed(0)}%', Icons.check_circle_outline, Colors.greenAccent)),
+              Expanded(
+                  child: _buildDashboardIndicator(
+                      'Taxa Sucesso',
+                      '${((stats.average / 100) * 100).toStringAsFixed(0)}%',
+                      Icons.check_circle_outline,
+                      Colors.greenAccent)),
             ],
           ),
           const SizedBox(height: 24),
 
           // Row 2: Student Ranking Highlights
-          const AiTranslatedText('Desempenho de Alunos', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+          const AiTranslatedText('Desempenho de Alunos',
+              style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white)),
           const SizedBox(height: 12),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -508,7 +613,11 @@ $statsText
                 child: _buildDashboardSection(
                   title: '🏆 TOP 3 ALUNOS',
                   color: Colors.amber,
-                  items: stats.topStudents?.map((s) => _buildMiniRankItem(s.studentName, '${s.score.toStringAsFixed(0)} pts', true)).toList() ?? [],
+                  items: stats.topStudents
+                          ?.map((s) => _buildMiniRankItem(s.studentName,
+                              '${s.score.toStringAsFixed(0)} pts', true))
+                          .toList() ??
+                      [],
                 ),
               ),
               const SizedBox(width: 16),
@@ -516,7 +625,11 @@ $statsText
                 child: _buildDashboardSection(
                   title: '⚠️ NECESSITA APOIO',
                   color: Colors.redAccent,
-                  items: stats.bottomStudents?.map((s) => _buildMiniRankItem(s.studentName, '${s.score.toStringAsFixed(0)} pts', false)).toList() ?? [],
+                  items: stats.bottomStudents
+                          ?.map((s) => _buildMiniRankItem(s.studentName,
+                              '${s.score.toStringAsFixed(0)} pts', false))
+                          .toList() ??
+                      [],
                 ),
               ),
             ],
@@ -524,7 +637,11 @@ $statsText
           const SizedBox(height: 24),
 
           // Row 3: Questions Highlights
-          const AiTranslatedText('Análise de Conteúdo', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+          const AiTranslatedText('Análise de Conteúdo',
+              style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white)),
           const SizedBox(height: 12),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -533,7 +650,10 @@ $statsText
                 child: _buildDashboardSection(
                   title: '✅ SUCESSO TOTAL',
                   color: Colors.greenAccent,
-                  items: stats.topQuestions.map((q) => _buildMiniRankItem(q.questionText, '${q.percentage.toStringAsFixed(0)}%', true)).toList(),
+                  items: stats.topQuestions
+                      .map((q) => _buildMiniRankItem(q.questionText,
+                          '${q.percentage.toStringAsFixed(0)}%', true))
+                      .toList(),
                 ),
               ),
               const SizedBox(width: 16),
@@ -541,7 +661,10 @@ $statsText
                 child: _buildDashboardSection(
                   title: '❌ LACUNAS (GAPS)',
                   color: Colors.orangeAccent,
-                  items: stats.bottomQuestions.map((q) => _buildMiniRankItem(q.questionText, '${q.percentage.toStringAsFixed(0)}%', false)).toList(),
+                  items: stats.bottomQuestions
+                      .map((q) => _buildMiniRankItem(q.questionText,
+                          '${q.percentage.toStringAsFixed(0)}%', false))
+                      .toList(),
                 ),
               ),
             ],
@@ -549,7 +672,11 @@ $statsText
           const SizedBox(height: 32),
 
           // Simplified Distribution
-          const AiTranslatedText('Distribuição de Performance (Geral)', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+          const AiTranslatedText('Distribuição de Performance (Geral)',
+              style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white)),
           const SizedBox(height: 12),
           GlassCard(
             padding: const EdgeInsets.all(20),
@@ -557,49 +684,60 @@ $statsText
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               crossAxisAlignment: CrossAxisAlignment.end,
               children: List.generate(stats.histogramBins.length, (i) {
-                  final maxVal = stats.histogramBins.isNotEmpty ? stats.histogramBins.reduce((a, b) => a > b ? a : b) : 1;
-                  final h = maxVal > 0 ? (stats.histogramBins[i] / maxVal) * 100 : 5.0;
-                  final labels = ['0-20', '21-40', '41-60', '61-80', '81-100'];
-                  return Column(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      Container(
-                        width: 36,
-                        height: h.toDouble() + 5,
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [Color(0xFF00D1FF), Color(0xFF7B61FF)],
-                          ),
-                          borderRadius: BorderRadius.circular(4),
-                          boxShadow: [
-                            BoxShadow(color: const Color(0xFF00D1FF).withValues(alpha: 0.3), blurRadius: 8, spreadRadius: 0),
-                          ],
+                final maxVal = stats.histogramBins.isNotEmpty
+                    ? stats.histogramBins.reduce((a, b) => a > b ? a : b)
+                    : 1;
+                final h =
+                    maxVal > 0 ? (stats.histogramBins[i] / maxVal) * 100 : 5.0;
+                final labels = ['0-20', '21-40', '41-60', '61-80', '81-100'];
+                return Column(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Container(
+                      width: 36,
+                      height: h.toDouble() + 5,
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [Color(0xFF00D1FF), Color(0xFF7B61FF)],
                         ),
+                        borderRadius: BorderRadius.circular(4),
+                        boxShadow: [
+                          BoxShadow(
+                              color: const Color(0xFF00D1FF)
+                                  .withValues(alpha: 0.3),
+                              blurRadius: 8,
+                              spreadRadius: 0),
+                        ],
                       ),
-                      const SizedBox(height: 8),
-                      Text(labels[i], style: const TextStyle(color: Colors.white38, fontSize: 9)),
-                    ],
-                  );
-                }),
-              ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(labels[i],
+                        style: const TextStyle(
+                            color: Colors.white38, fontSize: 9)),
+                  ],
+                );
+              }),
             ),
+          ),
           const SizedBox(height: 32),
-          
+
           // Shortcut to full statistics
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
               onPressed: () => _tabController.animateTo(2),
               icon: const Icon(Icons.auto_awesome),
-              label: const AiTranslatedText('Ver Análise Qualitativa IA e Exportar PDF'),
+              label: const AiTranslatedText(
+                  'Ver Análise Qualitativa IA e Exportar PDF'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF7B61FF).withValues(alpha: 0.2),
                 foregroundColor: Colors.white,
                 side: const BorderSide(color: Color(0xFF7B61FF)),
                 padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
               ),
             ),
           ),
@@ -609,32 +747,50 @@ $statsText
     );
   }
 
-  Widget _buildDashboardIndicator(String label, String value, IconData icon, Color color) {
+  Widget _buildDashboardIndicator(
+      String label, String value, IconData icon, Color color) {
     return GlassCard(
       padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 8),
       child: Column(
         children: [
           Icon(icon, color: color, size: 24),
           const SizedBox(height: 12),
-          Text(value, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+          Text(value,
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold)),
           const SizedBox(height: 4),
-          AiTranslatedText(label, style: const TextStyle(color: Colors.white38, fontSize: 8), textAlign: TextAlign.center),
+          AiTranslatedText(label,
+              style: const TextStyle(color: Colors.white38, fontSize: 8),
+              textAlign: TextAlign.center),
         ],
       ),
     );
   }
 
-  Widget _buildDashboardSection({required String title, required Color color, required List<Widget> items}) {
+  Widget _buildDashboardSection(
+      {required String title,
+      required Color color,
+      required List<Widget> items}) {
     return GlassCard(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          AiTranslatedText(title, style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+          AiTranslatedText(title,
+              style: TextStyle(
+                  color: color,
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 0.5)),
           const SizedBox(height: 12),
-          ...items.isEmpty 
-            ? [const AiTranslatedText('Sem dados ainda', style: TextStyle(color: Colors.white24, fontSize: 10))]
-            : items,
+          ...items.isEmpty
+              ? [
+                  const AiTranslatedText('Sem dados ainda',
+                      style: TextStyle(color: Colors.white24, fontSize: 10))
+                ]
+              : items,
         ],
       ),
     );
@@ -647,21 +803,20 @@ $statsText
         children: [
           Expanded(
             child: Text(
-              label, 
+              label,
               style: const TextStyle(color: Colors.white70, fontSize: 10),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
           ),
           const SizedBox(width: 4),
-          Text(
-            value, 
-            style: TextStyle(
-              color: isPositive ? const Color(0xFF00D1FF) : Colors.orangeAccent, 
-              fontSize: 10, 
-              fontWeight: FontWeight.bold
-            )
-          ),
+          Text(value,
+              style: TextStyle(
+                  color: isPositive
+                      ? const Color(0xFF00D1FF)
+                      : Colors.orangeAccent,
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold)),
         ],
       ),
     );
@@ -672,27 +827,35 @@ $statsText
     showModalBottomSheet(
       context: context,
       backgroundColor: const Color(0xFF1E293B),
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (context) => Padding(
         padding: const EdgeInsets.all(24.0),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const AiTranslatedText('Exportar Relatório', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+            const AiTranslatedText('Exportar Relatório',
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
-            const AiTranslatedText('Escolha o formato do relatório para download.', style: TextStyle(color: Colors.white54)),
+            const AiTranslatedText(
+                'Escolha o formato do relatório para download.',
+                style: TextStyle(color: Colors.white54)),
             const SizedBox(height: 24),
             _buildPdfOption(
               icon: Icons.auto_awesome,
               title: 'Relatório Sintético (IA)',
-              description: 'Análise qualitativa, pontos fortes/fracos e sugestões de melhoria.',
+              description:
+                  'Análise qualitativa, pontos fortes/fracos e sugestões de melhoria.',
               onTap: () {
                 Navigator.pop(context);
                 if (_aiAnalysis == null) {
                   _generateAnalysis();
                 } else {
-                   Navigator.push(
+                  Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (_) => ReportEditScreen(
@@ -710,7 +873,8 @@ $statsText
             _buildPdfOption(
               icon: Icons.table_chart,
               title: 'Relatório Detalhado',
-              description: 'Lista completa de resultados individuais e desempenho por questão.',
+              description:
+                  'Lista completa de resultados individuais e desempenho por questão.',
               onTap: () async {
                 Navigator.pop(context);
                 final detailedContent = _generateDetailedText();
@@ -736,29 +900,37 @@ $statsText
 
   String _generateDetailedText() {
     String text = 'Total de Jogadas: ${_results.length}\n';
-    double avg = _results.map((r) => r.score).reduce((a, b) => a + b) / _results.length;
+    double avg =
+        _results.map((r) => r.score).reduce((a, b) => a + b) / _results.length;
     text += 'Média Global: ${avg.toStringAsFixed(1)} pts\n\n';
     text += '--- RESULTADOS POR ALUNO ---\n';
-    
-    final sorted = List<AiGameResult>.from(_results)..sort((a,b) => b.score.compareTo(a.score));
+
+    final sorted = List<AiGameResult>.from(_results)
+      ..sort((a, b) => b.score.compareTo(a.score));
     for (var r in sorted) {
-      text += '- ${r.studentName}: ${r.score.toStringAsFixed(0)} pts (${DateFormat('dd/MM HH:mm').format(r.playedAt)})\n';
+      text +=
+          '- ${r.studentName}: ${r.score.toStringAsFixed(0)} pts (${DateFormat('dd/MM HH:mm').format(r.playedAt)})\n';
     }
-    
+
     text += '\n--- DESEMPENHO POR QUESTÃO ---\n';
     for (int i = 0; i < widget.game.questions.length; i++) {
-       int correct = 0;
-       for(var r in _results) {
-         if(r.correctAnswers.contains(i)) correct++;
-       }
-       double ratio = (correct / _results.length) * 100;
-       text += 'P${i+1} (${widget.game.questions[i].question}): ${ratio.toStringAsFixed(0)}% de Acerto\n';
+      int correct = 0;
+      for (var r in _results) {
+        if (r.correctAnswers.contains(i)) correct++;
+      }
+      double ratio = (correct / _results.length) * 100;
+      text +=
+          'P${i + 1} (${widget.game.questions[i].question}): ${ratio.toStringAsFixed(0)}% de Acerto\n';
     }
-    
+
     return text;
   }
 
-  Widget _buildPdfOption({required IconData icon, required String title, required String description, required VoidCallback onTap}) {
+  Widget _buildPdfOption(
+      {required IconData icon,
+      required String title,
+      required String description,
+      required VoidCallback onTap}) {
     return InkWell(
       onTap: onTap,
       child: GlassCard(
@@ -771,9 +943,13 @@ $statsText
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  AiTranslatedText(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  AiTranslatedText(title,
+                      style: const TextStyle(
+                          color: Colors.white, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 4),
-                  AiTranslatedText(description, style: const TextStyle(color: Colors.white54, fontSize: 12)),
+                  AiTranslatedText(description,
+                      style:
+                          const TextStyle(color: Colors.white54, fontSize: 12)),
                 ],
               ),
             ),

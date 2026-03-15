@@ -16,7 +16,7 @@ class LoanCalculator {
 
     double monthlyRate = annualInterestRate / 12 / 100;
     double factor = pow(1 + monthlyRate, months).toDouble();
-    
+
     return principal * (monthlyRate * factor) / (factor - 1);
   }
 

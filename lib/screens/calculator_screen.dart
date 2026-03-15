@@ -26,8 +26,10 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
       months: _months,
     );
 
-    double totalPayment = LoanCalculator.calculateTotalPayment(monthlyInstallment, _months);
-    double totalInterest = LoanCalculator.calculateTotalInterest(totalPayment, _amount);
+    double totalPayment =
+        LoanCalculator.calculateTotalPayment(monthlyInstallment, _months);
+    double totalInterest =
+        LoanCalculator.calculateTotalInterest(totalPayment, _amount);
 
     return Scaffold(
       body: Container(
@@ -106,7 +108,9 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
                 fontWeight: FontWeight.bold,
                 color: Colors.white,
               ),
-            ).animate(key: ValueKey(monthlyInstallment)).scale(duration: 400.ms, curve: Curves.easeOutBack),
+            )
+                .animate(key: ValueKey(monthlyInstallment))
+                .scale(duration: 400.ms, curve: Curves.easeOutBack),
           ],
         ),
       ),
@@ -158,8 +162,8 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
     required String suffix,
     required ValueChanged<double> onChanged,
   }) {
-    String displayValue = (suffix == '€') 
-        ? currencyFormatter.format(value).replaceAll(',00', '') 
+    String displayValue = (suffix == '€')
+        ? currencyFormatter.format(value).replaceAll(',00', '')
         : '${value.toStringAsFixed(value == value.toInt() ? 0 : 1)}$suffix';
 
     return Column(
@@ -168,8 +172,13 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(label, style: const TextStyle(color: Colors.white70, fontSize: 14)),
-            Text(displayValue, style: const TextStyle(color: Color(0xFF00D1FF), fontWeight: FontWeight.bold, fontSize: 16)),
+            Text(label,
+                style: const TextStyle(color: Colors.white70, fontSize: 14)),
+            Text(displayValue,
+                style: const TextStyle(
+                    color: Color(0xFF00D1FF),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16)),
           ],
         ),
         const SizedBox(height: 8),
@@ -188,11 +197,13 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
     return Row(
       children: [
         Expanded(
-          child: _buildMiniDetail('Total a Pagar', currencyFormatter.format(totalPayment)),
+          child: _buildMiniDetail(
+              'Total a Pagar', currencyFormatter.format(totalPayment)),
         ),
         const SizedBox(width: 16),
         Expanded(
-          child: _buildMiniDetail('Total Juros', currencyFormatter.format(totalInterest)),
+          child: _buildMiniDetail(
+              'Total Juros', currencyFormatter.format(totalInterest)),
         ),
       ],
     ).animate().fadeIn(delay: 700.ms);
@@ -206,11 +217,16 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(color: Colors.white54, fontSize: 12)),
+          Text(label,
+              style: const TextStyle(color: Colors.white54, fontSize: 12)),
           const SizedBox(height: 4),
           FittedBox(
             alignment: Alignment.centerLeft,
-            child: Text(value, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+            child: Text(value,
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16)),
           ),
         ],
       ),

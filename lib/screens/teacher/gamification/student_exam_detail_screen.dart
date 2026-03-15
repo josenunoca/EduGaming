@@ -22,13 +22,14 @@ class StudentExamDetailScreen extends StatefulWidget {
   });
 
   @override
-  State<StudentExamDetailScreen> createState() => _StudentExamDetailScreenState();
+  State<StudentExamDetailScreen> createState() =>
+      _StudentExamDetailScreenState();
 }
 
 class _StudentExamDetailScreenState extends State<StudentExamDetailScreen> {
   late Map<int, double> _teacherAdjustments;
   bool _isSavingAdjustment = false;
-  
+
   final AudioPlayer _audioPlayer = AudioPlayer();
   int? _playingIndex;
 
@@ -46,10 +47,13 @@ class _StudentExamDetailScreenState extends State<StudentExamDetailScreen> {
       updatedAdjustments[qIndex] = newScore;
 
       // Re-calculate final score
-      double finalScore = widget.game.questions.asMap().entries.fold(0.0, (sum, entry) {
+      double finalScore =
+          widget.game.questions.asMap().entries.fold(0.0, (sum, entry) {
         int idx = entry.key;
         GameQuestion q = entry.value;
-        if (updatedAdjustments.containsKey(idx)) return sum + updatedAdjustments[idx]!;
+        if (updatedAdjustments.containsKey(idx)) {
+          return sum + updatedAdjustments[idx]!;
+        }
         if (widget.result.correctAnswers.contains(idx)) return sum + q.points;
         return sum;
       });
@@ -76,11 +80,16 @@ class _StudentExamDetailScreenState extends State<StudentExamDetailScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: AiTranslatedText('Pontuação atualizada!'), backgroundColor: Colors.green),
+          const SnackBar(
+              content: AiTranslatedText('Pontuação atualizada!'),
+              backgroundColor: Colors.green),
         );
       }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erro: $e')));
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Erro: $e')));
+      }
     } finally {
       if (mounted) setState(() => _isSavingAdjustment = false);
     }
@@ -114,14 +123,21 @@ class _StudentExamDetailScreenState extends State<StudentExamDetailScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                AiTranslatedText('Pontuação Sugerida: ${suggestedScore.toDouble()} / ${question.points}'),
+                AiTranslatedText(
+                    'Pontuação Sugerida: ${suggestedScore.toDouble()} / ${question.points}'),
                 const SizedBox(height: 12),
-                const AiTranslatedText('Justificação:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                Text(reasoning, style: const TextStyle(color: Colors.white70, fontSize: 13)),
+                const AiTranslatedText('Justificação:',
+                    style:
+                        TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                Text(reasoning,
+                    style:
+                        const TextStyle(color: Colors.white70, fontSize: 13)),
               ],
             ),
             actions: [
-              TextButton(onPressed: () => Navigator.pop(context), child: const AiTranslatedText('Agora Não')),
+              TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const AiTranslatedText('Agora Não')),
               ElevatedButton(
                 onPressed: () {
                   Navigator.pop(context);
@@ -134,7 +150,10 @@ class _StudentExamDetailScreenState extends State<StudentExamDetailScreen> {
         );
       }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erro na IA: $e')));
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Erro na IA: $e')));
+      }
     } finally {
       if (mounted) setState(() => _isSavingAdjustment = false);
     }
@@ -154,7 +173,7 @@ class _StudentExamDetailScreenState extends State<StudentExamDetailScreen> {
       await _audioPlayer.stop();
       await _audioPlayer.play(UrlSource(url));
       setState(() => _playingIndex = qIndex);
-      
+
       _audioPlayer.onPlayerComplete.listen((_) {
         if (mounted) setState(() => _playingIndex = null);
       });
@@ -175,10 +194,13 @@ class _StudentExamDetailScreenState extends State<StudentExamDetailScreen> {
       ),
     );
   }
+
   @override
   Widget build(BuildContext context) {
-    final double maxScore = widget.game.questions.fold(0.0, (sum, q) => sum + q.points);
-    final String formattedDate = DateFormat('dd/MM/yyyy HH:mm').format(widget.result.playedAt);
+    final double maxScore =
+        widget.game.questions.fold(0.0, (sum, q) => sum + q.points);
+    final String formattedDate =
+        DateFormat('dd/MM/yyyy HH:mm').format(widget.result.playedAt);
 
     return Scaffold(
       backgroundColor: const Color(0xFF0F172A),
@@ -186,7 +208,13 @@ class _StudentExamDetailScreenState extends State<StudentExamDetailScreen> {
         title: const AiTranslatedText('Detalhes da Prova'),
         actions: [
           if (_isSavingAdjustment)
-            const Center(child: Padding(padding: EdgeInsets.symmetric(horizontal: 16), child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)))),
+            const Center(
+                child: Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 16),
+                    child: SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2)))),
           IconButton(
             icon: const Icon(Icons.download),
             onPressed: () => _downloadPDF(context),
@@ -204,11 +232,15 @@ class _StudentExamDetailScreenState extends State<StudentExamDetailScreen> {
               padding: const EdgeInsets.all(24),
               child: Column(
                 children: [
-                  AiTranslatedText(widget.studentName, 
-                    style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+                  AiTranslatedText(widget.studentName,
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
-                  AiTranslatedText(widget.game.title, 
-                    style: const TextStyle(color: Color(0xFF00D1FF), fontSize: 16)),
+                  AiTranslatedText(widget.game.title,
+                      style: const TextStyle(
+                          color: Color(0xFF00D1FF), fontSize: 16)),
                   const SizedBox(height: 16),
                   const Divider(color: Colors.white10),
                   const SizedBox(height: 16),
@@ -216,17 +248,22 @@ class _StudentExamDetailScreenState extends State<StudentExamDetailScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
                       _buildInfoItem('Data/Hora', formattedDate),
-                      _buildInfoItem('Nota Final', '${widget.result.score.toInt()} / ${maxScore.toInt()}', isLarge: true),
+                      _buildInfoItem('Nota Final',
+                          '${widget.result.score.toInt()} / ${maxScore.toInt()}',
+                          isLarge: true),
                     ],
                   ),
                 ],
               ),
             ),
             const SizedBox(height: 32),
-            const AiTranslatedText('Respostas Detalhadas', 
-              style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+            const AiTranslatedText('Respostas Detalhadas',
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold)),
             const SizedBox(height: 16),
-            
+
             // Questions List
             ...List.generate(widget.game.questions.length, (index) {
               final question = widget.game.questions[index];
@@ -255,27 +292,39 @@ class _StudentExamDetailScreenState extends State<StudentExamDetailScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                AiTranslatedText('Pergunta ${index + 1}', 
-                  style: const TextStyle(color: Colors.white54, fontSize: 13, fontWeight: FontWeight.bold)),
+                AiTranslatedText('Pergunta ${index + 1}',
+                    style: const TextStyle(
+                        color: Colors.white54,
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold)),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: (actualScore > 0 ? Colors.green : Colors.red).withValues(alpha: 0.1),
+                    color: (actualScore > 0 ? Colors.green : Colors.red)
+                        .withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: actualScore > 0 ? Colors.green : Colors.red, width: 0.5),
+                    border: Border.all(
+                        color: actualScore > 0 ? Colors.green : Colors.red,
+                        width: 0.5),
                   ),
                   child: Text(
                     '${actualScore.toDouble()} pts',
-                    style: TextStyle(color: actualScore > 0 ? Colors.green : Colors.red, fontSize: 11, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                        color: actualScore > 0 ? Colors.green : Colors.red,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 12),
-            AiTranslatedText(question.question, 
-              style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w500)),
+            AiTranslatedText(question.question,
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500)),
             const SizedBox(height: 16),
-            
             if (question.allowedAnswerTypes.contains('options')) ...[
               ...List.generate(question.options.length, (i) {
                 final bool isOptionSelected = selectedOption == i;
@@ -283,28 +332,38 @@ class _StudentExamDetailScreenState extends State<StudentExamDetailScreen> {
                 Color textColor = Colors.white70;
                 if (isCorrectOption) {
                   textColor = Colors.greenAccent;
-                } else if (isOptionSelected && !isCorrectOption) textColor = Colors.redAccent;
+                } else if (isOptionSelected && !isCorrectOption)
+                  textColor = Colors.redAccent;
 
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 6.0),
                   child: Row(
                     children: [
-                      Icon(isOptionSelected ? Icons.radio_button_checked : Icons.radio_button_off, size: 14, color: isOptionSelected ? const Color(0xFF00D1FF) : Colors.white10),
+                      Icon(
+                          isOptionSelected
+                              ? Icons.radio_button_checked
+                              : Icons.radio_button_off,
+                          size: 14,
+                          color: isOptionSelected
+                              ? const Color(0xFF00D1FF)
+                              : Colors.white10),
                       const SizedBox(width: 10),
-                      Expanded(child: AiTranslatedText(question.options[i], style: TextStyle(color: textColor, fontSize: 13))),
+                      Expanded(
+                          child: AiTranslatedText(question.options[i],
+                              style:
+                                  TextStyle(color: textColor, fontSize: 13))),
                     ],
                   ),
                 );
               }),
             ],
-            
             if (response != null) ...[
               const Divider(color: Colors.white10, height: 24),
-              const AiTranslatedText('Resposta do Aluno:', style: TextStyle(color: Colors.white38, fontSize: 12)),
+              const AiTranslatedText('Resposta do Aluno:',
+                  style: TextStyle(color: Colors.white38, fontSize: 12)),
               const SizedBox(height: 8),
               _buildResponseValue(index, response),
             ],
-
             if (question.allowedAnswerTypes.any((t) => t != 'options')) ...[
               const SizedBox(height: 16),
               Row(
@@ -313,14 +372,21 @@ class _StudentExamDetailScreenState extends State<StudentExamDetailScreen> {
                     onPressed: () => _requestAiGrading(index),
                     icon: const Icon(Icons.auto_awesome, size: 16),
                     label: const AiTranslatedText('Sugestão IA'),
-                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF7B61FF).withValues(alpha: 0.3), padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
+                    style: ElevatedButton.styleFrom(
+                        backgroundColor:
+                            const Color(0xFF7B61FF).withValues(alpha: 0.3),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 8)),
                   ),
                   const SizedBox(width: 12),
                   ElevatedButton.icon(
                     onPressed: () => _editScoreManual(index, question),
                     icon: const Icon(Icons.edit, size: 16),
                     label: const AiTranslatedText('Ajustar Nota'),
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.white10, padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
+                    style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white10,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 8)),
                   ),
                 ],
               ),
@@ -335,28 +401,34 @@ class _StudentExamDetailScreenState extends State<StudentExamDetailScreen> {
     final type = response['type'];
     final value = response['value'];
 
-    if (type == 'text') return Text(value, style: const TextStyle(color: Colors.white, fontSize: 14));
-    
+    if (type == 'text') {
+      return Text(value,
+          style: const TextStyle(color: Colors.white, fontSize: 14));
+    }
+
     if (type == 'audio') {
       final isPlaying = _playingIndex == index;
       return Row(
         children: [
           IconButton(
             onPressed: () => _toggleAudio(index, value),
-            icon: Icon(isPlaying ? Icons.stop_circle : Icons.play_circle, color: const Color(0xFF00D1FF), size: 32),
+            icon: Icon(isPlaying ? Icons.stop_circle : Icons.play_circle,
+                color: const Color(0xFF00D1FF), size: 32),
           ),
           const SizedBox(width: 8),
-          AiTranslatedText(isPlaying ? 'A reproduzir áudio...' : 'Ouvir Resposta Gravada', 
-            style: const TextStyle(color: Colors.white, fontSize: 13)),
+          AiTranslatedText(
+              isPlaying ? 'A reproduzir áudio...' : 'Ouvir Resposta Gravada',
+              style: const TextStyle(color: Colors.white, fontSize: 13)),
         ],
       );
     }
-    
+
     if (type == 'image') {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const AiTranslatedText('Toque na imagem para ampliar:', style: TextStyle(color: Colors.white38, fontSize: 11)),
+          const AiTranslatedText('Toque na imagem para ampliar:',
+              style: TextStyle(color: Colors.white38, fontSize: 11)),
           const SizedBox(height: 8),
           InkWell(
             onTap: () => _showFullScreenImage(value),
@@ -368,7 +440,8 @@ class _StudentExamDetailScreenState extends State<StudentExamDetailScreen> {
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(color: Colors.white10),
-                  image: DecorationImage(image: NetworkImage(value), fit: BoxFit.cover),
+                  image: DecorationImage(
+                      image: NetworkImage(value), fit: BoxFit.cover),
                 ),
               ),
             ),
@@ -376,11 +449,17 @@ class _StudentExamDetailScreenState extends State<StudentExamDetailScreen> {
         ],
       );
     }
-    return const AiTranslatedText('Tipo desconhecido', style: TextStyle(color: Colors.white24));
+    return const AiTranslatedText('Tipo desconhecido',
+        style: TextStyle(color: Colors.white24));
   }
 
   void _editScoreManual(int index, GameQuestion question) {
-    final controller = TextEditingController(text: (_teacherAdjustments[index] ?? (widget.result.correctAnswers.contains(index) ? question.points : 0.0)).toString());
+    final controller = TextEditingController(
+        text: (_teacherAdjustments[index] ??
+                (widget.result.correctAnswers.contains(index)
+                    ? question.points
+                    : 0.0))
+            .toString());
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -390,10 +469,13 @@ class _StudentExamDetailScreenState extends State<StudentExamDetailScreen> {
           controller: controller,
           keyboardType: TextInputType.number,
           style: const TextStyle(color: Colors.white),
-          decoration: InputDecoration(labelText: 'Pontos (0 - ${question.points})'),
+          decoration:
+              InputDecoration(labelText: 'Pontos (0 - ${question.points})'),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const AiTranslatedText('Cancelar')),
+          TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const AiTranslatedText('Cancelar')),
           ElevatedButton(
             onPressed: () {
               final score = double.tryParse(controller.text);
@@ -412,13 +494,14 @@ class _StudentExamDetailScreenState extends State<StudentExamDetailScreen> {
   Widget _buildInfoItem(String label, String value, {bool isLarge = false}) {
     return Column(
       children: [
-        AiTranslatedText(label, style: const TextStyle(color: Colors.white38, fontSize: 12)),
+        AiTranslatedText(label,
+            style: const TextStyle(color: Colors.white38, fontSize: 12)),
         const SizedBox(height: 4),
-        Text(value, style: TextStyle(
-          color: isLarge ? const Color(0xFF00D1FF) : Colors.white, 
-          fontSize: isLarge ? 28 : 14, 
-          fontWeight: FontWeight.bold
-        )),
+        Text(value,
+            style: TextStyle(
+                color: isLarge ? const Color(0xFF00D1FF) : Colors.white,
+                fontSize: isLarge ? 28 : 14,
+                fontWeight: FontWeight.bold)),
       ],
     );
   }
@@ -430,20 +513,19 @@ class _StudentExamDetailScreenState extends State<StudentExamDetailScreen> {
         result: widget.result,
         studentName: widget.studentName,
       );
-      
-      final fileName = 'Exame_${widget.studentName.replaceAll(' ', '_')}_${widget.game.title.replaceAll(' ', '_')}.pdf';
+
+      final fileName =
+          'Exame_${widget.studentName.replaceAll(' ', '_')}_${widget.game.title.replaceAll(' ', '_')}.pdf';
       await PdfService.downloadPdf(pdfBytes, fileName);
-      
+
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: AiTranslatedText('PDF gerado com sucesso!'))
-        );
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: AiTranslatedText('PDF gerado com sucesso!')));
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erro ao gerar PDF: $e'))
-        );
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Erro ao gerar PDF: $e')));
       }
     }
   }

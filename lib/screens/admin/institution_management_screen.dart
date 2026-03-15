@@ -11,17 +11,19 @@ class InstitutionManagementScreen extends StatefulWidget {
   const InstitutionManagementScreen({super.key});
 
   @override
-  State<InstitutionManagementScreen> createState() => _InstitutionManagementScreenState();
+  State<InstitutionManagementScreen> createState() =>
+      _InstitutionManagementScreenState();
 }
 
-class _InstitutionManagementScreenState extends State<InstitutionManagementScreen> {
+class _InstitutionManagementScreenState
+    extends State<InstitutionManagementScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _nifController = TextEditingController();
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
   final _addressController = TextEditingController();
-  
+
   final _mbwayController = TextEditingController();
   final _entityController = TextEditingController();
   final _referenceController = TextEditingController();
@@ -31,29 +33,62 @@ class _InstitutionManagementScreenState extends State<InstitutionManagementScree
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF1E293B),
-        title: const AiTranslatedText('Adicionar Instituição', style: TextStyle(color: Colors.white)),
+        title: const AiTranslatedText('Adicionar Instituição',
+            style: TextStyle(color: Colors.white)),
         content: SingleChildScrollView(
           child: Form(
             key: _formKey,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                TextFormField(controller: _nameController, decoration: const InputDecoration(labelText: 'Nome'), validator: (v) => v!.isEmpty ? 'Obrigatório' : null, style: const TextStyle(color: Colors.white)),
-                TextFormField(controller: _nifController, decoration: const InputDecoration(labelText: 'NIF'), validator: (v) => v!.isEmpty ? 'Obrigatório' : null, style: const TextStyle(color: Colors.white)),
-                TextFormField(controller: _emailController, decoration: const InputDecoration(labelText: 'Email'), validator: (v) => v!.isEmpty ? 'Obrigatório' : null, style: const TextStyle(color: Colors.white)),
-                TextFormField(controller: _phoneController, decoration: const InputDecoration(labelText: 'Telefone'), style: const TextStyle(color: Colors.white)),
-                TextFormField(controller: _addressController, decoration: const InputDecoration(labelText: 'Morada'), style: const TextStyle(color: Colors.white)),
+                TextFormField(
+                    controller: _nameController,
+                    decoration: const InputDecoration(labelText: 'Nome'),
+                    validator: (v) => v!.isEmpty ? 'Obrigatório' : null,
+                    style: const TextStyle(color: Colors.white)),
+                TextFormField(
+                    controller: _nifController,
+                    decoration: const InputDecoration(labelText: 'NIF'),
+                    validator: (v) => v!.isEmpty ? 'Obrigatório' : null,
+                    style: const TextStyle(color: Colors.white)),
+                TextFormField(
+                    controller: _emailController,
+                    decoration: const InputDecoration(labelText: 'Email'),
+                    validator: (v) => v!.isEmpty ? 'Obrigatório' : null,
+                    style: const TextStyle(color: Colors.white)),
+                TextFormField(
+                    controller: _phoneController,
+                    decoration: const InputDecoration(labelText: 'Telefone'),
+                    style: const TextStyle(color: Colors.white)),
+                TextFormField(
+                    controller: _addressController,
+                    decoration: const InputDecoration(labelText: 'Morada'),
+                    style: const TextStyle(color: Colors.white)),
                 const Divider(height: 32, color: Colors.white24),
-                 const AiTranslatedText('Dados de Pagamento', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white70)),
-                TextFormField(controller: _mbwayController, decoration: const InputDecoration(labelText: 'MBWay (Telemóvel)'), style: const TextStyle(color: Colors.white)),
-                TextFormField(controller: _entityController, decoration: const InputDecoration(labelText: 'Entidade'), style: const TextStyle(color: Colors.white)),
-                TextFormField(controller: _referenceController, decoration: const InputDecoration(labelText: 'Referência'), style: const TextStyle(color: Colors.white)),
+                const AiTranslatedText('Dados de Pagamento',
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold, color: Colors.white70)),
+                TextFormField(
+                    controller: _mbwayController,
+                    decoration:
+                        const InputDecoration(labelText: 'MBWay (Telemóvel)'),
+                    style: const TextStyle(color: Colors.white)),
+                TextFormField(
+                    controller: _entityController,
+                    decoration: const InputDecoration(labelText: 'Entidade'),
+                    style: const TextStyle(color: Colors.white)),
+                TextFormField(
+                    controller: _referenceController,
+                    decoration: const InputDecoration(labelText: 'Referência'),
+                    style: const TextStyle(color: Colors.white)),
               ],
             ),
           ),
         ),
         actions: [
-           TextButton(onPressed: () => Navigator.pop(context), child: const AiTranslatedText('Cancelar')),
+          TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const AiTranslatedText('Cancelar')),
           ElevatedButton(
             onPressed: () async {
               if (_formKey.currentState!.validate()) {
@@ -78,7 +113,7 @@ class _InstitutionManagementScreenState extends State<InstitutionManagementScree
                 }
               }
             },
-             child: const AiTranslatedText('Guardar'),
+            child: const AiTranslatedText('Guardar'),
           ),
         ],
       ),
@@ -113,9 +148,15 @@ class _InstitutionManagementScreenState extends State<InstitutionManagementScree
       body: StreamBuilder<List<InstitutionModel>>(
         stream: service.getInstitutions(),
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
           final institutions = snapshot.data ?? [];
-           if (institutions.isEmpty) return const Center(child: AiTranslatedText('Nenhuma instituição registada.', style: TextStyle(color: Colors.white54)));
+          if (institutions.isEmpty) {
+            return const Center(
+                child: AiTranslatedText('Nenhuma instituição registada.',
+                    style: TextStyle(color: Colors.white54)));
+          }
 
           return ListView.builder(
             padding: const EdgeInsets.all(16),
@@ -126,8 +167,12 @@ class _InstitutionManagementScreenState extends State<InstitutionManagementScree
                 padding: const EdgeInsets.only(bottom: 16),
                 child: GlassCard(
                   child: ListTile(
-                     title: AiTranslatedText(inst.name, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
-                    subtitle: AiTranslatedText('Email: ${inst.email}\nProfessores: ${inst.authorizedProfessorIds.length}', style: const TextStyle(color: Colors.white54)),
+                    title: AiTranslatedText(inst.name,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold, color: Colors.white)),
+                    subtitle: AiTranslatedText(
+                        'Email: ${inst.email}\nProfessores: ${inst.authorizedProfessorIds.length}',
+                        style: const TextStyle(color: Colors.white54)),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -135,18 +180,24 @@ class _InstitutionManagementScreenState extends State<InstitutionManagementScree
                         const SizedBox(width: 8),
                         const Icon(Icons.token, color: Colors.amber, size: 14),
                         const SizedBox(width: 4),
-                        Text('${inst.aiCredits}', style: const TextStyle(color: Colors.white54, fontSize: 12)),
+                        Text('${inst.aiCredits}',
+                            style: const TextStyle(
+                                color: Colors.white54, fontSize: 12)),
                         const SizedBox(width: 8),
                         IconButton(
                           icon: Icon(
-                            inst.isSuspended ? Icons.block : Icons.check_circle_outline,
+                            inst.isSuspended
+                                ? Icons.block
+                                : Icons.check_circle_outline,
                             color: inst.isSuspended ? Colors.red : Colors.green,
                           ),
-                          onPressed: () => service.toggleInstitutionSuspension(inst.id, !inst.isSuspended),
+                          onPressed: () => service.toggleInstitutionSuspension(
+                              inst.id, !inst.isSuspended),
                           tooltip: inst.isSuspended ? 'Reativar' : 'Suspender',
                         ),
                         IconButton(
-                          icon: const Icon(Icons.person_add_alt_1, color: Color(0xFF00D1FF)),
+                          icon: const Icon(Icons.person_add_alt_1,
+                              color: Color(0xFF00D1FF)),
                           onPressed: () => _showProfessorsDialog(inst),
                           tooltip: 'Gerir Professores',
                         ),
@@ -180,7 +231,8 @@ class _InstitutionManagementScreenState extends State<InstitutionManagementScree
         border: Border.all(color: color.withValues(alpha: 0.5)),
       ),
       child: Text(plan.toUpperCase(),
-          style: TextStyle(color: color, fontSize: 9, fontWeight: FontWeight.bold)),
+          style: TextStyle(
+              color: color, fontSize: 9, fontWeight: FontWeight.bold)),
     );
   }
 }
@@ -190,7 +242,8 @@ class _ProfessorSelectionDialog extends StatefulWidget {
   const _ProfessorSelectionDialog({required this.institution});
 
   @override
-  State<_ProfessorSelectionDialog> createState() => _ProfessorSelectionDialogState();
+  State<_ProfessorSelectionDialog> createState() =>
+      _ProfessorSelectionDialogState();
 }
 
 class _ProfessorSelectionDialogState extends State<_ProfessorSelectionDialog> {
@@ -199,29 +252,40 @@ class _ProfessorSelectionDialogState extends State<_ProfessorSelectionDialog> {
     final service = context.watch<FirebaseService>();
     return AlertDialog(
       backgroundColor: const Color(0xFF1E293B),
-       title: AiTranslatedText('Professores - ${widget.institution.name}', style: const TextStyle(color: Colors.white, fontSize: 18)),
+      title: AiTranslatedText('Professores - ${widget.institution.name}',
+          style: const TextStyle(color: Colors.white, fontSize: 18)),
       content: SizedBox(
         width: double.maxFinite,
         child: StreamBuilder<List<UserModel>>(
           stream: service.getUsers(),
           builder: (context, snapshot) {
-            if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-            final teachers = snapshot.data!.where((u) => u.role == UserRole.teacher).toList();
-            
+            if (!snapshot.hasData) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            final teachers = snapshot.data!
+                .where((u) => u.role == UserRole.teacher)
+                .toList();
+
             return ListView.builder(
               shrinkWrap: true,
               itemCount: teachers.length,
               itemBuilder: (context, index) {
                 final teacher = teachers[index];
-                final isLinked = widget.institution.authorizedProfessorIds.contains(teacher.id);
-                
+                final isLinked = widget.institution.authorizedProfessorIds
+                    .contains(teacher.id);
+
                 return CheckboxListTile(
-                   title: AiTranslatedText(teacher.name, style: const TextStyle(color: Colors.white, fontSize: 14)),
-                  subtitle: AiTranslatedText(teacher.email, style: const TextStyle(color: Colors.white54, fontSize: 12)),
+                  title: AiTranslatedText(teacher.name,
+                      style:
+                          const TextStyle(color: Colors.white, fontSize: 14)),
+                  subtitle: AiTranslatedText(teacher.email,
+                      style:
+                          const TextStyle(color: Colors.white54, fontSize: 12)),
                   value: isLinked,
                   onChanged: (v) async {
                     if (v == true) {
-                      await service.linkProfessorToInstitution(teacher.id, widget.institution.id);
+                      await service.linkProfessorToInstitution(
+                          teacher.id, widget.institution.id);
                       if (mounted) Navigator.pop(context);
                     }
                   },
@@ -232,7 +296,9 @@ class _ProfessorSelectionDialogState extends State<_ProfessorSelectionDialog> {
         ),
       ),
       actions: [
-         TextButton(onPressed: () => Navigator.pop(context), child: const AiTranslatedText('Fechar')),
+        TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const AiTranslatedText('Fechar')),
       ],
     );
   }

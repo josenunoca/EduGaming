@@ -81,8 +81,8 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
                                   DropdownMenuItem(value: y, child: Text(y)))
                               .toList(),
                           onChanged: (v) => selectedYear = v!,
-                          decoration:
-                              const InputDecoration(border: OutlineInputBorder()),
+                          decoration: const InputDecoration(
+                              border: OutlineInputBorder()),
                         ),
                       ],
                     ),
@@ -203,39 +203,43 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
                         hintText: 'Pesquisar disciplinas ou alunos...',
                         onSearchQuery: (query) async {
                           final results = <SearchResult>[];
-                          
+
                           // Search Subjects
-                          final subs = await service.searchSubjects(query, teacherId: teacher.id).first;
+                          final subs = await service
+                              .searchSubjects(query, teacherId: teacher.id)
+                              .first;
                           results.addAll(subs.map((s) => SearchResult(
-                            id: s.id,
-                            title: s.name,
-                            subtitle: '${s.level} • ${s.academicYear}',
-                            icon: Icons.book,
-                            category: 'As Minhas Disciplinas',
-                            originalObject: s,
-                          )));
+                                id: s.id,
+                                title: s.name,
+                                subtitle: '${s.level} • ${s.academicYear}',
+                                icon: Icons.book,
+                                category: 'As Minhas Disciplinas',
+                                originalObject: s,
+                              )));
 
                           // Search Students
-                          final students = await service.searchTeacherStudents(teacher.id, query).first;
+                          final students = await service
+                              .searchTeacherStudents(teacher.id, query)
+                              .first;
                           results.addAll(students.map((u) => SearchResult(
-                            id: u.id,
-                            title: u.name,
-                            subtitle: u.email,
-                            icon: Icons.person,
-                            category: 'Alunos',
-                            originalObject: u,
-                          )));
+                                id: u.id,
+                                title: u.name,
+                                subtitle: u.email,
+                                icon: Icons.person,
+                                category: 'Alunos',
+                                originalObject: u,
+                              )));
 
                           return results;
                         },
                         onResultSelected: (res) {
                           if (res.category == 'As Minhas Disciplinas') {
                             Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => SubjectDetailsScreen(subject: res.originalObject as Subject)
-                              )
-                            );
+                                context,
+                                MaterialPageRoute(
+                                    builder: (_) => SubjectDetailsScreen(
+                                        subject:
+                                            res.originalObject as Subject)));
                           } else {
                             setState(() => _searchQuery = res.title);
                           }
@@ -577,7 +581,8 @@ class _CreateSubjectModalState extends State<_CreateSubjectModal> {
                   keyboardType: TextInputType.number,
                   style: const TextStyle(color: Colors.white),
                   decoration: const InputDecoration(
-                      labelText: 'Horas Não Letivas', border: OutlineInputBorder()),
+                      labelText: 'Horas Não Letivas',
+                      border: OutlineInputBorder()),
                 ),
               ),
             ],
@@ -598,8 +603,10 @@ class _CreateSubjectModalState extends State<_CreateSubjectModal> {
                 contents: [],
                 games: [],
                 scientificArea: _selectedScientificArea,
-                teachingHours: double.tryParse(_teachingHoursController.text) ?? 0.0,
-                nonTeachingHours: double.tryParse(_nonTeachingHoursController.text) ?? 0.0,
+                teachingHours:
+                    double.tryParse(_teachingHoursController.text) ?? 0.0,
+                nonTeachingHours:
+                    double.tryParse(_nonTeachingHoursController.text) ?? 0.0,
               );
               await service.updateSubject(s);
               if (mounted) Navigator.pop(context);

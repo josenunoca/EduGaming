@@ -57,7 +57,7 @@ class _JigsawPuzzleWidgetState extends State<JigsawPuzzleWidget> {
       final correctX = piece.correctCol * piece.width;
       final correctY = piece.correctRow * piece.height;
       final dist = (piece.currentPos - Offset(correctX, correctY)).distance;
-      
+
       if (dist > 20 || (piece.rotation % 360) != 0) {
         allCorrect = false;
         break;
@@ -133,8 +133,10 @@ class _JigsawPuzzleWidgetState extends State<JigsawPuzzleWidget> {
                         child: ClipRect(
                           child: Align(
                             alignment: Alignment(
-                              (piece.correctCol / (widget.gridCols - 1)) * 2 - 1,
-                              (piece.correctRow / (widget.gridRows - 1)) * 2 - 1,
+                              (piece.correctCol / (widget.gridCols - 1)) * 2 -
+                                  1,
+                              (piece.correctRow / (widget.gridRows - 1)) * 2 -
+                                  1,
                             ),
                             widthFactor: 1 / widget.gridCols,
                             heightFactor: 1 / widget.gridRows,
@@ -160,7 +162,7 @@ class _JigsawPuzzleWidgetState extends State<JigsawPuzzleWidget> {
                   loadingBuilder: (context, child, loadingProgress) {
                     if (loadingProgress == null) {
                       WidgetsBinding.instance.addPostFrameCallback((_) {
-                         _initializePuzzle(Size(boardWidth, boardHeight));
+                        _initializePuzzle(Size(boardWidth, boardHeight));
                       });
                       return child;
                     }

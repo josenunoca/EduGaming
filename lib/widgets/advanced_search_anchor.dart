@@ -58,7 +58,7 @@ class _AdvancedSearchAnchorState extends State<AdvancedSearchAnchor> {
   void _onQueryChanged() async {
     final query = _controller.text;
     if (query == _lastQuery) return;
-    
+
     _lastQuery = query;
     if (query.isEmpty) {
       if (mounted) {
@@ -71,7 +71,7 @@ class _AdvancedSearchAnchorState extends State<AdvancedSearchAnchor> {
     }
 
     if (mounted) setState(() => _isLoading = true);
-    
+
     try {
       final results = await widget.onSearchQuery(query);
       if (mounted && query == _controller.text) {
@@ -119,9 +119,12 @@ class _AdvancedSearchAnchorState extends State<AdvancedSearchAnchor> {
                 icon: const Icon(Icons.clear, color: Colors.white54),
               ),
           ],
-          backgroundColor: WidgetStatePropertyAll(const Color(0xFF1E293B).withValues(alpha: 0.5)),
-          textStyle: const WidgetStatePropertyAll(TextStyle(color: Colors.white)),
-          hintStyle: const WidgetStatePropertyAll(TextStyle(color: Colors.white54)),
+          backgroundColor: WidgetStatePropertyAll(
+              const Color(0xFF1E293B).withValues(alpha: 0.5)),
+          textStyle:
+              const WidgetStatePropertyAll(TextStyle(color: Colors.white)),
+          hintStyle:
+              const WidgetStatePropertyAll(TextStyle(color: Colors.white54)),
         );
       },
       suggestionsBuilder: (context, controller) {
@@ -162,14 +165,17 @@ class _AdvancedSearchAnchorState extends State<AdvancedSearchAnchor> {
             ),
           );
           items.addAll(results.map((res) => ListTile(
-            leading: Icon(res.icon, color: Colors.white70),
-            title: Text(res.title, style: const TextStyle(color: Colors.white)),
-            subtitle: Text(res.subtitle, style: const TextStyle(color: Colors.white54, fontSize: 12)),
-            onTap: () {
-              controller.closeView(res.title);
-              widget.onResultSelected(res);
-            },
-          )));
+                leading: Icon(res.icon, color: Colors.white70),
+                title: Text(res.title,
+                    style: const TextStyle(color: Colors.white)),
+                subtitle: Text(res.subtitle,
+                    style:
+                        const TextStyle(color: Colors.white54, fontSize: 12)),
+                onTap: () {
+                  controller.closeView(res.title);
+                  widget.onResultSelected(res);
+                },
+              )));
         });
 
         return items;

@@ -76,7 +76,8 @@ class AdminRevenueDashboard extends StatelessWidget {
     );
   }
 
-  Widget _buildStatCard(String label, String value, IconData icon, Color color) {
+  Widget _buildStatCard(
+      String label, String value, IconData icon, Color color) {
     return GlassCard(
       child: Padding(
         padding: const EdgeInsets.all(20),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../models/subject_model.dart';
+import '../../../models/credit_pricing_model.dart';
 import '../../../models/institution_model.dart';
 import '../../../services/firebase_service.dart';
 import '../../../widgets/ai_translated_text.dart';
@@ -53,24 +54,28 @@ class _GradesManagementScreenState extends State<GradesManagementScreen> {
     setState(() => _isLoading = true);
     try {
       // 1. Get Students
-      final students = await _firebaseService.getEnrollmentsForSubject(_subject.id).first;
-      
+      final students =
+          await _firebaseService.getEnrollmentsForSubject(_subject.id).first;
+
       // 2. Get All Results
-      final results = await _firebaseService.getAllSubjectGameResults(_subject.id);
-      
+      final results =
+          await _firebaseService.getAllSubjectGameResults(_subject.id);
+
       // 3. Get Adjustments
-      final adjustments = await _firebaseService.getGradeAdjustments(_subject.id).first;
+      final adjustments =
+          await _firebaseService.getGradeAdjustments(_subject.id).first;
 
       // 4. Fetch Games to know total weights/points per question
       Map<String, AiGame> gMap = {};
-      final games = await _firebaseService.getAiGamesBySubject(_subject.id).first;
+      final games =
+          await _firebaseService.getAiGamesBySubject(_subject.id).first;
       for (var g in games) {
         gMap[g.id] = g;
       }
 
       // 5. Fetch Teacher info
       final teacher = await _firebaseService.getUserModel(_subject.teacherId);
-      
+
       setState(() {
         _students = students;
         _allResults = results;
@@ -91,23 +96,31 @@ class _GradesManagementScreenState extends State<GradesManagementScreen> {
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF1E293B),
         title: AiTranslatedText(
-          newStatus == PautaStatus.finalized ? 'Finalizar Pauta?' : 'Lacrar Pauta?',
+          newStatus == PautaStatus.finalized
+              ? 'Finalizar Pauta?'
+              : 'Lacrar Pauta?',
           style: const TextStyle(color: Colors.white),
         ),
         content: AiTranslatedText(
-          newStatus == PautaStatus.finalized 
-            ? 'Ao finalizar a pauta, os alunos poderão visualizar as suas classificações propostas. Poderá reabrir a pauta se necessário.'
-            : 'ATENÇÃO: Ao lacrar a pauta, as classificações serão arredondadas à unidade e NÃO poderá fazer mais alterações. Os certificados serão emitidos e enviados por email imediatamente. acção IRREVERSÍVEL.',
+          newStatus == PautaStatus.finalized
+              ? 'Ao finalizar a pauta, os alunos poderão visualizar as suas classificações propostas. Poderá reabrir a pauta se necessário.'
+              : 'ATENÇÃO: Ao lacrar a pauta, as classificações serão arredondadas à unidade e NÃO poderá fazer mais alterações. Os certificados serão emitidos e enviados por email imediatamente. acção IRREVERSÍVEL.',
           style: const TextStyle(color: Colors.white70),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const AiTranslatedText('Cancelar')),
+          TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const AiTranslatedText('Cancelar')),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(
-              backgroundColor: newStatus == PautaStatus.sealed ? Colors.redAccent : const Color(0xFF00D1FF),
+              backgroundColor: newStatus == PautaStatus.sealed
+                  ? Colors.redAccent
+                  : const Color(0xFF00D1FF),
             ),
-            child: AiTranslatedText(newStatus == PautaStatus.finalized ? 'Finalizar' : 'Lacrar Agora'),
+            child: AiTranslatedText(newStatus == PautaStatus.finalized
+                ? 'Finalizar'
+                : 'Lacrar Agora'),
           ),
         ],
       ),
@@ -132,18 +145,30 @@ class _GradesManagementScreenState extends State<GradesManagementScreen> {
         pautaStatus: newStatus,
         teachingHours: _subject.teachingHours,
         nonTeachingHours: _subject.nonTeachingHours,
-        sealedAt: newStatus == PautaStatus.sealed ? DateTime.now() : _subject.sealedAt,
-        sealedBy: newStatus == PautaStatus.sealed ? (_teacher?.name ?? _subject.teacherId) : _subject.sealedBy,
+        sealedAt: newStatus == PautaStatus.sealed
+            ? DateTime.now()
+            : _subject.sealedAt,
+        sealedBy: newStatus == PautaStatus.sealed
+            ? (_teacher?.name ?? _subject.teacherId)
+            : _subject.sealedBy,
       );
 
       await _firebaseService.updateSubject(updatedSubject);
-      
+
       // If sealed, process each student for certification
       if (newStatus == PautaStatus.sealed) {
         final institutions = await _firebaseService.getInstitutions().first;
         final institution = institutions.firstWhere(
           (i) => i.id == _subject.institutionId,
-          orElse: () => InstitutionModel(id: 'unknown', name: 'EduGaming Platform', nif: '', address: '', email: '', phone: '', educationLevels: [], createdAt: DateTime.now()),
+          orElse: () => InstitutionModel(
+              id: 'unknown',
+              name: 'EduGaming Platform',
+              nif: '',
+              address: '',
+              email: '',
+              phone: '',
+              educationLevels: [],
+              createdAt: DateTime.now()),
         );
 
         for (var student in _students) {
@@ -162,20 +187,24 @@ class _GradesManagementScreenState extends State<GradesManagementScreen> {
             totalWeight += component.weight;
           }
 
-          if (hasMissing) continue; // Cannot seal if grades are missing? Actually SEALED usually means current status.
-          
+          if (hasMissing) {
+            continue; // Cannot seal if grades are missing? Actually SEALED usually means current status.
+          }
+
           final adjustment = _adjustments.firstWhere(
             (a) => a.studentId == student.userId,
-            orElse: () => StudentGradeAdjustment(id: '', studentId: '', subjectId: ''),
+            orElse: () =>
+                StudentGradeAdjustment(id: '', studentId: '', subjectId: ''),
           );
 
-          double finalVal = adjustment.finalGradeOverride ?? (totalWeight > 0 ? weightedSum / totalWeight : 0.0);
+          double finalVal = adjustment.finalGradeOverride ??
+              (totalWeight > 0 ? weightedSum / totalWeight : 0.0);
           final roundedGrade = finalVal.roundToDouble();
 
           // 2. If approved (grade >= 9.5 or 10 depending on rule, usually 10), issue certificate
           if (roundedGrade >= 10) {
             final ql = Enrollment.toQualitative(roundedGrade);
-            
+
             // Generate PDF Certificate
             final pdfBytes = await PdfService.generateCertificate(
               institution: institution,
@@ -187,8 +216,18 @@ class _GradesManagementScreenState extends State<GradesManagementScreen> {
               date: DateTime.now(),
             );
 
+            // Deduct credits for certificate
+            final success = await _firebaseService.deductCreditsForAction(
+                _subject.teacherId, CreditAction.generateCertificate);
+            if (!success) {
+              debugPrint(
+                  'Insufficient credits for certificate of ${student.studentName}');
+              continue;
+            }
+
             // Upload to storage
-            final certUrl = await _firebaseService.uploadCertificate(student.id, pdfBytes);
+            final certUrl =
+                await _firebaseService.uploadCertificate(student.id, pdfBytes);
 
             // Update enrollment
             await _firebaseService.updateEnrollment(student.id, {
@@ -213,7 +252,7 @@ class _GradesManagementScreenState extends State<GradesManagementScreen> {
             });
           }
         }
-        
+
         await _loadData(); // Ensure we have updated subject in state
         await _generatePauta(full: false);
       } else {
@@ -222,26 +261,31 @@ class _GradesManagementScreenState extends State<GradesManagementScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: AiTranslatedText(newStatus == PautaStatus.finalized ? 'Pauta finalizada com sucesso.' : 'Pauta lacrada com sucesso e certificados enviados.'),
+          content: AiTranslatedText(newStatus == PautaStatus.finalized
+              ? 'Pauta finalizada com sucesso.'
+              : 'Pauta lacrada com sucesso e certificados enviados.'),
         ));
       }
     } catch (e) {
       debugPrint('Error updating pauta status: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erro ao atualizar pauta: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Erro ao atualizar pauta: $e')));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  double? _calculateComponentGrade(String studentId, EvaluationComponent component) {
+  double? _calculateComponentGrade(
+      String studentId, EvaluationComponent component) {
     // 1. Check for manual override
     final adjustment = _adjustments.firstWhere(
       (a) => a.studentId == studentId,
-      orElse: () => StudentGradeAdjustment(id: '', studentId: '', subjectId: ''),
+      orElse: () =>
+          StudentGradeAdjustment(id: '', studentId: '', subjectId: ''),
     );
-    
+
     if (adjustment.componentOverrides.containsKey(component.id)) {
       return adjustment.componentOverrides[component.id];
     }
@@ -258,10 +302,13 @@ class _GradesManagementScreenState extends State<GradesManagementScreen> {
       double gameMax = game.questions.fold(0.0, (sum, q) => sum + q.points);
       totalPossible += gameMax;
 
-      final studentGameResults = _allResults.where((r) => r.studentId == studentId && r.gameId == contentId);
+      final studentGameResults = _allResults
+          .where((r) => r.studentId == studentId && r.gameId == contentId);
       if (studentGameResults.isNotEmpty) {
         playedSomething = true;
-        double best = studentGameResults.map((r) => r.score).reduce((a, b) => a > b ? a : b);
+        double best = studentGameResults
+            .map((r) => r.score)
+            .reduce((a, b) => a > b ? a : b);
         totalEarned += best;
       }
     }
@@ -269,7 +316,8 @@ class _GradesManagementScreenState extends State<GradesManagementScreen> {
     if (totalPossible == 0) return 0.0;
 
     if (!playedSomething) {
-      if (component.endTime != null && DateTime.now().isAfter(component.endTime!)) {
+      if (component.endTime != null &&
+          DateTime.now().isAfter(component.endTime!)) {
         return null; // Represents "F"
       }
       return 0.0;
@@ -278,19 +326,23 @@ class _GradesManagementScreenState extends State<GradesManagementScreen> {
     return (totalEarned / totalPossible) * 20;
   }
 
-  void _showEditGradeDialog(Enrollment student, String? componentId, String label, double? currentValue) {
-    final TextEditingController controller = TextEditingController(text: currentValue?.toStringAsFixed(1) ?? '');
-    
+  void _showEditGradeDialog(Enrollment student, String? componentId,
+      String label, double? currentValue) {
+    final TextEditingController controller =
+        TextEditingController(text: currentValue?.toStringAsFixed(1) ?? '');
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF1E293B),
-        title: AiTranslatedText('Ajustar Nota: ${student.studentName}', style: const TextStyle(color: Colors.white)),
+        title: AiTranslatedText('Ajustar Nota: ${student.studentName}',
+            style: const TextStyle(color: Colors.white)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            AiTranslatedText(label, style: const TextStyle(color: Colors.white70, fontSize: 12)),
+            AiTranslatedText(label,
+                style: const TextStyle(color: Colors.white70, fontSize: 12)),
             const SizedBox(height: 16),
             TextField(
               controller: controller,
@@ -299,7 +351,8 @@ class _GradesManagementScreenState extends State<GradesManagementScreen> {
               decoration: const InputDecoration(
                 labelText: 'Nota (0-20)',
                 labelStyle: TextStyle(color: Colors.white38),
-                enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white10)),
+                enabledBorder: UnderlineInputBorder(
+                    borderSide: BorderSide(color: Colors.white10)),
               ),
             ),
           ],
@@ -334,7 +387,8 @@ class _GradesManagementScreenState extends State<GradesManagementScreen> {
                   notes: existingAdjustment.notes,
                 );
               } else {
-                final newOverrides = Map<String, double>.from(existingAdjustment.componentOverrides);
+                final newOverrides = Map<String, double>.from(
+                    existingAdjustment.componentOverrides);
                 if (newValue == null) {
                   newOverrides.remove(componentId);
                 } else {
@@ -368,8 +422,8 @@ class _GradesManagementScreenState extends State<GradesManagementScreen> {
       final institution = institutions.firstWhere(
         (i) => i.id == widget.subject.institutionId,
         orElse: () => InstitutionModel(
-          id: 'unknown', 
-          name: 'EduGaming Platform', 
+          id: 'unknown',
+          name: 'EduGaming Platform',
           nif: '000000000',
           address: 'Digital Campus',
           email: 'admin@edugaming.com',
@@ -380,7 +434,7 @@ class _GradesManagementScreenState extends State<GradesManagementScreen> {
       );
 
       Map<String, Map<String, String>> gradesMap = {};
-      
+
       for (var student in _students) {
         Map<String, String> studentGrades = {};
         double weightedSum = 0;
@@ -401,13 +455,18 @@ class _GradesManagementScreenState extends State<GradesManagementScreen> {
 
         final adjustment = _adjustments.firstWhere(
           (a) => a.studentId == student.userId,
-          orElse: () => StudentGradeAdjustment(id: '', studentId: '', subjectId: ''),
+          orElse: () =>
+              StudentGradeAdjustment(id: '', studentId: '', subjectId: ''),
         );
 
-        double calculatedFinal = totalWeight > 0 ? weightedSum / totalWeight : 0.0;
-        String finalStr = hasMissing ? 'F' : (adjustment.finalGradeOverride ?? calculatedFinal).toStringAsFixed(1);
+        double calculatedFinal =
+            totalWeight > 0 ? weightedSum / totalWeight : 0.0;
+        String finalStr = hasMissing
+            ? 'F'
+            : (adjustment.finalGradeOverride ?? calculatedFinal)
+                .toStringAsFixed(1);
         studentGrades['final'] = finalStr;
-        
+
         gradesMap[student.userId] = studentGrades;
       }
 
@@ -421,16 +480,19 @@ class _GradesManagementScreenState extends State<GradesManagementScreen> {
         sealedByUserName: _teacher?.name,
       );
 
-      final fileName = 'Pauta_${full ? "Completa" : "Final"}_${_subject.name.replaceAll(' ', '_')}.pdf';
+      final fileName =
+          'Pauta_${full ? "Completa" : "Final"}_${_subject.name.replaceAll(' ', '_')}.pdf';
       await PdfService.downloadPdf(pdfBytes, fileName);
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pauta gerada com sucesso!')));
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Pauta gerada com sucesso!')));
       }
     } catch (e) {
       debugPrint('Error generating pauta: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erro ao gerar pauta: $e')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Erro ao gerar pauta: $e')));
       }
     } finally {
       if (mounted) {
@@ -477,8 +539,15 @@ class _GradesManagementScreenState extends State<GradesManagementScreen> {
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          AiTranslatedText(_subject.name, style: const TextStyle(color: Color(0xFF00D1FF), fontSize: 18, fontWeight: FontWeight.bold)),
-                          const AiTranslatedText('Gestão de classificações e pautas de avaliação.', style: TextStyle(color: Colors.white38, fontSize: 12)),
+                          AiTranslatedText(_subject.name,
+                              style: const TextStyle(
+                                  color: Color(0xFF00D1FF),
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold)),
+                          const AiTranslatedText(
+                              'Gestão de classificações e pautas de avaliação.',
+                              style: TextStyle(
+                                  color: Colors.white38, fontSize: 12)),
                         ],
                       ),
                       _buildStatusBadge(),
@@ -494,22 +563,39 @@ class _GradesManagementScreenState extends State<GradesManagementScreen> {
                     padding: EdgeInsets.zero,
                     child: DataTable(
                       columnSpacing: 24,
-                      headingRowColor: WidgetStateProperty.all(Colors.white.withValues(alpha: 0.05)),
+                      headingRowColor: WidgetStateProperty.all(
+                          Colors.white.withValues(alpha: 0.05)),
                       columns: [
-                        const DataColumn(label: AiTranslatedText('Estudante', style: TextStyle(color: Colors.white54))),
-                        ...widget.subject.evaluationComponents.map((ec) => DataColumn(
-                          label: Tooltip(
-                            message: 'Peso: ${(ec.weight * 100).toStringAsFixed(0)}%',
-                            child: Text('${ec.name}\n(${(ec.weight * 100).toStringAsFixed(0)}%)', 
-                              style: const TextStyle(color: Colors.white54, fontSize: 10),
-                              textAlign: TextAlign.center,
-                            ),
-                          ),
-                        )),
-                        const DataColumn(label: AiTranslatedText('Média Calc.', style: TextStyle(color: Color(0xFF7B61FF)))),
-                        const DataColumn(label: AiTranslatedText('Nota Prop.', style: TextStyle(color: Color(0xFF00D1FF)))),
-                        const DataColumn(label: AiTranslatedText('Final', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
-                        const DataColumn(label: AiTranslatedText('Cert.', style: TextStyle(color: Colors.amber))),
+                        const DataColumn(
+                            label: AiTranslatedText('Estudante',
+                                style: TextStyle(color: Colors.white54))),
+                        ...widget.subject.evaluationComponents
+                            .map((ec) => DataColumn(
+                                  label: Tooltip(
+                                    message:
+                                        'Peso: ${(ec.weight * 100).toStringAsFixed(0)}%',
+                                    child: Text(
+                                      '${ec.name}\n(${(ec.weight * 100).toStringAsFixed(0)}%)',
+                                      style: const TextStyle(
+                                          color: Colors.white54, fontSize: 10),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ),
+                                )),
+                        const DataColumn(
+                            label: AiTranslatedText('Média Calc.',
+                                style: TextStyle(color: Color(0xFF7B61FF)))),
+                        const DataColumn(
+                            label: AiTranslatedText('Nota Prop.',
+                                style: TextStyle(color: Color(0xFF00D1FF)))),
+                        const DataColumn(
+                            label: AiTranslatedText('Final',
+                                style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold))),
+                        const DataColumn(
+                            label: AiTranslatedText('Cert.',
+                                style: TextStyle(color: Colors.amber))),
                       ],
                       rows: _students.map((student) {
                         double weightedSum = 0;
@@ -520,20 +606,26 @@ class _GradesManagementScreenState extends State<GradesManagementScreen> {
                           DataCell(
                             SizedBox(
                               width: 120,
-                              child: Text(student.studentName, style: const TextStyle(color: Colors.white, fontSize: 12), overflow: TextOverflow.ellipsis),
+                              child: Text(student.studentName,
+                                  style: const TextStyle(
+                                      color: Colors.white, fontSize: 12),
+                                  overflow: TextOverflow.ellipsis),
                             ),
                           ),
                         ];
 
-                        for (var component in widget.subject.evaluationComponents) {
-                          final studentGameResults = _allResults.where((r) => 
-                            r.studentId == student.userId && 
-                            component.contentIds.contains(r.gameId) && 
-                            r.isEvaluation
-                          ).toList();
-                          
+                        for (var component
+                            in widget.subject.evaluationComponents) {
+                          final studentGameResults = _allResults
+                              .where((r) =>
+                                  r.studentId == student.userId &&
+                                  component.contentIds.contains(r.gameId) &&
+                                  r.isEvaluation)
+                              .toList();
+
                           final hasResults = studentGameResults.isNotEmpty;
-                          final grade = _calculateComponentGrade(student.userId, component);
+                          final grade = _calculateComponentGrade(
+                              student.userId, component);
 
                           if (grade == null) {
                             hasMissing = true;
@@ -541,19 +633,34 @@ class _GradesManagementScreenState extends State<GradesManagementScreen> {
                               Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  const Text('F', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+                                  const Text('F',
+                                      style: TextStyle(
+                                          color: Colors.redAccent,
+                                          fontWeight: FontWeight.bold)),
                                   if (hasResults) ...[
                                     const SizedBox(width: 8),
                                     IconButton(
-                                      icon: const Icon(Icons.visibility, size: 16, color: Color(0xFF00D1FF)),
+                                      icon: const Icon(Icons.visibility,
+                                          size: 16, color: Color(0xFF00D1FF)),
                                       padding: EdgeInsets.zero,
                                       constraints: const BoxConstraints(),
-                                      onPressed: () => _viewExamDetail(student, component, studentGameResults.last),
+                                      onPressed: () {
+                                        final sortedResults =
+                                            List<AiGameResult>.from(
+                                                studentGameResults)
+                                              ..sort((a, b) =>
+                                                  b.score.compareTo(a.score));
+                                        _viewExamDetail(student, component,
+                                            sortedResults.first);
+                                      },
                                     ),
                                   ],
                                 ],
                               ),
-                              onTap: _subject.pautaStatus == PautaStatus.sealed ? null : () => _showEditGradeDialog(student, component.id, component.name, null),
+                              onTap: _subject.pautaStatus == PautaStatus.sealed
+                                  ? null
+                                  : () => _showEditGradeDialog(student,
+                                      component.id, component.name, null),
                             ));
                           } else {
                             weightedSum += grade * component.weight;
@@ -562,58 +669,105 @@ class _GradesManagementScreenState extends State<GradesManagementScreen> {
                               Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Text(grade.toStringAsFixed(1), style: const TextStyle(color: Colors.white70)),
+                                  Text(grade.toStringAsFixed(1),
+                                      style: const TextStyle(
+                                          color: Colors.white70)),
                                   if (hasResults) ...[
                                     const SizedBox(width: 8),
                                     IconButton(
-                                      icon: const Icon(Icons.visibility, size: 16, color: Color(0xFF00D1FF)),
+                                      icon: const Icon(Icons.visibility,
+                                          size: 16, color: Color(0xFF00D1FF)),
                                       padding: EdgeInsets.zero,
                                       constraints: const BoxConstraints(),
-                                      onPressed: () => _viewExamDetail(student, component, studentGameResults.last),
+                                      onPressed: () {
+                                        final sortedResults =
+                                            List<AiGameResult>.from(
+                                                studentGameResults)
+                                              ..sort((a, b) =>
+                                                  b.score.compareTo(a.score));
+                                        _viewExamDetail(student, component,
+                                            sortedResults.first);
+                                      },
                                     ),
                                   ],
                                 ],
                               ),
-                              onTap: _subject.pautaStatus == PautaStatus.sealed ? null : () => _showEditGradeDialog(student, component.id, component.name, grade),
+                              onTap: _subject.pautaStatus == PautaStatus.sealed
+                                  ? null
+                                  : () => _showEditGradeDialog(student,
+                                      component.id, component.name, grade),
                             ));
                           }
                         }
 
                         final adjustment = _adjustments.firstWhere(
                           (a) => a.studentId == student.userId,
-                          orElse: () => StudentGradeAdjustment(id: '', studentId: '', subjectId: ''),
+                          orElse: () => StudentGradeAdjustment(
+                              id: '', studentId: '', subjectId: ''),
                         );
 
-                        double calculatedFinal = totalWeight > 0 ? weightedSum / totalWeight : 0.0;
-                        String finalStr = hasMissing ? 'F' : (adjustment.finalGradeOverride ?? calculatedFinal).toStringAsFixed(1);
-                        
-                        cells.add(DataCell(
-                          Center(child: Text(hasMissing ? 'F' : calculatedFinal.toStringAsFixed(1), style: const TextStyle(color: Color(0xFF7B61FF)))),
-                        ));
+                        double calculatedFinal =
+                            totalWeight > 0 ? weightedSum / totalWeight : 0.0;
+                        String finalStr = hasMissing
+                            ? 'F'
+                            : (adjustment.finalGradeOverride ?? calculatedFinal)
+                                .toStringAsFixed(1);
 
                         cells.add(DataCell(
-                          Center(child: Text(adjustment.finalGradeOverride?.toStringAsFixed(1) ?? '-', style: const TextStyle(color: Color(0xFF00D1FF)))),
-                          onTap: _subject.pautaStatus == PautaStatus.sealed ? null : () => _showEditGradeDialog(student, null, 'Nota Final Proposta', adjustment.finalGradeOverride),
-                        ));
-
-                        cells.add(DataCell(
-                          Center(child: Text(finalStr, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
+                          Center(
+                              child: Text(
+                                  hasMissing
+                                      ? 'F'
+                                      : calculatedFinal.toStringAsFixed(1),
+                                  style: const TextStyle(
+                                      color: Color(0xFF7B61FF)))),
                         ));
 
                         cells.add(DataCell(
                           Center(
-                            child: student.certificateUrl != null && student.certificateUrl!.isNotEmpty
+                              child: Text(
+                                  adjustment.finalGradeOverride
+                                          ?.toStringAsFixed(1) ??
+                                      '-',
+                                  style: const TextStyle(
+                                      color: Color(0xFF00D1FF)))),
+                          onTap: _subject.pautaStatus == PautaStatus.sealed
+                              ? null
+                              : () => _showEditGradeDialog(
+                                  student,
+                                  null,
+                                  'Nota Final Proposta',
+                                  adjustment.finalGradeOverride),
+                        ));
+
+                        cells.add(DataCell(
+                          Center(
+                              child: Text(finalStr,
+                                  style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold))),
+                        ));
+
+                        cells.add(DataCell(
+                          Center(
+                            child: student.certificateUrl != null &&
+                                    student.certificateUrl!.isNotEmpty
                                 ? IconButton(
-                                    icon: const Icon(Icons.workspace_premium, color: Colors.amber),
+                                    icon: const Icon(Icons.workspace_premium,
+                                        color: Colors.amber),
                                     onPressed: () async {
-                                      final url = Uri.parse(student.certificateUrl!);
+                                      final url =
+                                          Uri.parse(student.certificateUrl!);
                                       if (await canLaunchUrl(url)) {
-                                        await launchUrl(url, mode: LaunchMode.externalApplication);
+                                        await launchUrl(url,
+                                            mode:
+                                                LaunchMode.externalApplication);
                                       }
                                     },
                                     tooltip: 'Ver Certificado',
                                   )
-                                : const Icon(Icons.pending_actions, color: Colors.white10, size: 16),
+                                : const Icon(Icons.pending_actions,
+                                    color: Colors.white10, size: 16),
                           ),
                         ));
 
@@ -633,9 +787,11 @@ class _GradesManagementScreenState extends State<GradesManagementScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                   CircularProgressIndicator(color: Color(0xFF00D1FF)),
-                   SizedBox(height: 16),
-                   AiTranslatedText('A gerar pauta profissional...', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  CircularProgressIndicator(color: Color(0xFF00D1FF)),
+                  SizedBox(height: 16),
+                  AiTranslatedText('A gerar pauta profissional...',
+                      style: TextStyle(
+                          color: Colors.white, fontWeight: FontWeight.bold)),
                 ],
               ),
             ),
@@ -668,7 +824,9 @@ class _GradesManagementScreenState extends State<GradesManagementScreen> {
         border: Border.all(color: color, width: 1),
         borderRadius: BorderRadius.circular(12),
       ),
-      child: Text(text.toUpperCase(), style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold)),
+      child: Text(text.toUpperCase(),
+          style: TextStyle(
+              color: color, fontSize: 10, fontWeight: FontWeight.bold)),
     );
   }
 
@@ -704,7 +862,8 @@ class _GradesManagementScreenState extends State<GradesManagementScreen> {
               icon: const Icon(Icons.check_circle_outline),
               label: const AiTranslatedText('Finalizar Pauta'),
               onPressed: () => _updatePautaStatus(PautaStatus.finalized),
-              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF00D1FF)),
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF00D1FF)),
             ),
           ),
         if (_subject.pautaStatus == PautaStatus.finalized) ...[
@@ -713,7 +872,8 @@ class _GradesManagementScreenState extends State<GradesManagementScreen> {
               icon: const Icon(Icons.edit),
               label: const AiTranslatedText('Reabrir para Edição'),
               onPressed: () => _updatePautaStatus(PautaStatus.draft),
-              style: OutlinedButton.styleFrom(side: const BorderSide(color: Colors.white24)),
+              style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: Colors.white24)),
             ),
           ),
           const SizedBox(width: 12),
@@ -722,7 +882,8 @@ class _GradesManagementScreenState extends State<GradesManagementScreen> {
               icon: const Icon(Icons.lock_outline),
               label: const AiTranslatedText('Lacrar Pauta'),
               onPressed: () => _updatePautaStatus(PautaStatus.sealed),
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+              style:
+                  ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
             ),
           ),
         ],
@@ -734,18 +895,26 @@ class _GradesManagementScreenState extends State<GradesManagementScreen> {
     showModalBottomSheet(
       context: context,
       backgroundColor: const Color(0xFF0F172A),
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (context) => Container(
         padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const AiTranslatedText('Exportar Pautas', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+            const AiTranslatedText('Exportar Pautas',
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold)),
             const SizedBox(height: 24),
             ListTile(
               leading: const Icon(Icons.table_chart, color: Color(0xFF00D1FF)),
-              title: const AiTranslatedText('Pauta Completa', style: TextStyle(color: Colors.white)),
-              subtitle: const AiTranslatedText('Inclui todos os momentos de avaliação', style: TextStyle(color: Colors.white38)),
+              title: const AiTranslatedText('Pauta Completa',
+                  style: TextStyle(color: Colors.white)),
+              subtitle: const AiTranslatedText(
+                  'Inclui todos os momentos de avaliação',
+                  style: TextStyle(color: Colors.white38)),
               onTap: () {
                 Navigator.pop(context);
                 _generatePauta(full: true);
@@ -753,8 +922,11 @@ class _GradesManagementScreenState extends State<GradesManagementScreen> {
             ),
             ListTile(
               leading: const Icon(Icons.summarize, color: Color(0xFF7B61FF)),
-              title: const AiTranslatedText('Pauta Final', style: TextStyle(color: Colors.white)),
-              subtitle: const AiTranslatedText('Inclui apenas a classificação final', style: TextStyle(color: Colors.white38)),
+              title: const AiTranslatedText('Pauta Final',
+                  style: TextStyle(color: Colors.white)),
+              subtitle: const AiTranslatedText(
+                  'Inclui apenas a classificação final',
+                  style: TextStyle(color: Colors.white38)),
               onTap: () {
                 Navigator.pop(context);
                 _generatePauta(full: false);
@@ -766,7 +938,8 @@ class _GradesManagementScreenState extends State<GradesManagementScreen> {
     );
   }
 
-  void _viewExamDetail(Enrollment student, EvaluationComponent component, AiGameResult result) {
+  void _viewExamDetail(
+      Enrollment student, EvaluationComponent component, AiGameResult result) {
     final game = _gamesMap[result.gameId];
     if (game == null) return;
 

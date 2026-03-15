@@ -47,8 +47,8 @@ class InternalMessage {
       ccIds: List<String>.from(map['ccIds'] ?? []),
       subject: map['subject'] ?? '',
       body: map['body'] ?? '',
-      timestamp: map['timestamp'] != null 
-          ? DateTime.parse(map['timestamp']) 
+      timestamp: map['timestamp'] != null
+          ? DateTime.parse(map['timestamp'])
           : DateTime.now(),
       readBy: List<String>.from(map['readBy'] ?? []),
       deletedBy: List<String>.from(map['deletedBy'] ?? []),

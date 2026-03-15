@@ -11,10 +11,12 @@ class CommunicationCenterScreen extends StatefulWidget {
   const CommunicationCenterScreen({super.key, this.forUserId});
 
   @override
-  State<CommunicationCenterScreen> createState() => _CommunicationCenterScreenState();
+  State<CommunicationCenterScreen> createState() =>
+      _CommunicationCenterScreenState();
 }
 
-class _CommunicationCenterScreenState extends State<CommunicationCenterScreen> with SingleTickerProviderStateMixin {
+class _CommunicationCenterScreenState extends State<CommunicationCenterScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
   @override
@@ -31,8 +33,10 @@ class _CommunicationCenterScreenState extends State<CommunicationCenterScreen> w
 
     return Scaffold(
       appBar: AppBar(
-        title: AiTranslatedText(widget.forUserId != null && widget.forUserId != currentUserId 
-            ? 'Messages for Child' : 'Communication Center'),
+        title: AiTranslatedText(
+            widget.forUserId != null && widget.forUserId != currentUserId
+                ? 'Messages for Child'
+                : 'Communication Center'),
         bottom: TabBar(
           controller: _tabController,
           tabs: const [
@@ -52,8 +56,11 @@ class _CommunicationCenterScreenState extends State<CommunicationCenterScreen> w
         child: TabBarView(
           controller: _tabController,
           children: [
-            _MessageList(stream: service.getInboxStream(targetUserId), isInbox: true),
-            _MessageList(stream: service.getSentMessagesStream(targetUserId), isInbox: false),
+            _MessageList(
+                stream: service.getInboxStream(targetUserId), isInbox: true),
+            _MessageList(
+                stream: service.getSentMessagesStream(targetUserId),
+                isInbox: false),
           ],
         ),
       ),
@@ -92,9 +99,11 @@ class _MessageList extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.mail_outline, size: 64, color: Colors.white.withOpacity(0.2)),
+                Icon(Icons.mail_outline,
+                    size: 64, color: Colors.white.withOpacity(0.2)),
                 const SizedBox(height: 16),
-                const AiTranslatedText('No messages found', style: TextStyle(color: Colors.white54)),
+                const AiTranslatedText('No messages found',
+                    style: TextStyle(color: Colors.white54)),
               ],
             ),
           );
@@ -110,11 +119,15 @@ class _MessageList extends StatelessWidget {
             final isRead = msg.readBy.contains(userId);
 
             return Card(
-              color: isRead ? Colors.white.withOpacity(0.05) : Colors.white.withOpacity(0.12),
+              color: isRead
+                  ? Colors.white.withOpacity(0.05)
+                  : Colors.white.withOpacity(0.12),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
                 side: BorderSide(
-                  color: isRead ? Colors.transparent : const Color(0xFF7B61FF).withOpacity(0.5),
+                  color: isRead
+                      ? Colors.transparent
+                      : const Color(0xFF7B61FF).withOpacity(0.5),
                   width: 1,
                 ),
               ),
@@ -125,12 +138,15 @@ class _MessageList extends StatelessWidget {
                   }
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => MessageDetailScreen(message: msg)),
+                    MaterialPageRoute(
+                        builder: (_) => MessageDetailScreen(message: msg)),
                   );
                 },
                 leading: CircleAvatar(
-                  backgroundColor: isRead ? Colors.grey[800] : const Color(0xFF7B61FF),
-                  child: Text(msg.senderName.substring(0, 1).toUpperCase(), style: const TextStyle(color: Colors.white)),
+                  backgroundColor:
+                      isRead ? Colors.grey[800] : const Color(0xFF7B61FF),
+                  child: Text(msg.senderName.substring(0, 1).toUpperCase(),
+                      style: const TextStyle(color: Colors.white)),
                 ),
                 title: Text(
                   msg.subject,
@@ -143,9 +159,10 @@ class _MessageList extends StatelessWidget {
                   '${isInbox ? 'From: ${msg.senderName}' : 'To: ${msg.recipientIds.length} recipients'}\n${_formatDate(msg.timestamp)}',
                   style: const TextStyle(color: Colors.white54, fontSize: 12),
                 ),
-                trailing: !isRead && isInbox 
-                  ? const Icon(Icons.circle, color: Color(0xFF7B61FF), size: 12)
-                  : null,
+                trailing: !isRead && isInbox
+                    ? const Icon(Icons.circle,
+                        color: Color(0xFF7B61FF), size: 12)
+                    : null,
               ),
             );
           },

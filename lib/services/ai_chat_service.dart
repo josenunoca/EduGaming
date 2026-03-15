@@ -315,9 +315,10 @@ class AiChatService {
         .join('\n');
 
     String prompt = '';
-    
+
     if (gameType == 'jigsaw') {
-      prompt = 'Cria um Jogo de Puzzle (Quebra-Cabeça) baseado nos seguintes conteúdos:\n$contentSummaries\n\n'
+      prompt =
+          'Cria um Jogo de Puzzle (Quebra-Cabeça) baseado nos seguintes conteúdos:\n$contentSummaries\n\n'
           'O JSON deve conter um "imageUrl" (podes sugerir um prompt para gerar uma imagem educativa relacionada com o tema) '
           'e um objeto "settings" com "gridRows" (ex: 3) e "gridCols" (ex: 3).\n'
           'Retorna um objecto JSON com esta estrutura:\n'
@@ -330,7 +331,8 @@ class AiChatService {
           '}\n\n'
           'IMPORTANTE: Retorna APENAS o JSON.';
     } else if (gameType == 'memory') {
-       prompt = 'Cria um Jogo da Memória Visual baseado nos seguintes conteúdos:\n$contentSummaries\n\n'
+      prompt =
+          'Cria um Jogo da Memória Visual baseado nos seguintes conteúdos:\n$contentSummaries\n\n'
           'Identifica pares de conceitos/imagens relacionados. '
           'Retorna um objecto JSON com esta estrutura:\n'
           '{\n'
@@ -341,7 +343,8 @@ class AiChatService {
           '}\n\n'
           'IMPORTANTE: Retorna APENAS o JSON.';
     } else if (gameType == 'word_search') {
-      prompt = 'Cria uma Sopa de Letras baseada nos seguintes conteúdos:\n$contentSummaries\n\n'
+      prompt =
+          'Cria uma Sopa de Letras baseada nos seguintes conteúdos:\n$contentSummaries\n\n'
           'Identifica pelo menos 10 palavras-chave curtas. '
           'Retorna um objecto JSON com esta estrutura:\n'
           '{\n'
@@ -351,7 +354,8 @@ class AiChatService {
           '}\n\n'
           'IMPORTANTE: Retorna APENAS o JSON.';
     } else if (gameType == 'matching') {
-      prompt = 'Cria um Jogo de Correspondência (Matching) baseado nos seguintes conteúdos:\n$contentSummaries\n\n'
+      prompt =
+          'Cria um Jogo de Correspondência (Matching) baseado nos seguintes conteúdos:\n$contentSummaries\n\n'
           'Cria pelo menos 8 pares de conceitos e definições curtas. '
           'Retorna um objecto JSON com esta estrutura:\n'
           '{\n'
@@ -486,7 +490,8 @@ IMPORTANTE:
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        final textResponse = data['candidates']?[0]?['content']?['parts']?[0]?['text'] ?? '';
+        final textResponse =
+            data['candidates']?[0]?['content']?['parts']?[0]?['text'] ?? '';
         return jsonDecode(_cleanJsonResponse(textResponse));
       }
     } catch (e) {

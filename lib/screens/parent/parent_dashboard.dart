@@ -56,7 +56,10 @@ class ParentDashboard extends StatelessWidget {
           if (parentSnap.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
-          if (parent == null) return const Center(child: AiTranslatedText('Utilizador não encontrado'));
+          if (parent == null) {
+            return const Center(
+                child: AiTranslatedText('Utilizador não encontrado'));
+          }
 
           if (parent.isSuspended) {
             return const Center(
@@ -69,7 +72,10 @@ class ParentDashboard extends StatelessWidget {
                     SizedBox(height: 24),
                     AiTranslatedText(
                       'O seu acesso está suspenso.',
-                      style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold),
                       textAlign: TextAlign.center,
                     ),
                     SizedBox(height: 8),
@@ -106,7 +112,8 @@ class ParentDashboard extends StatelessWidget {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.family_restroom, size: 64, color: Colors.orange),
+                        Icon(Icons.family_restroom,
+                            size: 64, color: Colors.orange),
                         SizedBox(height: 16),
                         AiTranslatedText(
                           'Acompanhamento de Alunos',
@@ -145,41 +152,43 @@ class ParentDashboard extends StatelessWidget {
                                       color: Colors.white,
                                       fontWeight: FontWeight.bold)),
                               subtitle: FutureBuilder<List<InstitutionModel>>(
-                                future: service.getInstitutions().first,
-                                builder: (context, snapshot) {
-                                  final institutions = snapshot.data ?? [];
-                                  final inst = institutions.firstWhere(
-                                    (i) => i.id == child.institutionId,
-                                    orElse: () => InstitutionModel(
-                                      id: '',
-                                      name: 'Não definida',
-                                      email: '',
-                                      phone: '',
-                                      address: '',
-                                      nif: '',
-                                      educationLevels: [],
-                                      createdAt: DateTime.now(),
-                                    ),
-                                  );
-                                  return AiTranslatedText(
-                                    'Instituição: ${inst.name}',
-                                    style: const TextStyle(color: Colors.white54, fontSize: 12),
-                                  );
-                                }
-                              ),
+                                  future: service.getInstitutions().first,
+                                  builder: (context, snapshot) {
+                                    final institutions = snapshot.data ?? [];
+                                    final inst = institutions.firstWhere(
+                                      (i) => i.id == child.institutionId,
+                                      orElse: () => InstitutionModel(
+                                        id: '',
+                                        name: 'Não definida',
+                                        email: '',
+                                        phone: '',
+                                        address: '',
+                                        nif: '',
+                                        educationLevels: [],
+                                        createdAt: DateTime.now(),
+                                      ),
+                                    );
+                                    return AiTranslatedText(
+                                      'Instituição: ${inst.name}',
+                                      style: const TextStyle(
+                                          color: Colors.white54, fontSize: 12),
+                                    );
+                                  }),
                               trailing: const Icon(Icons.arrow_forward_ios,
                                   color: Colors.white24, size: 16),
                               onTap: () {
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (_) => StudentDashboard(studentId: child.id),
+                                    builder: (_) =>
+                                        StudentDashboard(studentId: child.id),
                                   ),
                                 );
                               },
                             ),
                             Padding(
-                              padding: const EdgeInsets.only(left: 16, right: 16, bottom: 8),
+                              padding: const EdgeInsets.only(
+                                  left: 16, right: 16, bottom: 8),
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.end,
                                 children: [
@@ -187,11 +196,13 @@ class ParentDashboard extends StatelessWidget {
                                     onPressed: () => Navigator.push(
                                       context,
                                       MaterialPageRoute(
-                                        builder: (_) => SubjectSelectionScreen(student: child),
+                                        builder: (_) => SubjectSelectionScreen(
+                                            student: child),
                                       ),
                                     ),
                                     icon: const Icon(Icons.school, size: 18),
-                                    label: const AiTranslatedText('Inscrever em Disciplinas'),
+                                    label: const AiTranslatedText(
+                                        'Inscrever em Disciplinas'),
                                     style: TextButton.styleFrom(
                                       foregroundColor: const Color(0xFF00D1FF),
                                     ),
@@ -211,7 +222,8 @@ class ParentDashboard extends StatelessWidget {
         },
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showRegisterChildDialog(context, service, currentUserId),
+        onPressed: () =>
+            _showRegisterChildDialog(context, service, currentUserId),
         label: const AiTranslatedText('Registar Filho'),
         icon: const Icon(Icons.add),
         backgroundColor: const Color(0xFF7B61FF),
@@ -219,7 +231,8 @@ class ParentDashboard extends StatelessWidget {
     );
   }
 
-  void _showRegisterChildDialog(BuildContext context, FirebaseService service, String parentId) {
+  void _showRegisterChildDialog(
+      BuildContext context, FirebaseService service, String parentId) {
     final nameController = TextEditingController();
     final dobController = TextEditingController();
     DateTime? selectedDob;
@@ -247,7 +260,9 @@ class ParentDashboard extends StatelessWidget {
               const AiTranslatedText(
                 'Registar Novo Dependente',
                 style: TextStyle(
-                    color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 20),
               TextField(
@@ -273,14 +288,16 @@ class ParentDashboard extends StatelessWidget {
                 onTap: () async {
                   final date = await showDatePicker(
                     context: context,
-                    initialDate: DateTime.now().subtract(const Duration(days: 365 * 10)),
+                    initialDate:
+                        DateTime.now().subtract(const Duration(days: 365 * 10)),
                     firstDate: DateTime(1900),
                     lastDate: DateTime.now(),
                   );
                   if (date != null) {
                     setState(() {
                       selectedDob = date;
-                      dobController.text = DateFormat('dd/MM/yyyy').format(date);
+                      dobController.text =
+                          DateFormat('dd/MM/yyyy').format(date);
                     });
                   }
                 },
@@ -301,15 +318,17 @@ class ParentDashboard extends StatelessWidget {
                     decoration: const InputDecoration(
                       border: OutlineInputBorder(),
                     ),
-                    items: institutions.map((inst) => DropdownMenuItem(
-                      value: inst.id,
-                      child: Text(inst.name),
-                    )).toList(),
+                    items: institutions
+                        .map((inst) => DropdownMenuItem(
+                              value: inst.id,
+                              child: Text(inst.name),
+                            ))
+                        .toList(),
                     onChanged: (val) {
                       setState(() => selectedInstitutionId = val);
                     },
                     initialValue: selectedInstitutionId,
-                    hint: const AiTranslatedText('Selecionar Instituição', 
+                    hint: const AiTranslatedText('Selecionar Instituição',
                         style: TextStyle(color: Colors.white38)),
                   );
                 },
@@ -317,9 +336,13 @@ class ParentDashboard extends StatelessWidget {
               const SizedBox(height: 24),
               ElevatedButton(
                 onPressed: () async {
-                  if (nameController.text.isEmpty || selectedDob == null || selectedInstitutionId == null) {
+                  if (nameController.text.isEmpty ||
+                      selectedDob == null ||
+                      selectedInstitutionId == null) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: AiTranslatedText('Por favor preencha todos os campos')),
+                      const SnackBar(
+                          content: AiTranslatedText(
+                              'Por favor preencha todos os campos')),
                     );
                     return;
                   }
@@ -342,7 +365,8 @@ class ParentDashboard extends StatelessWidget {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => SubjectSelectionScreen(student: newChild),
+                        builder: (_) =>
+                            SubjectSelectionScreen(student: newChild),
                       ),
                     );
                   }

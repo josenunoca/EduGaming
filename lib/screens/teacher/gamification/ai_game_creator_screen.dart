@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 import '../../../models/subject_model.dart';
+import '../../../models/credit_pricing_model.dart';
 import '../../../services/ai_chat_service.dart';
 import '../../../services/firebase_service.dart'; // Added
 import '../../../widgets/glass_card.dart';
@@ -37,11 +38,23 @@ class _AiGameCreatorScreenState extends State<AiGameCreatorScreen> {
     },
     {'id': 'quiz', 'name': 'Exame Técnico Tradicional', 'icon': 'assignment'},
     {'id': 'flashcards', 'name': 'Flashcards de Estudo Ativo', 'icon': 'style'},
-    {'id': 'puzzle_logic', 'name': 'Desafio de Lógica Profunda', 'icon': 'extension'},
+    {
+      'id': 'puzzle_logic',
+      'name': 'Desafio de Lógica Profunda',
+      'icon': 'extension'
+    },
     {'id': 'jigsaw', 'name': 'Jigsaw Puzzle (Arrastar e Rodar)', 'icon': '🧩'},
     {'id': 'memory', 'name': 'Jogo da Memória Visual', 'icon': 'psychology'},
-    {'id': 'word_search', 'name': 'Sopa de Letras (Word Search)', 'icon': 'grid_on'},
-    {'id': 'matching', 'name': 'Correspondência de Conceitos', 'icon': 'sync_alt'},
+    {
+      'id': 'word_search',
+      'name': 'Sopa de Letras (Word Search)',
+      'icon': 'grid_on'
+    },
+    {
+      'id': 'matching',
+      'name': 'Correspondência de Conceitos',
+      'icon': 'sync_alt'
+    },
   ];
 
   @override
@@ -61,22 +74,21 @@ class _AiGameCreatorScreenState extends State<AiGameCreatorScreen> {
 
     setState(() => _isGenerating = true);
     final service = context.read<FirebaseService>();
-    final authUser = context.read<FirebaseService>().currentUser; // Assuming currentUser is exposed or get uid
+    final authUser =
+        service.currentUser; // Assuming currentUser is exposed or get uid
 
     try {
       if (authUser == null) throw 'Utilizador não autenticado.';
-      
-      // Determine target for credits (Institution or Teacher)
-      final targetId = widget.subject.institutionId.isNotEmpty 
-          ? widget.subject.institutionId 
-          : authUser.uid;
-      final targetType = widget.subject.institutionId.isNotEmpty ? 'institution' : 'user';
 
-      // Check credits
-      final hasCredits = await service.hasEnoughAiCredits(targetId, targetType, 1);
-      if (!hasCredits) {
+      // Deduct credits using the new dynamic pricing system
+      final action =
+          _isAssessment ? CreditAction.createExam : CreditAction.createGame;
+      final success = await service.deductCreditsForAction(
+          widget.subject.teacherId, action);
+
+      if (!success) {
         if (mounted) {
-          _showOutOfCreditsDialog(context, targetType);
+          _showOutOfCreditsDialog(context, 'teacher'); // simplified for now
           setState(() => _isGenerating = false);
         }
         return;
@@ -103,15 +115,17 @@ class _AiGameCreatorScreenState extends State<AiGameCreatorScreen> {
           settings: gameData['settings'],
           pin: _pinController.text.isNotEmpty ? _pinController.text : null,
         );
-        
-        // Deduct credit after successful generation
-        await service.deductAiCredits(targetId, targetType, 1);
+
+        // Credits are already deducted before generation to avoid multiple clicks leading to free gens
+        // but typically it's better to deduct only on success.
+        // My deductCreditsForAction already deducted it.
 
         if (mounted) {
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
-              builder: (_) => AiGameEditorScreen(subject: widget.subject, game: newGame),
+              builder: (_) =>
+                  AiGameEditorScreen(subject: widget.subject, game: newGame),
             ),
           );
         }
@@ -165,33 +179,33 @@ class _AiGameCreatorScreenState extends State<AiGameCreatorScreen> {
                   height: 200,
                   child: GlassCard(
                     child: ListView.builder(
-                    itemCount: widget.subject.contents.length,
-                    itemBuilder: (context, index) {
-                      final content = widget.subject.contents[index];
-                      final isSelected = _selectedContents.contains(content);
-                      return CheckboxListTile(
-                        title: AiTranslatedText(content.name,
-                            style: const TextStyle(color: Colors.white70)),
-                        subtitle: Text(content.type.toUpperCase(),
-                            style: const TextStyle(
-                                color: Colors.white38, fontSize: 10)),
-                        value: isSelected,
-                        activeColor: const Color(0xFF00D1FF),
-                        onChanged: (val) {
-                          setState(() {
-                            if (val == true) {
-                              _selectedContents.add(content);
-                            } else {
-                              _selectedContents.remove(content);
-                            }
-                          });
-                        },
-                      );
-                    },
+                      itemCount: widget.subject.contents.length,
+                      itemBuilder: (context, index) {
+                        final content = widget.subject.contents[index];
+                        final isSelected = _selectedContents.contains(content);
+                        return CheckboxListTile(
+                          title: AiTranslatedText(content.name,
+                              style: const TextStyle(color: Colors.white70)),
+                          subtitle: Text(content.type.toUpperCase(),
+                              style: const TextStyle(
+                                  color: Colors.white38, fontSize: 10)),
+                          value: isSelected,
+                          activeColor: const Color(0xFF00D1FF),
+                          onChanged: (val) {
+                            setState(() {
+                              if (val == true) {
+                                _selectedContents.add(content);
+                              } else {
+                                _selectedContents.remove(content);
+                              }
+                            });
+                          },
+                        );
+                      },
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 24),
+                const SizedBox(height: 24),
                 const AiTranslatedText(
                   '2. Escolha o Estilo do Jogo',
                   style: TextStyle(
@@ -236,8 +250,9 @@ class _AiGameCreatorScreenState extends State<AiGameCreatorScreen> {
                             Container(
                               padding: const EdgeInsets.all(8),
                               decoration: BoxDecoration(
-                                color: isSelected 
-                                    ? const Color(0xFF00D1FF).withValues(alpha: 0.2)
+                                color: isSelected
+                                    ? const Color(0xFF00D1FF)
+                                        .withValues(alpha: 0.2)
                                     : Colors.white10,
                                 borderRadius: BorderRadius.circular(8),
                               ),
@@ -264,86 +279,92 @@ class _AiGameCreatorScreenState extends State<AiGameCreatorScreen> {
                     );
                   },
                 ),
-              const SizedBox(height: 24),
-              const AiTranslatedText(
-                '3. Opções Adicionais',
-                style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white),
-              ),
-              const SizedBox(height: 12),
-              GlassCard(
-                child: Column(
-                  children: [
-                    SwitchListTile(
-                      title: const AiTranslatedText('Modo de Avaliação',
-                          style: TextStyle(color: Colors.white, fontSize: 14)),
-                      subtitle: const AiTranslatedText(
-                          'Se ativado, os resultados contam para a nota final.',
-                          style: TextStyle(color: Colors.white54, fontSize: 11)),
-                      value: _isAssessment,
-                      activeThumbColor: const Color(0xFF00D1FF),
-                      onChanged: (val) => setState(() => _isAssessment = val),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      child: TextField(
-                        controller: _pinController,
-                        style: const TextStyle(color: Colors.white, fontSize: 14),
-                        decoration: const InputDecoration(
-                          labelText: 'Definir PIN de Acesso (Opcional)',
-                          labelStyle: TextStyle(color: Colors.white54, fontSize: 12),
-                          hintText: 'Ex: 1234',
-                          hintStyle: TextStyle(color: Colors.white24),
-                          prefixIcon: Icon(Icons.lock_outline, color: Colors.white38),
-                        ),
-                        keyboardType: TextInputType.number,
-                      ),
-                    ),
-                  ],
+                const SizedBox(height: 24),
+                const AiTranslatedText(
+                  '3. Opções Adicionais',
+                  style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white),
                 ),
-              ),
-              const SizedBox(height: 24),
-              _isGenerating
-                  ? const Center(
-                      child: Column(
-                        children: [
-                          CircularProgressIndicator(color: Color(0xFF00D1FF)),
-                          SizedBox(height: 16),
-                          AiTranslatedText(
-                              'A IA está a desenvolver o seu jogo...',
-                              style: TextStyle(color: Colors.white54)),
-                        ],
+                const SizedBox(height: 12),
+                GlassCard(
+                  child: Column(
+                    children: [
+                      SwitchListTile(
+                        title: const AiTranslatedText('Modo de Avaliação',
+                            style:
+                                TextStyle(color: Colors.white, fontSize: 14)),
+                        subtitle: const AiTranslatedText(
+                            'Se ativado, os resultados contam para a nota final.',
+                            style:
+                                TextStyle(color: Colors.white54, fontSize: 11)),
+                        value: _isAssessment,
+                        activeThumbColor: const Color(0xFF00D1FF),
+                        onChanged: (val) => setState(() => _isAssessment = val),
                       ),
-                    )
-                  : ElevatedButton(
-                      onPressed: _generateGame,
-                      style: ElevatedButton.styleFrom(
-                        minimumSize: const Size(double.infinity, 60),
-                        backgroundColor: const Color(0xFF7B61FF),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16)),
-                        elevation: 8,
-                        shadowColor:
-                            const Color(0xFF7B61FF).withValues(alpha: 0.4),
-                      ),
-                      child: const Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.auto_awesome, color: Colors.white),
-                          SizedBox(width: 12),
-                          AiTranslatedText(
-                            'GERAR JOGO COM IA',
-                            style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 1.2,
-                                color: Colors.white),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 8),
+                        child: TextField(
+                          controller: _pinController,
+                          style: const TextStyle(
+                              color: Colors.white, fontSize: 14),
+                          decoration: const InputDecoration(
+                            labelText: 'Definir PIN de Acesso (Opcional)',
+                            labelStyle:
+                                TextStyle(color: Colors.white54, fontSize: 12),
+                            hintText: 'Ex: 1234',
+                            hintStyle: TextStyle(color: Colors.white24),
+                            prefixIcon:
+                                Icon(Icons.lock_outline, color: Colors.white38),
                           ),
-                        ],
+                          keyboardType: TextInputType.number,
+                        ),
                       ),
-                    ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+                _isGenerating
+                    ? const Center(
+                        child: Column(
+                          children: [
+                            CircularProgressIndicator(color: Color(0xFF00D1FF)),
+                            SizedBox(height: 16),
+                            AiTranslatedText(
+                                'A IA está a desenvolver o seu jogo...',
+                                style: TextStyle(color: Colors.white54)),
+                          ],
+                        ),
+                      )
+                    : ElevatedButton(
+                        onPressed: _generateGame,
+                        style: ElevatedButton.styleFrom(
+                          minimumSize: const Size(double.infinity, 60),
+                          backgroundColor: const Color(0xFF7B61FF),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16)),
+                          elevation: 8,
+                          shadowColor:
+                              const Color(0xFF7B61FF).withValues(alpha: 0.4),
+                        ),
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.auto_awesome, color: Colors.white),
+                            SizedBox(width: 12),
+                            AiTranslatedText(
+                              'GERAR JOGO COM IA',
+                              style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 1.2,
+                                  color: Colors.white),
+                            ),
+                          ],
+                        ),
+                      ),
                 const SizedBox(height: 40),
               ],
             ),
@@ -359,7 +380,7 @@ class _AiGameCreatorScreenState extends State<AiGameCreatorScreen> {
       // It's an emoji
       return Text(iconData, style: const TextStyle(fontSize: 18));
     }
-    
+
     // It's a Material icon name
     IconData actualIcon;
     switch (type['id']) {
@@ -395,15 +416,17 @@ class _AiGameCreatorScreenState extends State<AiGameCreatorScreen> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF1E293B),
-        title: const AiTranslatedText('Créditos Insuficientes', style: TextStyle(color: Colors.white)),
+        title: const AiTranslatedText('Créditos Insuficientes',
+            style: TextStyle(color: Colors.white)),
         content: AiTranslatedText(
           type == 'institution'
-          ? 'A sua instituição esgotou os créditos de IA. Contacte o administrador para recarregar.'
-          : 'Esgotou os seus créditos de IA. Adquira um novo pack na sua área pessoal.',
+              ? 'A sua instituição esgotou os créditos de IA. Contacte o administrador para recarregar.'
+              : 'Esgotou os seus créditos de IA. Adquira um novo pack na sua área pessoal.',
           style: const TextStyle(color: Colors.white70),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('OK')),
+          TextButton(
+              onPressed: () => Navigator.pop(context), child: const Text('OK')),
         ],
       ),
     );

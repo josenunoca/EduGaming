@@ -17,7 +17,7 @@ class StudentSubjectScreen extends StatefulWidget {
   final String? studentId;
 
   const StudentSubjectScreen({
-    super.key, 
+    super.key,
     required this.subjectId,
     this.studentId,
   });
@@ -35,6 +35,62 @@ class _StudentSubjectScreenState extends State<StudentSubjectScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 5, vsync: this);
+    WidgetsBinding.instance
+        .addPostFrameCallback((_) => _checkAndRecordAttendance());
+  }
+
+  Future<void> _checkAndRecordAttendance() async {
+    final service = context.read<FirebaseService>();
+    final subject = await service.getSubject(widget.subjectId);
+    if (subject == null) return;
+
+    final userId = widget.studentId ?? FirebaseAuth.instance.currentUser?.uid;
+    if (userId == null) return;
+
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    for (var session in subject.sessions) {
+      final sessionDate =
+          DateTime(session.date.year, session.date.month, session.date.day);
+      if (sessionDate.isAtSameMomentAs(today)) {
+        if (session.startTime != null && session.endTime != null) {
+          final startParts = session.startTime!.split(':');
+          final endParts = session.endTime!.split(':');
+
+          final startTime = DateTime(now.year, now.month, now.day,
+              int.parse(startParts[0]), int.parse(startParts[1]));
+          final endTime = DateTime(now.year, now.month, now.day,
+              int.parse(endParts[0]), int.parse(endParts[1]));
+
+          if (now.isAfter(startTime) && now.isBefore(endTime)) {
+            final alreadyRecorded =
+                await service.hasAlreadyRecordedAttendance(userId, session.id);
+            if (!alreadyRecorded) {
+              final user = await service.getUserData(userId);
+              final attendance = Attendance(
+                id: '${userId}_${session.id}',
+                userId: userId,
+                userName: user?.name ?? 'Aluno',
+                subjectId: subject.id,
+                sessionId: session.id,
+                timestamp: now,
+              );
+              await service.registerAttendance(attendance);
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: AiTranslatedText(
+                        'Presença registada automaticamente na sessão: ${session.topic}'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              }
+            }
+          }
+        }
+      }
+    }
   }
 
   @override
@@ -59,7 +115,7 @@ class _StudentSubjectScreenState extends State<StudentSubjectScreen>
           stream: service.getActiveSessionStream(widget.subjectId),
           builder: (context, liveSnapshot) {
             final liveSession = liveSnapshot.data;
-            
+
             return Scaffold(
               backgroundColor: const Color(0xFF0F172A),
               appBar: AppBar(
@@ -135,7 +191,7 @@ class _StudentSubjectScreenState extends State<StudentSubjectScreen>
     for (var comp in subject.evaluationComponents) {
       evaluationContentIds.addAll(comp.contentIds);
     }
-    
+
     final filteredContents = subject.contents
         .where((c) => !evaluationContentIds.contains(c.id))
         .toList();
@@ -174,7 +230,8 @@ class _StudentSubjectScreenState extends State<StudentSubjectScreen>
                   ),
                 ),
               ],
-              if (_selectedContents.isNotEmpty && _tabController.index != 2) ...[
+              if (_selectedContents.isNotEmpty &&
+                  _tabController.index != 2) ...[
                 const SizedBox(height: 12),
                 ElevatedButton.icon(
                   onPressed: () {
@@ -216,7 +273,8 @@ class _StudentSubjectScreenState extends State<StudentSubjectScreen>
                     title: AiTranslatedText(content.name,
                         style: const TextStyle(color: Colors.white)),
                     subtitle: AiTranslatedText(content.type.toUpperCase(),
-                        style: const TextStyle(color: Colors.white38, fontSize: 11)),
+                        style: const TextStyle(
+                            color: Colors.white38, fontSize: 11)),
                     trailing: Checkbox(
                       value: _selectedContents.any((c) => c.id == content.id),
                       onChanged: (selected) {
@@ -224,7 +282,8 @@ class _StudentSubjectScreenState extends State<StudentSubjectScreen>
                           if (selected == true) {
                             _selectedContents.add(content);
                           } else {
-                            _selectedContents.removeWhere((c) => c.id == content.id);
+                            _selectedContents
+                                .removeWhere((c) => c.id == content.id);
                           }
                         });
                       },
@@ -238,7 +297,8 @@ class _StudentSubjectScreenState extends State<StudentSubjectScreen>
                         onGranted: () async {
                           final uri = Uri.tryParse(content.url);
                           if (uri != null && await canLaunchUrl(uri)) {
-                            await launchUrl(uri, mode: LaunchMode.externalApplication);
+                            await launchUrl(uri,
+                                mode: LaunchMode.externalApplication);
                           }
                         },
                       );
@@ -261,14 +321,15 @@ class _StudentSubjectScreenState extends State<StudentSubjectScreen>
         if (!snapshot.hasData) {
           return const Center(child: CircularProgressIndicator());
         }
-        
+
         final Set<String> evaluationContentIds = {};
         for (var comp in subject.evaluationComponents) {
           evaluationContentIds.addAll(comp.contentIds);
         }
 
         final games = (snapshot.data ?? [])
-            .where((g) => !g.isAssessment && !evaluationContentIds.contains(g.id))
+            .where(
+                (g) => !g.isAssessment && !evaluationContentIds.contains(g.id))
             .toList();
 
         if (games.isEmpty) {
@@ -327,24 +388,39 @@ class _StudentSubjectScreenState extends State<StudentSubjectScreen>
                     // Historical Game Stats
                     StreamBuilder<AiGameStats?>(
                       stream: service.getStudentGameStats(
-                        widget.studentId ?? FirebaseAuth.instance.currentUser?.uid ?? '',
+                        widget.studentId ??
+                            FirebaseAuth.instance.currentUser?.uid ??
+                            '',
                         game.id,
                       ),
                       builder: (context, statsSnapshot) {
-                        if (!statsSnapshot.hasData || statsSnapshot.data == null) return const SizedBox(); // Handle null data
+                        if (!statsSnapshot.hasData ||
+                            statsSnapshot.data == null) {
+                          return const SizedBox(); // Handle null data
+                        }
                         final stats = statsSnapshot.data!;
                         return Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.05), // Changed withValues to withOpacity
+                            color: Colors.white.withOpacity(
+                                0.05), // Changed withValues to withOpacity
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                             children: [
-                              _buildStatItem('Jogou?', stats.playCount > 0 ? 'Sim' : 'Não', stats.playCount > 0 ? Colors.green : Colors.redAccent),
-                              _buildStatItem('Vezes', stats.playCount.toString(), Colors.white),
-                              _buildStatItem('Máx', '${stats.maxScore.toStringAsFixed(0)} pts', const Color(0xFF00D1FF)),
+                              _buildStatItem(
+                                  'Jogou?',
+                                  stats.playCount > 0 ? 'Sim' : 'Não',
+                                  stats.playCount > 0
+                                      ? Colors.green
+                                      : Colors.redAccent),
+                              _buildStatItem('Vezes',
+                                  stats.playCount.toString(), Colors.white),
+                              _buildStatItem(
+                                  'Máx',
+                                  '${stats.maxScore.toStringAsFixed(0)} pts',
+                                  const Color(0xFF00D1FF)),
                             ],
                           ),
                         );
@@ -360,7 +436,8 @@ class _StudentSubjectScreenState extends State<StudentSubjectScreen>
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                  builder: (_) => AiGamePlayerScreen(game: game)),
+                                  builder: (_) =>
+                                      AiGamePlayerScreen(game: game)),
                             );
                           },
                         );
@@ -388,7 +465,7 @@ class _StudentSubjectScreenState extends State<StudentSubjectScreen>
 
   Widget _buildEvaluationTab(Subject subject) {
     final service = context.watch<FirebaseService>();
-    
+
     // Get all evaluation IDs
     final Set<String> evaluationContentIds = {};
     for (var comp in subject.evaluationComponents) {
@@ -408,14 +485,15 @@ class _StudentSubjectScreenState extends State<StudentSubjectScreen>
         final games = (gameSnapshot.data ?? [])
             .where((g) => g.isAssessment || evaluationContentIds.contains(g.id))
             .toList();
-        
+
         final evaluationFiles = subject.contents
             .where((c) => evaluationContentIds.contains(c.id))
             .toList();
 
         if (games.isEmpty && evaluationFiles.isEmpty) {
           return const Center(
-            child: AiTranslatedText('Ainda não existem itens de avaliação disponíveis.',
+            child: AiTranslatedText(
+                'Ainda não existem itens de avaliação disponíveis.',
                 style: TextStyle(color: Colors.white38)),
           );
         }
@@ -427,146 +505,186 @@ class _StudentSubjectScreenState extends State<StudentSubjectScreen>
               const Padding(
                 padding: EdgeInsets.only(bottom: 12.0, left: 4),
                 child: AiTranslatedText('Ficheiros e Testes',
-                    style: TextStyle(color: Colors.white70, fontWeight: FontWeight.bold)),
+                    style: TextStyle(
+                        color: Colors.white70, fontWeight: FontWeight.bold)),
               ),
               ...evaluationFiles.map((content) => Padding(
-                padding: const EdgeInsets.only(bottom: 12.0),
-                child: GlassCard(
-                  child: ListTile(
-                    leading: Icon(_getFileIcon(content.type), color: Colors.redAccent),
-                    title: AiTranslatedText(content.name, style: const TextStyle(color: Colors.white)),
-                    subtitle: const AiTranslatedText('ITEM DE AVALIAÇÃO',
-                        style: TextStyle(color: Colors.redAccent, fontSize: 10, fontWeight: FontWeight.bold)),
-                    onTap: () {
-                      _checkAccessAndLaunch(
-                        subject: subject,
-                        itemId: content.id,
-                        onGranted: () async {
-                          final uri = Uri.tryParse(content.url);
-                          if (uri != null && await canLaunchUrl(uri)) {
-                            await launchUrl(uri, mode: LaunchMode.externalApplication);
-                          }
+                    padding: const EdgeInsets.only(bottom: 12.0),
+                    child: GlassCard(
+                      child: ListTile(
+                        leading: Icon(_getFileIcon(content.type),
+                            color: Colors.redAccent),
+                        title: AiTranslatedText(content.name,
+                            style: const TextStyle(color: Colors.white)),
+                        subtitle: const AiTranslatedText('ITEM DE AVALIAÇÃO',
+                            style: TextStyle(
+                                color: Colors.redAccent,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold)),
+                        onTap: () {
+                          _checkAccessAndLaunch(
+                            subject: subject,
+                            itemId: content.id,
+                            onGranted: () async {
+                              final uri = Uri.tryParse(content.url);
+                              if (uri != null && await canLaunchUrl(uri)) {
+                                await launchUrl(uri,
+                                    mode: LaunchMode.externalApplication);
+                              }
+                            },
+                          );
                         },
-                      );
-                    },
-                  ),
-                ),
-              )),
+                      ),
+                    ),
+                  )),
               const SizedBox(height: 16),
             ],
             if (games.isNotEmpty) ...[
               const Padding(
                 padding: EdgeInsets.only(bottom: 12.0, left: 4),
                 child: AiTranslatedText('Jogos Avaliados',
-                    style: TextStyle(color: Colors.white70, fontWeight: FontWeight.bold)),
+                    style: TextStyle(
+                        color: Colors.white70, fontWeight: FontWeight.bold)),
               ),
               ...games.map((game) => Padding(
-                padding: const EdgeInsets.only(bottom: 16.0),
-                child: GlassCard(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    children: [
-                      Row(
+                    padding: const EdgeInsets.only(bottom: 16.0),
+                    child: GlassCard(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
                         children: [
-                          Icon(game.type == 'kahoot' ? Icons.quiz : Icons.extension,
-                              color: Colors.amber, size: 30),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                AiTranslatedText(game.title,
-                                    style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-                                const AiTranslatedText('MODO AVALIAÇÃO',
-                                    style: TextStyle(color: Colors.redAccent, fontSize: 11, fontWeight: FontWeight.bold)),
-                              ],
-                            ),
+                          Row(
+                            children: [
+                              Icon(
+                                  game.type == 'kahoot'
+                                      ? Icons.quiz
+                                      : Icons.extension,
+                                  color: Colors.amber,
+                                  size: 30),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    AiTranslatedText(game.title,
+                                        style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.bold)),
+                                    const AiTranslatedText('MODO AVALIAÇÃO',
+                                        style: TextStyle(
+                                            color: Colors.redAccent,
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.bold)),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      StreamBuilder<AiGameStats?>(
-                        stream: service.getStudentGameStats(
-                          widget.studentId ?? FirebaseAuth.instance.currentUser?.uid ?? '',
-                          game.id,
-                          isEvaluation: true, // Filter for actual exam attempts
-                        ),
-                        builder: (context, statsSnapshot) {
-                          if (!statsSnapshot.hasData || statsSnapshot.data == null) return const SizedBox();
-                          final stats = statsSnapshot.data!;
-                          return Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.05),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                              children: [
-                                _buildStatItem('Avaliado?', stats.playCount > 0 ? 'Sim' : 'Não', stats.playCount > 0 ? Colors.green : Colors.redAccent),
-                                _buildStatItem('Vezes', stats.playCount.toString(), Colors.white),
-                                _buildStatItem('Melhor Nota', '${stats.maxScore.toStringAsFixed(0)} pts', const Color(0xFF00D1FF)),
-                              ],
-                            ),
-                          );
-                        },
-                      ),
-                      const SizedBox(height: 20),
-                      Builder(
-                        builder: (context) {
-                          return StreamBuilder<AiGameStats?>(
+                          const SizedBox(height: 16),
+                          StreamBuilder<AiGameStats?>(
                             stream: service.getStudentGameStats(
-                              widget.studentId ?? FirebaseAuth.instance.currentUser?.uid ?? '',
+                              widget.studentId ??
+                                  FirebaseAuth.instance.currentUser?.uid ??
+                                  '',
                               game.id,
-                              isEvaluation: true, // Ensure we check evaluation attempts specifically
+                              isEvaluation:
+                                  true, // Filter for actual exam attempts
                             ),
                             builder: (context, statsSnapshot) {
-                              final stats = statsSnapshot.data;
-                              final bool hasPlayed = stats != null && stats.playCount > 0;
+                              if (!statsSnapshot.hasData ||
+                                  statsSnapshot.data == null) {
+                                return const SizedBox();
+                              }
+                              final stats = statsSnapshot.data!;
+                              return Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.05),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceEvenly,
+                                  children: [
+                                    _buildStatItem(
+                                        'Avaliado?',
+                                        stats.playCount > 0 ? 'Sim' : 'Não',
+                                        stats.playCount > 0
+                                            ? Colors.green
+                                            : Colors.redAccent),
+                                    _buildStatItem(
+                                        'Vezes',
+                                        stats.playCount.toString(),
+                                        Colors.white),
+                                    _buildStatItem(
+                                        'Melhor Nota',
+                                        '${stats.maxScore.toStringAsFixed(0)} pts',
+                                        const Color(0xFF00D1FF)),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+                          const SizedBox(height: 20),
+                          Builder(builder: (context) {
+                            return StreamBuilder<AiGameStats?>(
+                                stream: service.getStudentGameStats(
+                                  widget.studentId ??
+                                      FirebaseAuth.instance.currentUser?.uid ??
+                                      '',
+                                  game.id,
+                                  isEvaluation:
+                                      true, // Ensure we check evaluation attempts specifically
+                                ),
+                                builder: (context, statsSnapshot) {
+                                  final stats = statsSnapshot.data;
+                                  final bool hasPlayed =
+                                      stats != null && stats.playCount > 0;
 
-                              return ElevatedButton(
-                                onPressed: hasPlayed
-                                    ? null
-                                    : () {
-                                        _checkAccessAndLaunch(
-                                          subject: subject,
-                                          itemId: game.id,
-                                          onGranted: () {
-                                            Navigator.push(
-                                              context,
-                                              MaterialPageRoute(
-                                                  builder: (_) => AiGamePlayerScreen(
-                                                        game: game,
-                                                        isEvaluation: true,
-                                                      )),
+                                  return ElevatedButton(
+                                    onPressed: hasPlayed
+                                        ? null
+                                        : () {
+                                            _checkAccessAndLaunch(
+                                              subject: subject,
+                                              itemId: game.id,
+                                              onGranted: () {
+                                                Navigator.push(
+                                                  context,
+                                                  MaterialPageRoute(
+                                                      builder: (_) =>
+                                                          AiGamePlayerScreen(
+                                                            game: game,
+                                                            isEvaluation: true,
+                                                          )),
+                                                );
+                                              },
                                             );
                                           },
-                                        );
-                                      },
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: hasPlayed
-                                      ? Colors.grey
-                                      : const Color(0xFF7B61FF),
-                                  minimumSize: const Size(double.infinity, 50),
-                                  shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12)),
-                                ),
-                                child: AiTranslatedText(
-                                    hasPlayed
-                                        ? 'AVALIAÇÃO CONCLUÍDA'
-                                        : 'INICIAR AVALIAÇÃO',
-                                    style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.white)),
-                              );
-                            }
-                          );
-                        }
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: hasPlayed
+                                          ? Colors.grey
+                                          : const Color(0xFF7B61FF),
+                                      minimumSize:
+                                          const Size(double.infinity, 50),
+                                      shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(12)),
+                                    ),
+                                    child: AiTranslatedText(
+                                        hasPlayed
+                                            ? 'AVALIAÇÃO CONCLUÍDA'
+                                            : 'INICIAR AVALIAÇÃO',
+                                        style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.white)),
+                                  );
+                                });
+                          }),
+                        ],
                       ),
-                    ],
-                  ),
-                ),
-              )),
+                    ),
+                  )),
             ],
           ],
         );
@@ -580,7 +698,9 @@ class _StudentSubjectScreenState extends State<StudentSubjectScreen>
       return Icons.play_circle_outline;
     }
     if (type.contains('audio') || type.contains('mp3')) return Icons.audiotrack;
-    if (type.contains('jpg') || type.contains('png') || type.contains('image')) {
+    if (type.contains('jpg') ||
+        type.contains('png') ||
+        type.contains('image')) {
       return Icons.image;
     }
     return Icons.insert_drive_file;
@@ -590,22 +710,27 @@ class _StudentSubjectScreenState extends State<StudentSubjectScreen>
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        AiTranslatedText(label, style: const TextStyle(color: Colors.white54, fontSize: 11)),
+        AiTranslatedText(label,
+            style: const TextStyle(color: Colors.white54, fontSize: 11)),
         const SizedBox(height: 4),
-        Text(value, style: TextStyle(color: valueColor, fontWeight: FontWeight.bold, fontSize: 14)),
+        Text(value,
+            style: TextStyle(
+                color: valueColor, fontWeight: FontWeight.bold, fontSize: 14)),
       ],
     );
   }
 
   Widget _buildGradesTab(Subject subject) {
     final service = context.watch<FirebaseService>();
-    final effectiveStudentId = widget.studentId ?? FirebaseAuth.instance.currentUser?.uid ?? '';
+    final effectiveStudentId =
+        widget.studentId ?? FirebaseAuth.instance.currentUser?.uid ?? '';
 
     return StreamBuilder<List<StudentGradeAdjustment>>(
       stream: service.getGradeAdjustments(subject.id),
       builder: (context, adjustmentSnapshot) {
         return StreamBuilder<List<AiGameResult>>(
-          stream: Stream.fromFuture(service.getAllSubjectGameResults(subject.id)),
+          stream:
+              Stream.fromFuture(service.getAllSubjectGameResults(subject.id)),
           builder: (context, resultsSnapshot) {
             if (resultsSnapshot.connectionState == ConnectionState.waiting) {
               return const Center(child: CircularProgressIndicator());
@@ -614,11 +739,14 @@ class _StudentSubjectScreenState extends State<StudentSubjectScreen>
             final adjustments = adjustmentSnapshot.data ?? [];
             final adjustment = adjustments.firstWhere(
               (a) => a.studentId == effectiveStudentId,
-              orElse: () => StudentGradeAdjustment(id: '', studentId: '', subjectId: ''),
+              orElse: () =>
+                  StudentGradeAdjustment(id: '', studentId: '', subjectId: ''),
             );
-            
+
             final results = resultsSnapshot.data ?? [];
-            final studentResults = results.where((r) => r.studentId == effectiveStudentId).toList();
+            final studentResults = results
+                .where((r) => r.studentId == effectiveStudentId)
+                .toList();
 
             double weightedSum = 0;
             double totalWeight = 0;
@@ -628,15 +756,17 @@ class _StudentSubjectScreenState extends State<StudentSubjectScreen>
             return FutureBuilder<List<AiGame>>(
               future: service.getAiGamesBySubject(subject.id).first,
               builder: (context, gamesSnapshot) {
-                if (!gamesSnapshot.hasData) return const Center(child: CircularProgressIndicator());
-                
-                final gamesMap = { for (var g in gamesSnapshot.data!) g.id : g };
+                if (!gamesSnapshot.hasData) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                final gamesMap = {for (var g in gamesSnapshot.data!) g.id: g};
 
                 List<Widget> componentWidgets = [];
 
                 for (var component in subject.evaluationComponents) {
                   double? grade;
-                  
+
                   // 1. Check override
                   if (adjustment.componentOverrides.containsKey(component.id)) {
                     grade = adjustment.componentOverrides[component.id];
@@ -650,20 +780,25 @@ class _StudentSubjectScreenState extends State<StudentSubjectScreen>
                       final game = gamesMap[contentId];
                       if (game == null) continue;
 
-                      double gameMax = game.questions.fold(0.0, (sum, q) => sum + q.points);
+                      double gameMax =
+                          game.questions.fold(0.0, (sum, q) => sum + q.points);
                       totalPossible += gameMax;
 
-                      final gameResults = studentResults.where((r) => r.gameId == contentId);
+                      final gameResults =
+                          studentResults.where((r) => r.gameId == contentId);
                       if (gameResults.isNotEmpty) {
                         playedSomething = true;
-                        double best = gameResults.map((r) => r.score).reduce((a, b) => a > b ? a : b);
+                        double best = gameResults
+                            .map((r) => r.score)
+                            .reduce((a, b) => a > b ? a : b);
                         totalEarned += best;
                       }
                     }
 
                     if (totalPossible > 0) {
                       if (!playedSomething) {
-                        if (component.endTime != null && DateTime.now().isAfter(component.endTime!)) {
+                        if (component.endTime != null &&
+                            DateTime.now().isAfter(component.endTime!)) {
                           grade = null; // F
                         } else {
                           grade = 0.0;
@@ -694,14 +829,22 @@ class _StudentSubjectScreenState extends State<StudentSubjectScreen>
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                AiTranslatedText(component.name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                                AiTranslatedText('Peso: ${(component.weight * 100).toStringAsFixed(0)}%', style: const TextStyle(color: Colors.white38, fontSize: 11)),
+                                AiTranslatedText(component.name,
+                                    style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold)),
+                                AiTranslatedText(
+                                    'Peso: ${(component.weight * 100).toStringAsFixed(0)}%',
+                                    style: const TextStyle(
+                                        color: Colors.white38, fontSize: 11)),
                               ],
                             ),
                             Text(
                               grade == null ? 'F' : grade.toStringAsFixed(1),
                               style: TextStyle(
-                                color: grade == null ? Colors.redAccent : const Color(0xFF00D1FF),
+                                color: grade == null
+                                    ? Colors.redAccent
+                                    : const Color(0xFF00D1FF),
                                 fontWeight: FontWeight.bold,
                                 fontSize: 18,
                               ),
@@ -713,12 +856,15 @@ class _StudentSubjectScreenState extends State<StudentSubjectScreen>
                   );
                 }
 
-                double calculatedFinal = totalWeight > 0 ? weightedSum / totalWeight : 0.0;
-                double finalGrade = adjustment.finalGradeOverride ?? calculatedFinal;
-                String finalStr = hasMissing ? 'F' : finalGrade.toStringAsFixed(1);
-                
+                double calculatedFinal =
+                    totalWeight > 0 ? weightedSum / totalWeight : 0.0;
+                double finalGrade =
+                    adjustment.finalGradeOverride ?? calculatedFinal;
+                String finalStr =
+                    hasMissing ? 'F' : finalGrade.toStringAsFixed(1);
+
                 if (subject.pautaStatus == PautaStatus.sealed && !hasMissing) {
-                   finalStr = finalGrade.round().toString();
+                  finalStr = finalGrade.round().toString();
                 }
 
                 return ListView(
@@ -728,7 +874,10 @@ class _StudentSubjectScreenState extends State<StudentSubjectScreen>
                     const SizedBox(height: 24),
                     const Padding(
                       padding: EdgeInsets.only(bottom: 16, left: 4),
-                      child: AiTranslatedText('Classificações por Componente', style: TextStyle(color: Colors.white70, fontWeight: FontWeight.bold)),
+                      child: AiTranslatedText('Classificações por Componente',
+                          style: TextStyle(
+                              color: Colors.white70,
+                              fontWeight: FontWeight.bold)),
                     ),
                     ...componentWidgets,
                     const SizedBox(height: 24),
@@ -736,12 +885,19 @@ class _StudentSubjectScreenState extends State<StudentSubjectScreen>
                       padding: const EdgeInsets.all(24),
                       child: Column(
                         children: [
-                          const AiTranslatedText('CLASSIFICAÇÃO FINAL PROPOSTA', style: TextStyle(color: Colors.white54, fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
+                          const AiTranslatedText('CLASSIFICAÇÃO FINAL PROPOSTA',
+                              style: TextStyle(
+                                  color: Colors.white54,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 1.2)),
                           const SizedBox(height: 12),
                           Text(
                             finalStr,
                             style: TextStyle(
-                              color: hasMissing ? Colors.redAccent : const Color(0xFF00D1FF),
+                              color: hasMissing
+                                  ? Colors.redAccent
+                                  : const Color(0xFF00D1FF),
                               fontSize: 48,
                               fontWeight: FontWeight.bold,
                             ),
@@ -749,34 +905,53 @@ class _StudentSubjectScreenState extends State<StudentSubjectScreen>
                           if (subject.pautaStatus == PautaStatus.sealed) ...[
                             const Padding(
                               padding: EdgeInsets.only(top: 8),
-                              child: AiTranslatedText('(Nota Oficial Arredondada)', style: TextStyle(color: Colors.white38, fontSize: 11, fontStyle: FontStyle.italic)),
+                              child: AiTranslatedText(
+                                  '(Nota Oficial Arredondada)',
+                                  style: TextStyle(
+                                      color: Colors.white38,
+                                      fontSize: 11,
+                                      fontStyle: FontStyle.italic)),
                             ),
                             const SizedBox(height: 24),
                             // Certificate Button for Student
                             StreamBuilder<List<Enrollment>>(
-                              stream: service.getEnrollmentsForSubject(subject.id),
+                              stream:
+                                  service.getEnrollmentsForSubject(subject.id),
                               builder: (context, enrollmentSnapshot) {
-                                if (!enrollmentSnapshot.hasData) return const SizedBox();
+                                if (!enrollmentSnapshot.hasData) {
+                                  return const SizedBox();
+                                }
                                 try {
-                                  final enrollment = enrollmentSnapshot.data!.firstWhere(
+                                  final enrollment =
+                                      enrollmentSnapshot.data!.firstWhere(
                                     (e) => e.userId == effectiveStudentId,
                                   );
-                                  
-                                  if (enrollment.certificateUrl != null && enrollment.certificateUrl!.isNotEmpty) {
+
+                                  if (enrollment.certificateUrl != null &&
+                                      enrollment.certificateUrl!.isNotEmpty) {
                                     return ElevatedButton.icon(
                                       onPressed: () async {
-                                        final url = Uri.parse(enrollment.certificateUrl!);
+                                        final url = Uri.parse(
+                                            enrollment.certificateUrl!);
                                         if (await canLaunchUrl(url)) {
-                                          await launchUrl(url, mode: LaunchMode.externalApplication);
+                                          await launchUrl(url,
+                                              mode: LaunchMode
+                                                  .externalApplication);
                                         }
                                       },
                                       icon: const Icon(Icons.workspace_premium),
-                                      label: const AiTranslatedText('VER CERTIFICADO OFICIAL'),
+                                      label: const AiTranslatedText(
+                                          'VER CERTIFICADO OFICIAL'),
                                       style: ElevatedButton.styleFrom(
-                                        backgroundColor: const Color(0xFF00D1FF),
-                                        foregroundColor: const Color(0xFF0F172A),
-                                        minimumSize: const Size(double.infinity, 50),
-                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                        backgroundColor:
+                                            const Color(0xFF00D1FF),
+                                        foregroundColor:
+                                            const Color(0xFF0F172A),
+                                        minimumSize:
+                                            const Size(double.infinity, 50),
+                                        shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(12)),
                                       ),
                                     );
                                   }
@@ -844,9 +1019,15 @@ class _StudentSubjectScreenState extends State<StudentSubjectScreen>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                AiTranslatedText(text, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 16)),
+                AiTranslatedText(text,
+                    style: TextStyle(
+                        color: color,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16)),
                 const SizedBox(height: 4),
-                AiTranslatedText(sub, style: const TextStyle(color: Colors.white54, fontSize: 12)),
+                AiTranslatedText(sub,
+                    style:
+                        const TextStyle(color: Colors.white54, fontSize: 12)),
               ],
             ),
           ),
@@ -882,7 +1063,8 @@ class _StudentSubjectScreenState extends State<StudentSubjectScreen>
     if (evalComp.startTime != null && now.isBefore(evalComp.startTime!)) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Este item de avaliação só estará disponível a partir de ${evalComp.startTime!.day}/${evalComp.startTime!.month}/${evalComp.startTime!.year} às ${evalComp.startTime!.hour}:${evalComp.startTime!.minute.toString().padLeft(2, '0')}.'),
+          content: Text(
+              'Este item de avaliação só estará disponível a partir de ${evalComp.startTime!.day}/${evalComp.startTime!.month}/${evalComp.startTime!.year} às ${evalComp.startTime!.hour}:${evalComp.startTime!.minute.toString().padLeft(2, '0')}.'),
           backgroundColor: Colors.orange,
         ),
       );
@@ -892,7 +1074,8 @@ class _StudentSubjectScreenState extends State<StudentSubjectScreen>
     if (evalComp.endTime != null && now.isAfter(evalComp.endTime!)) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Este item de avaliação já expirou a ${evalComp.endTime!.day}/${evalComp.endTime!.month}/${evalComp.endTime!.year} às ${evalComp.endTime!.hour}:${evalComp.endTime!.minute.toString().padLeft(2, '0')}.'),
+          content: Text(
+              'Este item de avaliação já expirou a ${evalComp.endTime!.day}/${evalComp.endTime!.month}/${evalComp.endTime!.year} às ${evalComp.endTime!.hour}:${evalComp.endTime!.minute.toString().padLeft(2, '0')}.'),
           backgroundColor: Colors.redAccent,
         ),
       );
@@ -911,8 +1094,9 @@ class _StudentSubjectScreenState extends State<StudentSubjectScreen>
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const AiTranslatedText('Para aceder a esta avaliação, introduza o PIN fornecido pelo professor.',
-                style: TextStyle(color: Colors.white70)),
+              const AiTranslatedText(
+                  'Para aceder a esta avaliação, introduza o PIN fornecido pelo professor.',
+                  style: TextStyle(color: Colors.white70)),
               const SizedBox(height: 16),
               TextField(
                 controller: pinController,

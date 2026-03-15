@@ -9,6 +9,7 @@ import '../../widgets/ai_translated_text.dart';
 import '../../widgets/messaging_badge.dart';
 import '../common/communication_center_screen.dart';
 import 'institution_professor_management_screen.dart';
+import 'institutional_management_screen.dart';
 
 class InstitutionDashboard extends StatelessWidget {
   const InstitutionDashboard({super.key});
@@ -25,7 +26,8 @@ class InstitutionDashboard extends StatelessWidget {
             icon: const Icon(Icons.mail),
             onPressed: () => Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => const CommunicationCenterScreen()),
+              MaterialPageRoute(
+                  builder: (_) => const CommunicationCenterScreen()),
             ),
           ),
         ],
@@ -38,17 +40,22 @@ class InstitutionDashboard extends StatelessWidget {
             stream: service.getUserStream(authSnap.data!.uid),
             builder: (context, userSnap) {
               final user = userSnap.data;
-              if (user == null || user.institutionId == null) return const Center(child: CircularProgressIndicator());
-              
+              if (user == null || user.institutionId == null) {
+                return const Center(child: CircularProgressIndicator());
+              }
+
               return StreamBuilder<InstitutionModel?>(
                 stream: service.getInstitutionStream(user.institutionId!),
                 builder: (context, instSnap) {
                   final institution = instSnap.data;
-                  if (institution == null) return const Center(child: CircularProgressIndicator());
+                  if (institution == null) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
 
                   // Access check
                   if (institution.isSuspended) {
-                    return _buildSuspendedView('Esta instituição está suspensa pela administração.');
+                    return _buildSuspendedView(
+                        'Esta instituição está suspensa pela administração.');
                   }
 
                   return Container(
@@ -64,7 +71,22 @@ class InstitutionDashboard extends StatelessWidget {
                           color: const Color(0xFF00D1FF),
                           onTap: () => Navigator.push(
                             context,
-                            MaterialPageRoute(builder: (_) => InstitutionProfessorManagementScreen(institution: institution)),
+                            MaterialPageRoute(
+                                builder: (_) =>
+                                    InstitutionProfessorManagementScreen(
+                                        institution: institution)),
+                          ),
+                        ),
+                        _DashboardActionCard(
+                          icon: Icons.admin_panel_settings,
+                          label: 'Gestão Global 360º',
+                          color: const Color(0xFF7B61FF),
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (_) =>
+                                    InstitutionalManagementScreen(
+                                        institution: institution)),
                           ),
                         ),
                         // Future: Add other institution actions
@@ -87,9 +109,15 @@ class InstitutionDashboard extends StatelessWidget {
         children: [
           const Icon(Icons.lock_person, size: 80, color: Colors.red),
           const SizedBox(height: 24),
-          AiTranslatedText(message, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+          AiTranslatedText(message,
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
-          const AiTranslatedText('Contacte a administração para mais informações.', style: TextStyle(color: Colors.white54)),
+          const AiTranslatedText(
+              'Contacte a administração para mais informações.',
+              style: TextStyle(color: Colors.white54)),
         ],
       ),
     );
@@ -119,7 +147,10 @@ class _DashboardActionCard extends StatelessWidget {
           children: [
             Icon(icon, size: 48, color: color),
             const SizedBox(height: 12),
-            AiTranslatedText(label, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            AiTranslatedText(label,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                    color: Colors.white, fontWeight: FontWeight.bold)),
           ],
         ),
       ),

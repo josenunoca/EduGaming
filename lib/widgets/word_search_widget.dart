@@ -33,19 +33,22 @@ class _WordSearchWidgetState extends State<WordSearchWidget> {
   }
 
   void _generateGrid() {
-    _targetWords = widget.words.map((w) => w.toUpperCase().replaceAll(' ', '')).toList();
-    _grid = List.generate(widget.gridSize, (_) => List.generate(widget.gridSize, (_) => ''));
-    
+    _targetWords =
+        widget.words.map((w) => w.toUpperCase().replaceAll(' ', '')).toList();
+    _grid = List.generate(
+        widget.gridSize, (_) => List.generate(widget.gridSize, (_) => ''));
+
     final random = Random();
-    
+
     for (final word in _targetWords) {
       bool placed = false;
       int attempts = 0;
       while (!placed && attempts < 100) {
         final row = random.nextInt(widget.gridSize);
         final col = random.nextInt(widget.gridSize);
-        final direction = random.nextInt(3); // 0: horizontal, 1: vertical, 2: diagonal
-        
+        final direction =
+            random.nextInt(3); // 0: horizontal, 1: vertical, 2: diagonal
+
         if (_canPlace(word, row, col, direction)) {
           _placeWord(word, row, col, direction);
           placed = true;
@@ -53,7 +56,7 @@ class _WordSearchWidgetState extends State<WordSearchWidget> {
         attempts++;
       }
     }
-    
+
     // Fill remaining with random letters
     const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
     for (int r = 0; r < widget.gridSize; r++) {
@@ -68,7 +71,11 @@ class _WordSearchWidgetState extends State<WordSearchWidget> {
   bool _canPlace(String word, int row, int col, int direction) {
     if (direction == 0 && col + word.length > widget.gridSize) return false;
     if (direction == 1 && row + word.length > widget.gridSize) return false;
-    if (direction == 2 && (row + word.length > widget.gridSize || col + word.length > widget.gridSize)) return false;
+    if (direction == 2 &&
+        (row + word.length > widget.gridSize ||
+            col + word.length > widget.gridSize)) {
+      return false;
+    }
 
     for (int i = 0; i < word.length; i++) {
       int r = row + (direction == 0 ? 0 : (direction == 1 ? i : i));
@@ -112,9 +119,11 @@ class _WordSearchWidgetState extends State<WordSearchWidget> {
   void _onPanEnd(DragEndDetails details) {
     final selectedWord = _selectedCells.map((p) => _grid[p.x][p.y]).join();
     final reversedWord = selectedWord.split('').reversed.join();
-    
-    if (_targetWords.contains(selectedWord) || _targetWords.contains(reversedWord)) {
-      final actualWord = _targetWords.contains(selectedWord) ? selectedWord : reversedWord;
+
+    if (_targetWords.contains(selectedWord) ||
+        _targetWords.contains(reversedWord)) {
+      final actualWord =
+          _targetWords.contains(selectedWord) ? selectedWord : reversedWord;
       setState(() {
         _foundWords.add(actualWord);
         _correctCells.addAll(_selectedCells);
@@ -123,7 +132,7 @@ class _WordSearchWidgetState extends State<WordSearchWidget> {
         widget.onWin();
       }
     }
-    
+
     setState(() {
       _selectedCells.clear();
       _dragStart = null;
@@ -141,12 +150,15 @@ class _WordSearchWidgetState extends State<WordSearchWidget> {
           children: _targetWords.map((w) {
             final found = _foundWords.contains(w);
             return Chip(
-              label: Text(w, style: TextStyle(
-                color: found ? Colors.white : Colors.white70,
-                decoration: found ? TextDecoration.lineThrough : null,
-                fontSize: 10,
-              )),
-              backgroundColor: found ? Colors.green.withValues(alpha: 0.5) : Colors.white.withValues(alpha: 0.1),
+              label: Text(w,
+                  style: TextStyle(
+                    color: found ? Colors.white : Colors.white70,
+                    decoration: found ? TextDecoration.lineThrough : null,
+                    fontSize: 10,
+                  )),
+              backgroundColor: found
+                  ? Colors.green.withValues(alpha: 0.5)
+                  : Colors.white.withValues(alpha: 0.1),
             );
           }).toList(),
         ),
@@ -181,9 +193,11 @@ class _WordSearchWidgetState extends State<WordSearchWidget> {
                   return Container(
                     margin: const EdgeInsets.all(1),
                     decoration: BoxDecoration(
-                      color: isCorrect 
-                          ? Colors.green.withValues(alpha: 0.4) 
-                          : (isSelected ? Colors.blue.withValues(alpha: 0.4) : Colors.transparent),
+                      color: isCorrect
+                          ? Colors.green.withValues(alpha: 0.4)
+                          : (isSelected
+                              ? Colors.blue.withValues(alpha: 0.4)
+                              : Colors.transparent),
                       borderRadius: BorderRadius.circular(4),
                     ),
                     alignment: Alignment.center,
@@ -191,9 +205,14 @@ class _WordSearchWidgetState extends State<WordSearchWidget> {
                       _grid[r][c],
                       style: TextStyle(
                         color: isCorrect ? Colors.white : Colors.white70,
-                        fontWeight: isCorrect ? FontWeight.bold : FontWeight.normal,
+                        fontWeight:
+                            isCorrect ? FontWeight.bold : FontWeight.normal,
                       ),
-                    ).animate(target: isCorrect ? 1 : 0).scale(end: const Offset(1.2, 1.2)).then().shake(),
+                    )
+                        .animate(target: isCorrect ? 1 : 0)
+                        .scale(end: const Offset(1.2, 1.2))
+                        .then()
+                        .shake(),
                   );
                 },
               ),

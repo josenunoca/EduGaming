@@ -21,10 +21,12 @@ class UserAccessScreen extends StatelessWidget {
             return const Center(child: CircularProgressIndicator());
           }
           if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return const Center(child: AiTranslatedText('Nenhum utilizador encontrado.'));
+            return const Center(
+                child: AiTranslatedText('Nenhum utilizador encontrado.'));
           }
 
-          final users = snapshot.data!.where((u) => u.role != UserRole.admin).toList();
+          final users =
+              snapshot.data!.where((u) => u.role != UserRole.admin).toList();
           return ListView.builder(
             padding: const EdgeInsets.all(16),
             itemCount: users.length,
@@ -34,8 +36,10 @@ class UserAccessScreen extends StatelessWidget {
                 padding: const EdgeInsets.only(bottom: 12),
                 child: GlassCard(
                   child: ListTile(
-                    title: AiTranslatedText(user.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                    subtitle: AiTranslatedText('${user.email}\nPapel: ${user.role.name}'),
+                    title: AiTranslatedText(user.name,
+                        style: const TextStyle(fontWeight: FontWeight.bold)),
+                    subtitle: AiTranslatedText(
+                        '${user.email}\nPapel: ${user.role.name}'),
                     isThreeLine: true,
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -43,20 +47,23 @@ class UserAccessScreen extends StatelessWidget {
                         _AccessToggle(
                           label: 'Pago',
                           value: user.isPaymentVerified,
-                          onChanged: (val) => service.updateUserAccess(user.id, isPaymentVerified: val),
+                          onChanged: (val) => service.updateUserAccess(user.id,
+                              isPaymentVerified: val),
                         ),
                         const SizedBox(width: 8),
                         _AccessToggle(
                           label: 'Manual',
                           value: user.hasManualAccess,
-                          onChanged: (val) => service.updateUserAccess(user.id, hasManualAccess: val),
+                          onChanged: (val) => service.updateUserAccess(user.id,
+                              hasManualAccess: val),
                           activeColor: Colors.amber,
                         ),
                         const SizedBox(width: 8),
                         _AccessToggle(
                           label: 'Suspenso',
                           value: user.isSuspended,
-                          onChanged: (val) => service.toggleUserSuspension(user.id, val),
+                          onChanged: (val) =>
+                              service.toggleUserSuspension(user.id, val),
                           activeColor: Colors.red,
                         ),
                       ],
@@ -90,7 +97,8 @@ class _AccessToggle extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        AiTranslatedText(label, style: const TextStyle(fontSize: 10, color: Colors.white70)),
+        AiTranslatedText(label,
+            style: const TextStyle(fontSize: 10, color: Colors.white70)),
         Switch(
           value: value,
           onChanged: onChanged,

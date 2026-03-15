@@ -8,6 +8,12 @@ import '../models/institution_model.dart';
 import '../models/internal_message.dart';
 import '../models/subject_model.dart';
 import '../models/live_session_model.dart';
+import '../models/credit_pricing_model.dart';
+import '../models/course_model.dart';
+import '../models/institutional_organ_model.dart';
+import '../models/facility_model.dart';
+import '../models/document_model.dart';
+import '../models/activity_model.dart';
 
 class FirebaseService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -67,7 +73,8 @@ class FirebaseService {
     return doc.exists ? InstitutionModel.fromMap(doc.data()!) : null;
   }
 
-  Future<void> updateInstitutionProfile(String id, Map<String, dynamic> data) async {
+  Future<void> updateInstitutionProfile(
+      String id, Map<String, dynamic> data) async {
     await _db.collection('institutions').doc(id).update(data);
   }
 
@@ -121,9 +128,8 @@ class FirebaseService {
         .collection('users')
         .where('parentId', isEqualTo: parentId)
         .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => UserModel.fromMap(doc.data()))
-            .toList());
+        .map((snapshot) =>
+            snapshot.docs.map((doc) => UserModel.fromMap(doc.data())).toList());
   }
 
   Future<void> registerChild(UserModel child) async {
@@ -173,6 +179,87 @@ class FirebaseService {
     await _db.collection('institutions').doc(institutionId).update({
       'authorizedProfessorIds': FieldValue.arrayUnion([professorId])
     });
+  }
+
+  Future<void> addProfessorByEmail(
+      String name, String email, String institutionId) async {
+    // Check if user exists
+    final snapshot = await _db
+        .collection('users')
+        .where('email', isEqualTo: email)
+        .limit(1)
+        .get();
+
+    if (snapshot.docs.isNotEmpty) {
+      final uid = snapshot.docs.first.id;
+      await _db.collection('users').doc(uid).update({
+        'role': UserRole.teacher.name,
+        'institutionId': institutionId,
+      });
+      await _db.collection('institutions').doc(institutionId).update({
+        'authorizedProfessorIds': FieldValue.arrayUnion([uid])
+      });
+    } else {
+      // Create skeleton user
+      final uid = const Uuid().v4();
+      final newUser = UserModel(
+        id: uid,
+        name: name,
+        email: email,
+        role: UserRole.teacher,
+        institutionId: institutionId,
+        adConsent: true,
+        dataConsent: true,
+      );
+      await _db.collection('users').doc(uid).set(newUser.toMap());
+      await _db.collection('institutions').doc(institutionId).update({
+        'authorizedProfessorIds': FieldValue.arrayUnion([uid])
+      });
+    }
+  }
+
+  Future<void> addStudentByEmail(
+      String name, String email, String institutionId) async {
+    final snapshot = await _db
+        .collection('users')
+        .where('email', isEqualTo: email)
+        .limit(1)
+        .get();
+
+    if (snapshot.docs.isNotEmpty) {
+      final uid = snapshot.docs.first.id;
+      await _db.collection('users').doc(uid).update({
+        'institutionId': institutionId,
+      });
+    } else {
+      // Create skeleton student
+      final uid = const Uuid().v4();
+      final newUser = UserModel(
+        id: uid,
+        name: name,
+        email: email,
+        role: UserRole.student,
+        institutionId: institutionId,
+        adConsent: true,
+        dataConsent: true,
+      );
+      await _db.collection('users').doc(uid).set(newUser.toMap());
+    }
+  }
+
+  Future<List<UserModel>> searchInstitutionMembers(
+      String institutionId, String query) async {
+    final snapshot = await _db
+        .collection('users')
+        .where('institutionId', isEqualTo: institutionId)
+        .get();
+
+    return snapshot.docs
+        .map((doc) => UserModel.fromMap(doc.data()))
+        .where((u) =>
+            u.name.toLowerCase().contains(query.toLowerCase()) ||
+            u.email.toLowerCase().contains(query.toLowerCase()))
+        .toList();
   }
 
   // --- File Storage ---
@@ -272,19 +359,20 @@ class FirebaseService {
 
   Future<void> duplicateSubject(Subject source, String newYear) async {
     final newSubjectId = _db.collection('subjects').doc().id;
-    
+
     // 1. Fetch and Duplicate AiGames
-    final oldGamesSnapshot = await _db.collection('ai_games')
+    final oldGamesSnapshot = await _db
+        .collection('ai_games')
         .where('subjectId', isEqualTo: source.id)
         .get();
-    
+
     Map<String, String> gameIdMap = {};
-    
+
     for (var doc in oldGamesSnapshot.docs) {
       final oldGame = AiGame.fromMap(doc.data());
       final newGameId = _db.collection('ai_games').doc().id;
       gameIdMap[oldGame.id] = newGameId;
-      
+
       final duplicatedGame = AiGame(
         id: newGameId,
         title: oldGame.title,
@@ -296,7 +384,7 @@ class FirebaseService {
       );
       await saveAiGame(duplicatedGame);
     }
-    
+
     // 2. Update Subject games list (GameContent references)
     final newGamesList = source.games.map((gc) {
       final newId = gameIdMap[gc.id] ?? gc.id;
@@ -312,8 +400,9 @@ class FirebaseService {
     // 3. Duplicate and Reset Evaluation Components
     final newEvalComponents = source.evaluationComponents.map((ec) {
       // Update contentIds if they point to duplicated games
-      final updatedContentIds = ec.contentIds.map((cid) => gameIdMap[cid] ?? cid).toList();
-      
+      final updatedContentIds =
+          ec.contentIds.map((cid) => gameIdMap[cid] ?? cid).toList();
+
       return EvaluationComponent(
         id: const Uuid().v4(),
         name: ec.name,
@@ -350,6 +439,19 @@ class FirebaseService {
         .snapshots()
         .map((snapshot) =>
             snapshot.docs.map((doc) => Subject.fromMap(doc.data())).toList());
+  }
+
+  Future<void> saveSubject(Subject subject) async {
+    // Check and deduct credits for new subject
+    final doc = await _db.collection('subjects').doc(subject.id).get();
+    if (!doc.exists) {
+      final success = await deductCreditsForAction(
+          subject.teacherId, CreditAction.createSubject);
+      if (!success) {
+        throw Exception('Créditos insuficientes para criar disciplina.');
+      }
+    }
+    await _db.collection('subjects').doc(subject.id).set(subject.toMap());
   }
 
   Future<void> updateSubject(Subject subject) async {
@@ -471,11 +573,13 @@ class FirebaseService {
         .update({'status': 'rejected'});
   }
 
-  Future<void> updateEnrollment(String enrollmentId, Map<String, dynamic> data) async {
+  Future<void> updateEnrollment(
+      String enrollmentId, Map<String, dynamic> data) async {
     await _db.collection('enrollments').doc(enrollmentId).update(data);
   }
 
-  Future<String> uploadCertificate(String enrollmentId, Uint8List pdfBytes) async {
+  Future<String> uploadCertificate(
+      String enrollmentId, Uint8List pdfBytes) async {
     final ref = _storage.ref().child('certificates').child('$enrollmentId.pdf');
     await ref.putData(pdfBytes);
     return await ref.getDownloadURL();
@@ -613,7 +717,8 @@ class FirebaseService {
     });
   }
 
-  Future<bool> hasEnoughAiCredits(String targetId, String type, int required) async {
+  Future<bool> hasEnoughAiCredits(
+      String targetId, String type, int required) async {
     final collection = type == 'user' ? 'users' : 'institutions';
     final doc = await _db.collection(collection).doc(targetId).get();
     if (!doc.exists) return false;
@@ -626,7 +731,7 @@ class FirebaseService {
     await _db.collection(collection).doc(targetId).update({
       'aiCredits': FieldValue.increment(-amount),
     });
-    
+
     // Log transaction
     await _db.collection('credit_logs').add({
       'targetId': targetId,
@@ -637,12 +742,106 @@ class FirebaseService {
     });
   }
 
+  // --- Credit Pricing ---
+  Stream<List<CreditPricing>> getCreditPricingStream() {
+    return _db.collection('credit_pricing').snapshots().map((snapshot) {
+      if (snapshot.docs.isEmpty) return CreditPricing.getDefaultPricing();
+      return snapshot.docs
+          .map((doc) => CreditPricing.fromMap(doc.data()))
+          .toList();
+    });
+  }
+
+  Future<void> saveCreditPricing(CreditPricing pricing) async {
+    await _db.collection('credit_pricing').doc(pricing.id).set(pricing.toMap());
+  }
+
+  Future<bool> deductCreditsForAction(String userId, String action) async {
+    final userDoc = await _db.collection('users').doc(userId).get();
+    if (!userDoc.exists) return false;
+
+    final user = UserModel.fromMap(userDoc.data()!);
+
+    // Get pricing for this action
+    final pricingDoc = await _db.collection('credit_pricing').doc(action).get();
+    CreditPricing pricing;
+    if (!pricingDoc.exists) {
+      pricing = CreditPricing.getDefaultPricing()
+          .firstWhere((p) => p.action == action);
+    } else {
+      pricing = CreditPricing.fromMap(pricingDoc.data()!);
+    }
+
+    final cost = pricing.prices[user.role] ?? 0;
+    if (cost <= 0) return true; // Free
+
+    // If user belongs to an institution, deduct from institution
+    if (user.institutionId != null) {
+      final instDoc =
+          await _db.collection('institutions').doc(user.institutionId).get();
+      if (instDoc.exists) {
+        final instCredits = instDoc.data()?['aiCredits'] as int? ?? 0;
+        if (instCredits >= cost) {
+          await deductAiCredits(user.institutionId!, 'institution', cost);
+          return true;
+        }
+        // Fallback or fail? User says "os créditos são descontados na instituição"
+        return false;
+      }
+    }
+
+    if (user.aiCredits < cost) return false;
+
+    await deductAiCredits(userId, 'user', cost);
+    return true;
+  }
+
+  // --- Attendance ---
+  Future<void> registerAttendance(Attendance attendance) async {
+    await _db
+        .collection('attendance')
+        .doc(attendance.id)
+        .set(attendance.toMap());
+  }
+
+  Stream<List<Attendance>> getAttendanceForSession(String sessionId) {
+    return _db
+        .collection('attendance')
+        .where('sessionId', isEqualTo: sessionId)
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => Attendance.fromMap(doc.data()))
+            .toList());
+  }
+
+  Future<List<Attendance>> getAttendanceForSubject(String subjectId) async {
+    final snapshot = await _db
+        .collection('attendance')
+        .where('subjectId', isEqualTo: subjectId)
+        .get();
+    return snapshot.docs.map((doc) => Attendance.fromMap(doc.data())).toList();
+  }
+
+  Future<bool> hasAlreadyRecordedAttendance(
+      String userId, String sessionId) async {
+    final doc =
+        await _db.collection('attendance').doc('${userId}_$sessionId').get();
+    return doc.exists;
+  }
+
+  Future<void> deleteAttendance(String userId, String sessionId) async {
+    await _db.collection('attendance').doc('${userId}_$sessionId').delete();
+  }
+
   Future<Map<String, dynamic>> getAdminRevenueStats() async {
     // This would ideally be a cloud function or complex aggregation
     // For MVP, we calculate manually from collections
     final institutionsQuery = await _db.collection('institutions').get();
-    final enrollmentsQuery = await _db.collection('enrollments').where('status', isEqualTo: 'accepted').get();
-    
+    final enrollmentsQuery = await _db
+        .collection('enrollments')
+        .where('status', isEqualTo: 'accepted')
+        .get();
+
     int proPlan = 0;
     int enterprisePlan = 0;
 
@@ -654,13 +853,14 @@ class FirebaseService {
 
     // In a real app, enrollments would have a 'paidPrice' field
     // For now, let's assume a fixed fee or check subject price
-    // marketplaceRevenue = ... 
+    // marketplaceRevenue = ...
 
     return {
       'proInstitutions': proPlan,
       'enterpriseInstitutions': enterprisePlan,
       'activeEnrollments': enrollmentsQuery.size,
-      'estimatedRevenue': (proPlan * 49.99) + (enterprisePlan * 199.99), // Mock pricing
+      'estimatedRevenue':
+          (proPlan * 49.99) + (enterprisePlan * 199.99), // Mock pricing
     };
   }
 
@@ -684,7 +884,7 @@ class FirebaseService {
         .where('studentId', isEqualTo: studentId)
         .where('gameId', isEqualTo: gameId)
         .get();
-    
+
     if (snapshot.docs.isEmpty) return null;
     return ExamSession.fromMap(snapshot.docs.first.data());
   }
@@ -697,7 +897,8 @@ class FirebaseService {
         .map((s) => s.docs.map((d) => ExamSession.fromMap(d.data())).toList());
   }
 
-  Future<void> updateExamSessionHeartbeat(String sessionId, double score, int questionIndex) async {
+  Future<void> updateExamSessionHeartbeat(
+      String sessionId, double score, int questionIndex) async {
     await _db.collection('exam_sessions').doc(sessionId).update({
       'lastHeartbeat': DateTime.now().toIso8601String(),
       'currentScore': score,
@@ -733,14 +934,18 @@ class FirebaseService {
         .collection('ai_game_results')
         .where('gameId', isEqualTo: gameId)
         .get();
-    return snapshot.docs.map((doc) => AiGameResult.fromMap(doc.data())).toList();
+    return snapshot.docs
+        .map((doc) => AiGameResult.fromMap(doc.data()))
+        .toList();
   }
 
-  Stream<AiGameStats> getStudentGameStats(String studentId, String gameId, {bool? isEvaluation}) {
-    Query query = _db.collection('ai_game_results')
+  Stream<AiGameStats> getStudentGameStats(String studentId, String gameId,
+      {bool? isEvaluation}) {
+    Query query = _db
+        .collection('ai_game_results')
         .where('studentId', isEqualTo: studentId)
         .where('gameId', isEqualTo: gameId);
-        
+
     if (isEvaluation != null) {
       query = query.where('isEvaluation', isEqualTo: isEvaluation);
     }
@@ -749,7 +954,10 @@ class FirebaseService {
       if (snapshot.docs.isEmpty) {
         return AiGameStats(gameId: gameId, playCount: 0, maxScore: 0.0);
       }
-      final results = snapshot.docs.map((doc) => AiGameResult.fromMap(doc.data() as Map<String, dynamic>)).toList();
+      final results = snapshot.docs
+          .map(
+              (doc) => AiGameResult.fromMap(doc.data() as Map<String, dynamic>))
+          .toList();
       double maxScore = 0.0;
       for (var r in results) {
         if (r.score > maxScore) maxScore = r.score;
@@ -764,28 +972,39 @@ class FirebaseService {
 
   // --- Grade Adjustments ---
   Future<void> saveGradeAdjustment(StudentGradeAdjustment adjustment) async {
-    await _db.collection('grade_adjustments').doc(adjustment.id).set(adjustment.toMap());
+    await _db
+        .collection('grade_adjustments')
+        .doc(adjustment.id)
+        .set(adjustment.toMap());
   }
 
   Stream<List<StudentGradeAdjustment>> getGradeAdjustments(String subjectId) {
-    return _db.collection('grade_adjustments')
+    return _db
+        .collection('grade_adjustments')
         .where('subjectId', isEqualTo: subjectId)
         .snapshots()
-        .map((snapshot) => snapshot.docs.map((doc) => StudentGradeAdjustment.fromMap(doc.data())).toList());
+        .map((snapshot) => snapshot.docs
+            .map((doc) => StudentGradeAdjustment.fromMap(doc.data()))
+            .toList());
   }
 
   Future<List<AiGameResult>> getAllSubjectGameResults(String subjectId) async {
-    final snapshot = await _db.collection('ai_game_results')
+    final snapshot = await _db
+        .collection('ai_game_results')
         .where('subjectId', isEqualTo: subjectId)
         .get();
-    return snapshot.docs.map((doc) => AiGameResult.fromMap(doc.data())).toList();
+    return snapshot.docs
+        .map((doc) => AiGameResult.fromMap(doc.data()))
+        .toList();
   }
 
-  Future<bool> hasEvaluationResults(String subjectId, {String? gameId, List<String>? gameIds}) async {
-    Query query = _db.collection('ai_game_results')
+  Future<bool> hasEvaluationResults(String subjectId,
+      {String? gameId, List<String>? gameIds}) async {
+    Query query = _db
+        .collection('ai_game_results')
         .where('subjectId', isEqualTo: subjectId)
         .where('isEvaluation', isEqualTo: true);
-    
+
     if (gameId != null) {
       query = query.where('gameId', isEqualTo: gameId);
     } else if (gameIds != null && gameIds.isNotEmpty) {
@@ -799,22 +1018,28 @@ class FirebaseService {
   // --- Internal Communication (Messaging) ---
 
   Future<void> sendInternalMessage(InternalMessage message) async {
-    await _db.collection('internal_messages').doc(message.id).set(message.toMap());
+    await _db
+        .collection('internal_messages')
+        .doc(message.id)
+        .set(message.toMap());
   }
 
   Stream<List<InternalMessage>> getInboxStream(String userId) {
     // We combine messages where the user is a direct recipient or CC'd
-    return _db.collection('internal_messages')
-        .snapshots()
-        .map((snapshot) => snapshot.docs
+    return _db.collection('internal_messages').snapshots().map((snapshot) =>
+        snapshot.docs
             .map((doc) => InternalMessage.fromMap(doc.data()))
-            .where((msg) => (msg.recipientIds.contains(userId) || msg.ccIds.contains(userId)) && !msg.deletedBy.contains(userId))
+            .where((msg) =>
+                (msg.recipientIds.contains(userId) ||
+                    msg.ccIds.contains(userId)) &&
+                !msg.deletedBy.contains(userId))
             .toList()
           ..sort((a, b) => b.timestamp.compareTo(a.timestamp)));
   }
 
   Stream<List<InternalMessage>> getSentMessagesStream(String userId) {
-    return _db.collection('internal_messages')
+    return _db
+        .collection('internal_messages')
         .where('senderId', isEqualTo: userId)
         .snapshots()
         .map((snapshot) => snapshot.docs
@@ -843,11 +1068,18 @@ class FirebaseService {
   }
 
   Future<void> toggleInstitutionSuspension(String id, bool suspended) async {
-    await _db.collection('institutions').doc(id).update({'isSuspended': suspended});
+    await _db
+        .collection('institutions')
+        .doc(id)
+        .update({'isSuspended': suspended});
   }
 
-  Future<void> toggleEnrollmentSuspension(String enrollmentId, bool suspended) async {
-    await _db.collection('enrollments').doc(enrollmentId).update({'isSuspended': suspended});
+  Future<void> toggleEnrollmentSuspension(
+      String enrollmentId, bool suspended) async {
+    await _db
+        .collection('enrollments')
+        .doc(enrollmentId)
+        .update({'isSuspended': suspended});
   }
 
   // --- Live Session Logic ---
@@ -875,9 +1107,239 @@ class FirebaseService {
     });
   }
 
-  Future<void> updateStudentPermissions(String sessionId, Map<String, bool> permissions) async {
+  Future<void> updateStudentPermissions(
+      String sessionId, Map<String, bool> permissions) async {
     await _db.collection('live_sessions').doc(sessionId).update({
       'studentPermissions': permissions,
     });
+  }
+
+  // --- Course & Study Cycle Management ---
+
+  Future<void> saveStudyCycle(StudyCycle cycle) async {
+    await _db.collection('study_cycles').doc(cycle.id).set(cycle.toMap());
+  }
+
+  Stream<List<StudyCycle>> getStudyCycles(String institutionId) {
+    return _db
+        .collection('study_cycles')
+        .where('institutionId', isEqualTo: institutionId)
+        .snapshots()
+        .map((s) => s.docs.map((d) => StudyCycle.fromMap(d.data())).toList());
+  }
+
+  Future<void> saveCourse(Course course) async {
+    await _db.collection('courses').doc(course.id).set(course.toMap());
+  }
+
+  Stream<List<Course>> getCourses(String institutionId) {
+    return _db
+        .collection('courses')
+        .where('institutionId', isEqualTo: institutionId)
+        .snapshots()
+        .map((s) => s.docs.map((d) => Course.fromMap(d.data())).toList());
+  }
+
+  // --- Institutional Organ Management ---
+
+  Future<void> saveOrgan(InstitutionalOrgan organ) async {
+    await _db.collection('organs').doc(organ.id).set(organ.toMap());
+  }
+
+  Stream<List<InstitutionalOrgan>> getOrgans(String institutionId) {
+    return _db
+        .collection('organs')
+        .where('institutionId', isEqualTo: institutionId)
+        .snapshots()
+        .map((s) => s.docs.map((d) => InstitutionalOrgan.fromMap(d.data())).toList());
+  }
+
+  Future<void> inviteMemberToOrgan(String organId, OrganMember member) async {
+    await _db.collection('organs').doc(organId).update({
+      'members': FieldValue.arrayUnion([member.toMap()])
+    });
+
+    // Send internal message/invitation
+    final msgId = const Uuid().v4();
+    await sendInternalMessage(InternalMessage(
+      id: msgId,
+      senderId: 'SYSTEM',
+      senderName: 'EduGaming System',
+      recipientIds: [member.email], // In a real app, resolve email to UID if exists
+      subject: 'Convite para Órgão Institucional',
+      body: 'Foi convidado para fazer parte do órgão "${member.name}" na sua instituição.',
+      timestamp: DateTime.now(),
+    ));
+  }
+
+  // --- Institutional Program Management ---
+
+  Future<void> saveInstitutionalProgram(
+      String institutionId, String courseId, String content) async {
+    await _db
+        .collection('institutions')
+        .doc(institutionId)
+        .collection('programs')
+        .doc(courseId)
+        .set({
+      'courseId': courseId,
+      'content': content,
+      'updatedAt': DateTime.now().toIso8601String(),
+    });
+  }
+
+  Stream<String?> getInstitutionalProgram(
+      String institutionId, String courseId) {
+    return _db
+        .collection('institutions')
+        .doc(institutionId)
+        .collection('programs')
+        .doc(courseId)
+        .snapshots()
+        .map((doc) {
+          if (!doc.exists) return null;
+          final data = doc.data();
+          return data?['content'] as String?;
+        });
+  }
+
+  // --- Facility & Timetable Management ---
+
+  Future<void> saveClassroom(Classroom classroom) async {
+    await _db.collection('classrooms').doc(classroom.id).set(classroom.toMap());
+  }
+
+  Stream<List<Classroom>> getClassrooms(String institutionId) {
+    return _db
+        .collection('classrooms')
+        .where('institutionId', isEqualTo: institutionId)
+        .snapshots()
+        .map((s) => s.docs.map((d) => Classroom.fromMap(d.data())).toList());
+  }
+
+  Future<void> saveTimetableEntry(TimetableEntry entry) async {
+    await _db.collection('timetable').doc(entry.id).set(entry.toMap());
+  }
+
+  Stream<List<TimetableEntry>> getTimetableForInstitution(String institutionId) {
+    return _db
+        .collection('timetable')
+        .where('institutionId', isEqualTo: institutionId)
+        .snapshots()
+        .map((s) => s.docs.map((d) => TimetableEntry.fromMap(d.data())).toList());
+  }
+
+  Stream<List<TimetableEntry>> getTimetableForUser(String userId, UserRole role) {
+    // This is complex. For teachers, we match subjectId with subjects where teacherId = userId.
+    // For students, we match subjectId with enrollment subjectIds.
+    // For simplicity in MVP, we fetch all and filter client-side or add userId/subjectIds to entries.
+    return _db.collection('timetable').snapshots().map((s) => s.docs.map((d) => TimetableEntry.fromMap(d.data())).toList());
+  }
+
+  // --- Document & AI Minute Management ---
+
+  Future<void> saveDocument(InstitutionalDocument doc) async {
+    await _db.collection('institutional_documents').doc(doc.id).set(doc.toMap());
+  }
+
+  Stream<List<InstitutionalDocument>> getDocuments(String institutionId) {
+    return _db
+        .collection('institutional_documents')
+        .where('institutionId', isEqualTo: institutionId)
+        .snapshots()
+        .map((s) => s.docs.map((d) => InstitutionalDocument.fromMap(d.data())).toList());
+  }
+
+  Future<void> saveMinute(MeetingMinute minute) async {
+    await _db.collection('meeting_minutes').doc(minute.id).set(minute.toMap());
+  }
+
+  Future<String> generateAiMinute(String transcription) async {
+    // Placeholder for AI call
+    debugPrint('Generating AI Minute for: $transcription');
+    await Future.delayed(const Duration(seconds: 2));
+    return "Ata gerada automaticamente: A reunião focou na discussão de... \n\nDecisões tomadas: \n1. Aprovado o novo regulamento. \n2. Definidas as datas dos exames.";
+  }
+
+  // --- Activity & Report Management ---
+
+  Future<void> saveActivity(InstitutionalActivity activity) async {
+    await _db.collection('activities').doc(activity.id).set(activity.toMap());
+  }
+
+  Stream<List<InstitutionalActivity>> getActivities(String institutionId) {
+    return _db
+        .collection('activities')
+        .where('institutionId', isEqualTo: institutionId)
+        .snapshots()
+        .map((s) =>
+            s.docs.map((d) => InstitutionalActivity.fromMap(d.data())).toList());
+  }
+
+  Future<void> updateActivityMedia(
+      String activityId, ActivityMedia mediaItem) async {
+    await _db.collection('activities').doc(activityId).update({
+      'media': FieldValue.arrayUnion([mediaItem.toMap()])
+    });
+  }
+
+  Future<void> inviteGroupToActivity(String activityId, String groupType,
+      String groupId, List<UserModel> members) async {
+    final participants = members
+        .map((u) => ActivityParticipant(
+              id: u.id,
+              name: u.name,
+              email: u.email,
+              role: 'participant',
+              groupType: groupType,
+              groupId: groupId,
+            ).toMap())
+        .toList();
+
+    await _db.collection('activities').doc(activityId).update({
+      'participants': FieldValue.arrayUnion(participants)
+    });
+
+    // Notify all participants
+    final emails = members.map((u) => u.email).toList();
+    if (emails.isNotEmpty) {
+      await sendInternalMessage(InternalMessage(
+        id: const Uuid().v4(),
+        senderId: 'SYSTEM',
+        senderName: 'EduGaming System',
+        recipientIds: emails,
+        subject: 'Novo Convite para Atividade',
+        body: 'Foi convidado para participar numa nova atividade institucional.',
+        timestamp: DateTime.now(),
+      ));
+    }
+  }
+
+  Future<List<UserModel>> getCourseMembers(
+      String institutionId, String courseId) async {
+    final users = await _db
+        .collection('users')
+        .where('institutionId', isEqualTo: institutionId)
+        .where('courseId', isEqualTo: courseId)
+        .get();
+    return users.docs.map((d) => UserModel.fromMap(d.data())).toList();
+  }
+
+  Future<List<UserModel>> getSubjectMembers(
+      String institutionId, String subjectId) async {
+    final users = await _db
+        .collection('users')
+        .where('institutionId', isEqualTo: institutionId)
+        .where('enrolledSubjects', arrayContains: subjectId)
+        .get();
+    return users.docs.map((d) => UserModel.fromMap(d.data())).toList();
+  }
+
+  Future<List<UserModel>> getAllInstitutionMembers(String institutionId) async {
+    final users = await _db
+        .collection('users')
+        .where('institutionId', isEqualTo: institutionId)
+        .get();
+    return users.docs.map((d) => UserModel.fromMap(d.data())).toList();
   }
 }

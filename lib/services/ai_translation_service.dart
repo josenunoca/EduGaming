@@ -18,7 +18,8 @@ class AiTranslationService {
 
   AiTranslationService(String apiKey) : _apiKey = apiKey;
 
-  Future<String> translate(String text, String targetLanguage, {String? context}) async {
+  Future<String> translate(String text, String targetLanguage,
+      {String? context}) async {
     if (targetLanguage == 'pt' || text.isEmpty) return text;
 
     final cacheKey = '${targetLanguage}_$text';
@@ -47,7 +48,8 @@ class AiTranslationService {
     _pending.clear();
 
     // Filter out already-cached ones
-    final toTranslate = batch.where((t) => !_cache.containsKey(t.cacheKey)).toList();
+    final toTranslate =
+        batch.where((t) => !_cache.containsKey(t.cacheKey)).toList();
 
     // Complete cached ones immediately
     for (final t in batch.where((t) => _cache.containsKey(t.cacheKey))) {
@@ -92,9 +94,11 @@ $numbered''';
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        final responseText = data['candidates']?[0]?['content']?['parts']?[0]?['text']
-            ?.toString()
-            .trim() ?? '';
+        final responseText = data['candidates']?[0]?['content']?['parts']?[0]
+                    ?['text']
+                ?.toString()
+                .trim() ??
+            '';
 
         // Parse the numbered response: "1. translation\n2. translation\n..."
         final lines = responseText.split('\n');
@@ -113,7 +117,9 @@ $numbered''';
         for (int i = 0; i < toTranslate.length; i++) {
           final translation = translationMap[i + 1];
           final original = toTranslate[i].text;
-          final result = (translation != null && translation.isNotEmpty && translation != original)
+          final result = (translation != null &&
+                  translation.isNotEmpty &&
+                  translation != original)
               ? translation
               : original;
 
@@ -121,14 +127,16 @@ $numbered''';
           toTranslate[i].completer.complete(result);
         }
 
-        debugPrint('Batch translated ${toTranslate.length} texts to $targetLanguage in 1 API call ✅');
+        debugPrint(
+            'Batch translated ${toTranslate.length} texts to $targetLanguage in 1 API call ✅');
       } else if (response.statusCode == 429) {
         debugPrint('Translation rate limited [429] — returning originals');
         for (final t in toTranslate) {
           t.completer.complete(t.text);
         }
       } else {
-        debugPrint('Translation HTTP Error [${response.statusCode}]: ${response.body}');
+        debugPrint(
+            'Translation HTTP Error [${response.statusCode}]: ${response.body}');
         for (final t in toTranslate) {
           t.completer.complete(t.text);
         }

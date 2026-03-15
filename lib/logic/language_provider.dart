@@ -28,10 +28,15 @@ class LanguageProvider extends ChangeNotifier {
   }
 
   String get languageCode {
-    final code = _currentLanguage == AppLanguage.pt ? 'pt' : 
-                 _currentLanguage == AppLanguage.en ? 'en' :
-                 _currentLanguage == AppLanguage.fr ? 'fr' :
-                 _currentLanguage == AppLanguage.es ? 'es' : 'de';
+    final code = _currentLanguage == AppLanguage.pt
+        ? 'pt'
+        : _currentLanguage == AppLanguage.en
+            ? 'en'
+            : _currentLanguage == AppLanguage.fr
+                ? 'fr'
+                : _currentLanguage == AppLanguage.es
+                    ? 'es'
+                    : 'de';
     debugPrint('LanguageProvider: current languageCode is $code');
     return code;
   }

@@ -31,7 +31,8 @@ class MessageDetailScreen extends StatelessWidget {
             children: [
               Card(
                 color: Colors.white.withOpacity(0.05),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16)),
                 child: Padding(
                   padding: const EdgeInsets.all(20),
                   child: Column(
@@ -39,30 +40,44 @@ class MessageDetailScreen extends StatelessWidget {
                     children: [
                       Text(
                         message.subject,
-                        style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold),
                       ),
                       const Divider(color: Colors.white24, height: 32),
                       Row(
                         children: [
                           CircleAvatar(
                             backgroundColor: const Color(0xFF7B61FF),
-                            child: Text(message.senderName.substring(0, 1).toUpperCase(), style: const TextStyle(color: Colors.white)),
+                            child: Text(
+                                message.senderName
+                                    .substring(0, 1)
+                                    .toUpperCase(),
+                                style: const TextStyle(color: Colors.white)),
                           ),
                           const SizedBox(width: 12),
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(message.senderName, style: const TextStyle(color: Colors.white, fontSize: 16)),
-                              Text(_formatDate(message.timestamp), style: const TextStyle(color: Colors.white54, fontSize: 13)),
+                              Text(message.senderName,
+                                  style: const TextStyle(
+                                      color: Colors.white, fontSize: 16)),
+                              Text(_formatDate(message.timestamp),
+                                  style: const TextStyle(
+                                      color: Colors.white54, fontSize: 13)),
                             ],
                           ),
                         ],
                       ),
                       const SizedBox(height: 24),
-                      const AiTranslatedText('Para:', style: TextStyle(color: Colors.white54, fontSize: 12)),
+                      const AiTranslatedText('Para:',
+                          style:
+                              TextStyle(color: Colors.white54, fontSize: 12)),
                       Text(
                         '${message.recipientIds.length} destinatários',
-                        style: const TextStyle(color: Colors.white70, fontSize: 14),
+                        style: const TextStyle(
+                            color: Colors.white70, fontSize: 14),
                       ),
                     ],
                   ),
@@ -73,7 +88,8 @@ class MessageDetailScreen extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 8),
                 child: Text(
                   message.body,
-                  style: const TextStyle(color: Colors.white, fontSize: 16, height: 1.5),
+                  style: const TextStyle(
+                      color: Colors.white, fontSize: 16, height: 1.5),
                 ),
               ),
               const SizedBox(height: 48),
@@ -112,9 +128,9 @@ class MessageDetailScreen extends StatelessWidget {
       // Add other recipients and CCs to CC list
       ccIds.addAll(message.recipientIds);
       ccIds.addAll(message.ccIds);
-      
+
       // Filter out original sender (who is now in 'To') and current user
-      // Note: We don't have current user ID easily here without a provider, 
+      // Note: We don't have current user ID easily here without a provider,
       // but ComposeMessageScreen handles the 'To' list.
       // Let's just pass them and let compose screen or a wrapper handle it.
     }
@@ -125,7 +141,9 @@ class MessageDetailScreen extends StatelessWidget {
         builder: (_) => ComposeMessageScreen(
           initialRecipientIds: toIds,
           initialCcIds: ccIds.isNotEmpty ? ccIds : null,
-          initialSubject: message.subject.startsWith('Re:') ? message.subject : 'Re: ${message.subject}',
+          initialSubject: message.subject.startsWith('Re:')
+              ? message.subject
+              : 'Re: ${message.subject}',
         ),
       ),
     );

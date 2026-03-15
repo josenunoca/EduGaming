@@ -9,6 +9,7 @@ import 'institution_management_screen.dart';
 import 'admin_revenue_dashboard.dart';
 import 'user_access_screen.dart';
 import 'marketing_communication_screen.dart';
+import 'credit_pricing_admin_screen.dart';
 import '../common/personal_profile_screen.dart';
 import '../common/communication_center_screen.dart';
 import '../../widgets/advanced_search_anchor.dart';
@@ -48,7 +49,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   if (user == null) return const SizedBox();
                   return IconButton(
                     icon: const Icon(Icons.person),
-                    onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => PersonalProfileScreen(user: user))),
+                    onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => PersonalProfileScreen(user: user))),
                     tooltip: 'Área Pessoal',
                   );
                 },
@@ -57,11 +61,17 @@ class _AdminDashboardState extends State<AdminDashboard> {
           ),
           MessagingBadge(
             icon: const Icon(Icons.mail),
-            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CommunicationCenterScreen())),
+            onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (_) => const CommunicationCenterScreen())),
           ),
           IconButton(
             icon: const Icon(Icons.campaign),
-            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MarketingCommunicationScreen())),
+            onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (_) => const MarketingCommunicationScreen())),
             tooltip: 'Marketing & Comunicação',
           ),
           IconButton(
@@ -89,47 +99,54 @@ class _AdminDashboardState extends State<AdminDashboard> {
               hintText: 'Pesquisar instituições, alunos, professores...',
               onSearchQuery: (query) async {
                 final results = <SearchResult>[];
-                
+
                 // Search Institutions
                 final insts = await service.searchInstitutions(query).first;
                 results.addAll(insts.map((i) => SearchResult(
-                  id: i.id,
-                  title: i.name,
-                  subtitle: i.address,
-                  icon: Icons.business,
-                  category: 'Instituições',
-                  originalObject: i,
-                )));
+                      id: i.id,
+                      title: i.name,
+                      subtitle: i.address,
+                      icon: Icons.business,
+                      category: 'Instituições',
+                      originalObject: i,
+                    )));
 
                 // Search Users
                 final users = await service.searchUsers(query).first;
                 results.addAll(users.map((u) => SearchResult(
-                  id: u.id,
-                  title: u.name,
-                  subtitle: '${u.email} • ${u.role.toString().split('.').last}',
-                  icon: Icons.person,
-                  category: 'Utilizadores',
-                  originalObject: u,
-                )));
+                      id: u.id,
+                      title: u.name,
+                      subtitle:
+                          '${u.email} • ${u.role.toString().split('.').last}',
+                      icon: Icons.person,
+                      category: 'Utilizadores',
+                      originalObject: u,
+                    )));
 
                 // Search Subjects
                 final subs = await service.searchSubjects(query).first;
                 results.addAll(subs.map((s) => SearchResult(
-                  id: s.id,
-                  title: s.name,
-                  subtitle: '${s.level} • ${s.academicYear}',
-                  icon: Icons.book,
-                  category: 'Disciplinas',
-                  originalObject: s,
-                )));
+                      id: s.id,
+                      title: s.name,
+                      subtitle: '${s.level} • ${s.academicYear}',
+                      icon: Icons.book,
+                      category: 'Disciplinas',
+                      originalObject: s,
+                    )));
 
                 return results;
               },
               onResultSelected: (res) {
                 if (res.category == 'Instituições') {
-                  Navigator.push(context, MaterialPageRoute(builder: (_) => const InstitutionManagementScreen()));
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => const InstitutionManagementScreen()));
                 } else if (res.category == 'Utilizadores') {
-                  Navigator.push(context, MaterialPageRoute(builder: (_) => const UserAccessScreen()));
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => const UserAccessScreen()));
                 } else if (res.category == 'Disciplinas') {
                   setState(() => _searchQuery = res.title);
                 }
@@ -140,63 +157,88 @@ class _AdminDashboardState extends State<AdminDashboard> {
             if (_searchQuery.isNotEmpty)
               Expanded(child: _buildSearchResults(context, service))
             else ...[
-              const AiTranslatedText('Resumo da Plataforma', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white)),
+              const AiTranslatedText('Resumo da Plataforma',
+                  style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white)),
               const SizedBox(height: 16),
               Row(
                 children: [
                   StreamBuilder<List<InstitutionModel>>(
-                    stream: service.getInstitutions(),
-                    builder: (context, snapshot) {
-                      final count = snapshot.hasData ? snapshot.data!.length.toString() : '...';
-                      return _StatCard(
-                        label: 'Instituições', 
-                        value: count, 
-                        color: const Color(0xFF00D1FF),
-                        onTap: () => Navigator.push(
-                          context, 
-                          MaterialPageRoute(builder: (_) => const InstitutionManagementScreen())
-                        ),
-                      );
-                    }
-                  ),
+                      stream: service.getInstitutions(),
+                      builder: (context, snapshot) {
+                        final count = snapshot.hasData
+                            ? snapshot.data!.length.toString()
+                            : '...';
+                        return _StatCard(
+                          label: 'Instituições',
+                          value: count,
+                          color: const Color(0xFF00D1FF),
+                          onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (_) =>
+                                      const InstitutionManagementScreen())),
+                        );
+                      }),
                   StreamBuilder<List<UserModel>>(
-                    stream: service.getUsers(),
-                    builder: (context, snapshot) {
-                      final count = snapshot.hasData ? snapshot.data!.length.toString() : '...';
-                      return _StatCard(
-                        label: 'Controlo de Acessos', 
-                        value: count, 
-                        color: Colors.orange,
-                        onTap: () => Navigator.push(
-                          context, 
-                          MaterialPageRoute(builder: (_) => const UserAccessScreen())
-                        ),
-                      );
-                    }
-                  ),
+                      stream: service.getUsers(),
+                      builder: (context, snapshot) {
+                        final count = snapshot.hasData
+                            ? snapshot.data!.length.toString()
+                            : '...';
+                        return _StatCard(
+                          label: 'Controlo de Acessos',
+                          value: count,
+                          color: Colors.orange,
+                          onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (_) => const UserAccessScreen())),
+                        );
+                      }),
                   _StatCard(
-                    label: 'Receitas & SaaS', 
-                    value: '€€', 
+                    label: 'Receitas & SaaS',
+                    value: '€€',
                     color: Colors.greenAccent,
                     onTap: () => Navigator.push(
-                      context, 
-                      MaterialPageRoute(builder: (_) => const AdminRevenueDashboard())
-                    ),
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => const AdminRevenueDashboard())),
+                  ),
+                  _StatCard(
+                    label: 'Tabela de Preços',
+                    value: '⚙️',
+                    color: Colors.purpleAccent,
+                    onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => const CreditPricingAdminScreen())),
                   ),
                 ],
               ),
               const SizedBox(height: 24),
-              const AiTranslatedText('Pagamentos de Inscrição Pendentes', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white70)),
+              const AiTranslatedText('Pagamentos de Inscrição Pendentes',
+                  style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white70)),
               const SizedBox(height: 12),
               Expanded(
                 child: StreamBuilder<List<Enrollment>>(
                   stream: service.getEnrollmentsPendingAdmin(),
                   builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
                     final pending = snapshot.data ?? [];
-                    
+
                     if (pending.isEmpty) {
-                      return const Center(child: AiTranslatedText('Nenhuma inscrição aguarda pagamento.', style: TextStyle(color: Colors.white38)));
+                      return const Center(
+                          child: AiTranslatedText(
+                              'Nenhuma inscrição aguarda pagamento.',
+                              style: TextStyle(color: Colors.white38)));
                     }
 
                     return ListView.builder(
@@ -204,10 +246,15 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       itemBuilder: (context, index) {
                         final enrollment = pending[index];
                         return ListTile(
-                          title: Text(enrollment.studentName, style: const TextStyle(color: Colors.white)),
-                          subtitle: Text('Disciplina ID: ${enrollment.subjectId}', style: const TextStyle(color: Colors.white54, fontSize: 12)),
+                          title: Text(enrollment.studentName,
+                              style: const TextStyle(color: Colors.white)),
+                          subtitle: Text(
+                              'Disciplina ID: ${enrollment.subjectId}',
+                              style: const TextStyle(
+                                  color: Colors.white54, fontSize: 12)),
                           trailing: ElevatedButton(
-                            onPressed: () => service.adminApprovePayment(enrollment.id),
+                            onPressed: () =>
+                                service.adminApprovePayment(enrollment.id),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFF7B61FF),
                               foregroundColor: Colors.white,
@@ -230,38 +277,46 @@ class _AdminDashboardState extends State<AdminDashboard> {
   Widget _buildSearchResults(BuildContext context, FirebaseService service) {
     return ListView(
       children: [
-        const AiTranslatedText('Resultados da Pesquisa', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF00D1FF))),
+        const AiTranslatedText('Resultados da Pesquisa',
+            style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF00D1FF))),
         const SizedBox(height: 16),
-        
         _buildSearchSection<InstitutionModel>(
           title: 'Instituições',
           stream: service.searchInstitutions(_searchQuery),
           itemBuilder: (i) => ListTile(
             leading: const Icon(Icons.business, color: Color(0xFF00D1FF)),
             title: Text(i.name, style: const TextStyle(color: Colors.white)),
-            subtitle: AiTranslatedText(i.address, style: const TextStyle(color: Colors.white54, fontSize: 12)),
-            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const InstitutionManagementScreen())),
+            subtitle: AiTranslatedText(i.address,
+                style: const TextStyle(color: Colors.white54, fontSize: 12)),
+            onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (_) => const InstitutionManagementScreen())),
           ),
         ),
-        
         _buildSearchSection<UserModel>(
           title: 'Utilizadores (Professores/Alunos)',
           stream: service.searchUsers(_searchQuery),
           itemBuilder: (u) => ListTile(
             leading: const Icon(Icons.person, color: Colors.orange),
             title: Text(u.name, style: const TextStyle(color: Colors.white)),
-            subtitle: Text('${u.email} • ${u.role.toString().split('.').last}', style: const TextStyle(color: Colors.white54, fontSize: 12)),
-            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const UserAccessScreen())),
+            subtitle: Text('${u.email} • ${u.role.toString().split('.').last}',
+                style: const TextStyle(color: Colors.white54, fontSize: 12)),
+            onTap: () => Navigator.push(context,
+                MaterialPageRoute(builder: (_) => const UserAccessScreen())),
           ),
         ),
-        
         _buildSearchSection<Subject>(
           title: 'Disciplinas',
           stream: service.searchSubjects(_searchQuery),
           itemBuilder: (s) => ListTile(
             leading: const Icon(Icons.book, color: Color(0xFF7B61FF)),
             title: Text(s.name, style: const TextStyle(color: Colors.white)),
-            subtitle: AiTranslatedText('${s.level} • ${s.academicYear}', style: const TextStyle(color: Colors.white54, fontSize: 12)),
+            subtitle: AiTranslatedText('${s.level} • ${s.academicYear}',
+                style: const TextStyle(color: Colors.white54, fontSize: 12)),
             // Note: Admin might need a way to view subject details too, but for now we follow the pattern
           ),
         ),
@@ -279,13 +334,15 @@ class _AdminDashboardState extends State<AdminDashboard> {
       builder: (context, snapshot) {
         final results = snapshot.data!;
         if (results.isEmpty) return const SizedBox();
-        
+
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 8.0),
-              child: AiTranslatedText(title, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white70)),
+              child: AiTranslatedText(title,
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold, color: Colors.white70)),
             ),
             ...results.map((item) => itemBuilder(item)),
             const Divider(color: Colors.white10),
@@ -303,8 +360,8 @@ class _StatCard extends StatelessWidget {
   final VoidCallback onTap;
 
   const _StatCard({
-    required this.label, 
-    required this.value, 
+    required this.label,
+    required this.value,
     required this.color,
     required this.onTap,
   });
@@ -318,9 +375,13 @@ class _StatCard extends StatelessWidget {
           padding: const EdgeInsets.all(16),
           child: Column(
             children: [
-              Text(value, style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: color)),
+              Text(value,
+                  style: TextStyle(
+                      fontSize: 28, fontWeight: FontWeight.bold, color: color)),
               const SizedBox(height: 4),
-              AiTranslatedText(label, textAlign: TextAlign.center, style: const TextStyle(fontSize: 12, color: Colors.white54)),
+              AiTranslatedText(label,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 12, color: Colors.white54)),
             ],
           ),
         ),

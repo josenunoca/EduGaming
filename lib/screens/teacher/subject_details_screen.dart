@@ -77,7 +77,8 @@ class _SubjectDetailsScreenState extends State<SubjectDetailsScreen>
         ),
       ),
       body: StreamBuilder<Subject?>(
-        stream: context.read<FirebaseService>().getSubjectStream(widget.subject.id),
+        stream:
+            context.read<FirebaseService>().getSubjectStream(widget.subject.id),
         initialData: widget.subject,
         builder: (context, snapshot) {
           if (snapshot.hasData && snapshot.data != null) {
@@ -100,7 +101,7 @@ class _SubjectDetailsScreenState extends State<SubjectDetailsScreen>
                 _buildGamesTab(),
                 _buildStudentsTab(),
                 GradesManagementScreen(subject: _currentSubject),
-                SyllabusManagementScreen(subject: _currentSubject),
+                _buildSyllabusTab(),
               ],
             ),
           );
@@ -130,7 +131,8 @@ class _SubjectDetailsScreenState extends State<SubjectDetailsScreen>
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => ExamMonitorScreen(subject: _currentSubject),
+                          builder: (context) =>
+                              ExamMonitorScreen(subject: _currentSubject),
                         ),
                       );
                     },
@@ -206,11 +208,10 @@ class _SubjectDetailsScreenState extends State<SubjectDetailsScreen>
                                         Colors.white.withOpacity(0.05),
                                   ),
                                   ActionChip(
-                                    label: const AiTranslatedText(
-                                        'Editar',
+                                    label: const AiTranslatedText('Editar',
                                         style: TextStyle(fontSize: 11)),
-                                    onPressed: () =>
-                                        _showAddEvaluationDialog(editableComponent: comp),
+                                    onPressed: () => _showAddEvaluationDialog(
+                                        editableComponent: comp),
                                     backgroundColor:
                                         Colors.white.withOpacity(0.05),
                                   ),
@@ -220,8 +221,10 @@ class _SubjectDetailsScreenState extends State<SubjectDetailsScreen>
                                             fontSize: 11,
                                             color: Colors.redAccent)),
                                     onPressed: () async {
-                                      final service = context.read<FirebaseService>();
-                                      final hasResults = await service.hasEvaluationResults(
+                                      final service =
+                                          context.read<FirebaseService>();
+                                      final hasResults =
+                                          await service.hasEvaluationResults(
                                         _currentSubject.id,
                                         gameIds: comp.contentIds,
                                       );
@@ -232,13 +235,13 @@ class _SubjectDetailsScreenState extends State<SubjectDetailsScreen>
                                       }
 
                                       final confirmed = await _confirmDeletetion(
-                                        'Eliminar Componente',
-                                        'Tem a certeza que quer eliminar esta componente de avaliação? Todos os vínculos com jogos e ficheiros serão removidos desta regra.'
-                                      );
+                                          'Eliminar Componente',
+                                          'Tem a certeza que quer eliminar esta componente de avaliação? Todos os vínculos com jogos e ficheiros serão removidos desta regra.');
 
                                       if (confirmed == true && mounted) {
                                         setState(() {
-                                          _currentSubject.evaluationComponents.removeAt(index);
+                                          _currentSubject.evaluationComponents
+                                              .removeAt(index);
                                           _updateSubject();
                                         });
                                       }
@@ -265,7 +268,8 @@ class _SubjectDetailsScreenState extends State<SubjectDetailsScreen>
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF1E293B),
-        title: const AiTranslatedText('Item Bloqueado', style: TextStyle(color: Colors.white)),
+        title: const AiTranslatedText('Item Bloqueado',
+            style: TextStyle(color: Colors.white)),
         content: const AiTranslatedText(
           'Este item não pode ser eliminado porque já existem resultados de alunos registados como prova de avaliação neste ano letivo. A integridade dos dados tem de ser mantida.',
           style: TextStyle(color: Colors.white70),
@@ -273,7 +277,8 @@ class _SubjectDetailsScreenState extends State<SubjectDetailsScreen>
         actions: [
           ElevatedButton(
             onPressed: () => Navigator.pop(context),
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF00D1FF)),
+            style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF00D1FF)),
             child: const AiTranslatedText('Entendido'),
           ),
         ],
@@ -286,17 +291,21 @@ class _SubjectDetailsScreenState extends State<SubjectDetailsScreen>
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF1E293B),
-        title: AiTranslatedText(title, style: const TextStyle(color: Colors.white)),
-        content: AiTranslatedText(content, style: const TextStyle(color: Colors.white70)),
+        title: AiTranslatedText(title,
+            style: const TextStyle(color: Colors.white)),
+        content: AiTranslatedText(content,
+            style: const TextStyle(color: Colors.white70)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const AiTranslatedText('Cancelar', style: TextStyle(color: Colors.white54)),
+            child: const AiTranslatedText('Cancelar',
+                style: TextStyle(color: Colors.white54)),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
-            child: const AiTranslatedText('Eliminar', style: TextStyle(color: Colors.white)),
+            child: const AiTranslatedText('Eliminar',
+                style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -425,7 +434,10 @@ class _SubjectDetailsScreenState extends State<SubjectDetailsScreen>
                               title: Row(
                                 children: [
                                   Icon(_getFileIcon(content.type),
-                                      color: isEvaluation ? Colors.redAccent : const Color(0xFF00D1FF), size: 20),
+                                      color: isEvaluation
+                                          ? Colors.redAccent
+                                          : const Color(0xFF00D1FF),
+                                      size: 20),
                                   const SizedBox(width: 8),
                                   Expanded(
                                       child: AiTranslatedText(content.name,
@@ -445,7 +457,8 @@ class _SubjectDetailsScreenState extends State<SubjectDetailsScreen>
                                         style: const TextStyle(
                                             color: Colors.blueAccent,
                                             fontSize: 12,
-                                            decoration: TextDecoration.underline),
+                                            decoration:
+                                                TextDecoration.underline),
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                       ),
@@ -453,9 +466,11 @@ class _SubjectDetailsScreenState extends State<SubjectDetailsScreen>
                                   Row(
                                     children: [
                                       const SizedBox(width: 28),
-                                      AiTranslatedText(content.type.toUpperCase(),
+                                      AiTranslatedText(
+                                          content.type.toUpperCase(),
                                           style: const TextStyle(
-                                              color: Colors.white38, fontSize: 11)),
+                                              color: Colors.white38,
+                                              fontSize: 11)),
                                       const SizedBox(width: 8),
                                       _buildCategoryBadge(content.category),
                                     ],
@@ -467,11 +482,13 @@ class _SubjectDetailsScreenState extends State<SubjectDetailsScreen>
                                 children: [
                                   if (isEvaluation)
                                     IconButton(
-                                      icon: const Icon(Icons.analytics, color: Color(0xFF00D1FF), size: 20),
+                                      icon: const Icon(Icons.analytics,
+                                          color: Color(0xFF00D1FF), size: 20),
                                       onPressed: () {
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          const SnackBar(content: AiTranslatedText('Estatísticas de acesso em desenvolvimento.'))
-                                        );
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(const SnackBar(
+                                                content: AiTranslatedText(
+                                                    'Estatísticas de acesso em desenvolvimento.')));
                                       },
                                       tooltip: 'Estatísticas',
                                     ),
@@ -484,7 +501,8 @@ class _SubjectDetailsScreenState extends State<SubjectDetailsScreen>
                                 ],
                               ),
                             ),
-                            const Divider(height: 1, color: Colors.white10, indent: 56),
+                            const Divider(
+                                height: 1, color: Colors.white10, indent: 56),
                           ],
                         ),
                       );
@@ -663,16 +681,25 @@ class _SubjectDetailsScreenState extends State<SubjectDetailsScreen>
       stream: service.getAiGamesBySubject(_currentSubject.id),
       builder: (context, snapshot) {
         final aiGames = snapshot.data ?? [];
-        final evalContents =
-            _currentSubject.contents.where((c) => c.category != 'support').toList();
-        
+        final evalContents = _currentSubject.contents
+            .where((c) => c.category != 'support')
+            .toList();
+
         final allEvalItems = [
-          ...evalContents.map((c) =>
-              {'name': c.name, 'weight': c.weight, 'type': c.category, 'id': c.id}),
+          ...evalContents.map((c) => {
+                'name': c.name,
+                'weight': c.weight,
+                'type': c.category,
+                'id': c.id
+              }),
           ..._currentSubject.games.map((g) =>
               {'name': g.name, 'weight': g.weight, 'type': 'game', 'id': g.id}),
-          ...aiGames.map((g) =>
-              {'name': g.title, 'weight': 1.0, 'type': 'ai_game', 'id': g.id}), // Default weight 1.0 for AiGames
+          ...aiGames.map((g) => {
+                'name': g.title,
+                'weight': 1.0,
+                'type': 'ai_game',
+                'id': g.id
+              }), // Default weight 1.0 for AiGames
         ];
 
         double totalWeight = 0;
@@ -706,82 +733,93 @@ class _SubjectDetailsScreenState extends State<SubjectDetailsScreen>
               Expanded(
                 child: allEvalItems.isEmpty
                     ? const Center(
-                        child: AiTranslatedText('Nenhum exame ou jogo configurado.',
+                        child: AiTranslatedText(
+                            'Nenhum exame ou jogo configurado.',
                             style: TextStyle(color: Colors.white38)))
-                : ListView.builder(
-                    itemCount: allEvalItems.length,
-                    itemBuilder: (context, index) {
-                      final item = allEvalItems[index];
-                      final bool isAiGame = item['type'] == 'ai_game';
-                      
-                      return Card(
-                        color: Colors.white.withValues(alpha: 0.05),
-                        margin: const EdgeInsets.only(bottom: 8),
-                        child: ListTile(
-                          leading: _buildCategoryBadge(item['type'] as String),
-                          title: AiTranslatedText(item['name'] as String,
-                              style: const TextStyle(color: Colors.white)),
-                          subtitle: Text(
-                            'Peso: ${item['weight']}',
-                            style: const TextStyle(color: Color(0xFF00D1FF), fontSize: 11),
-                          ),
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              if (isAiGame)
-                                IconButton(
-                                  icon: const Icon(Icons.analytics, color: Color(0xFF00D1FF)),
-                                  onPressed: () {
-                                    final gameObj = aiGames.firstWhere((g) => g.id == item['id']);
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(builder: (_) => AiGameRankingScreen(game: gameObj)),
-                                    );
-                                  },
-                                  tooltip: 'Estatísticas Detalhadas',
-                                ),
-                              IconButton(
-                                icon: const Icon(Icons.delete_outline,
-                                    color: Colors.white24, size: 20),
-                                onPressed: () async {
-                                  final service = context.read<FirebaseService>();
-                                  final hasResults = await service.hasEvaluationResults(
-                                    _currentSubject.id,
-                                    gameId: item['id'] as String,
-                                  );
+                    : ListView.builder(
+                        itemCount: allEvalItems.length,
+                        itemBuilder: (context, index) {
+                          final item = allEvalItems[index];
+                          final bool isAiGame = item['type'] == 'ai_game';
 
-                                  if (hasResults) {
-                                    if (mounted) _showLockedItemDialog();
-                                    return;
-                                  }
-
-                                  final confirmed = await _confirmDeletetion(
-                                    'Eliminar Jogo/Exame',
-                                    'Tem a certeza que quer eliminar este item de avaliação?'
-                                  );
-
-                                  if (confirmed == true && mounted) {
-                                    if (item['type'] == 'ai_game') {
-                                      await service.deleteAiGame(item['id'] as String);
-                                    } else {
-                                      await service.deleteSubjectContent(
-                                          _currentSubject.id, item['id'] as String);
-                                    }
-                                    setState(() {
-                                      _currentSubject.contents
-                                          .removeWhere((c) => c.id == item['id']);
-                                      _currentSubject.games
-                                          .removeWhere((g) => g.id == item['id']);
-                                    });
-                                  }
-                                },
+                          return Card(
+                            color: Colors.white.withValues(alpha: 0.05),
+                            margin: const EdgeInsets.only(bottom: 8),
+                            child: ListTile(
+                              leading:
+                                  _buildCategoryBadge(item['type'] as String),
+                              title: AiTranslatedText(item['name'] as String,
+                                  style: const TextStyle(color: Colors.white)),
+                              subtitle: Text(
+                                'Peso: ${item['weight']}',
+                                style: const TextStyle(
+                                    color: Color(0xFF00D1FF), fontSize: 11),
                               ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  ),
+                              trailing: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  if (isAiGame)
+                                    IconButton(
+                                      icon: const Icon(Icons.analytics,
+                                          color: Color(0xFF00D1FF)),
+                                      onPressed: () {
+                                        final gameObj = aiGames.firstWhere(
+                                            (g) => g.id == item['id']);
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                              builder: (_) =>
+                                                  AiGameRankingScreen(
+                                                      game: gameObj)),
+                                        );
+                                      },
+                                      tooltip: 'Estatísticas Detalhadas',
+                                    ),
+                                  IconButton(
+                                    icon: const Icon(Icons.delete_outline,
+                                        color: Colors.white24, size: 20),
+                                    onPressed: () async {
+                                      final service =
+                                          context.read<FirebaseService>();
+                                      final hasResults =
+                                          await service.hasEvaluationResults(
+                                        _currentSubject.id,
+                                        gameId: item['id'] as String,
+                                      );
+
+                                      if (hasResults) {
+                                        if (mounted) _showLockedItemDialog();
+                                        return;
+                                      }
+
+                                      final confirmed = await _confirmDeletetion(
+                                          'Eliminar Jogo/Exame',
+                                          'Tem a certeza que quer eliminar este item de avaliação?');
+
+                                      if (confirmed == true && mounted) {
+                                        if (item['type'] == 'ai_game') {
+                                          await service.deleteAiGame(
+                                              item['id'] as String);
+                                        } else {
+                                          await service.deleteSubjectContent(
+                                              _currentSubject.id,
+                                              item['id'] as String);
+                                        }
+                                        setState(() {
+                                          _currentSubject.contents.removeWhere(
+                                              (c) => c.id == item['id']);
+                                          _currentSubject.games.removeWhere(
+                                              (g) => g.id == item['id']);
+                                        });
+                                      }
+                                    },
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
               ),
               Container(
                 padding: const EdgeInsets.all(16),
@@ -857,7 +895,8 @@ class _SubjectDetailsScreenState extends State<SubjectDetailsScreen>
 
                 return StreamBuilder<List<UserModel>>(
                   stream: _searchQuery.isEmpty
-                      ? service.getUsers() // Fallback to all or just show enrolled? We probably want to limit all users to students.
+                      ? service
+                          .getUsers() // Fallback to all or just show enrolled? We probably want to limit all users to students.
                       : service.searchUsers(_searchQuery),
                   builder: (context, userSnapshot) {
                     if (userSnapshot.connectionState ==
@@ -865,9 +904,8 @@ class _SubjectDetailsScreenState extends State<SubjectDetailsScreen>
                       return const Center(child: CircularProgressIndicator());
                     }
                     final users = userSnapshot.data ?? [];
-                    final students = users
-                        .where((u) => u.role == UserRole.student)
-                        .toList();
+                    final students =
+                        users.where((u) => u.role == UserRole.student).toList();
 
                     if (students.isEmpty) {
                       return const Center(
@@ -905,10 +943,18 @@ class _SubjectDetailsScreenState extends State<SubjectDetailsScreen>
                                     style: TextStyle(
                                         fontSize: 10, color: Colors.white70)),
                                 Checkbox(
-                                  value: enrollments.firstWhere((e) => e.userId == student.id && e.status == 'accepted').isSuspended,
+                                  value: enrollments
+                                      .firstWhere((e) =>
+                                          e.userId == student.id &&
+                                          e.status == 'accepted')
+                                      .isSuspended,
                                   onChanged: (bool? value) async {
-                                    final enrollment = enrollments.firstWhere((e) => e.userId == student.id && e.status == 'accepted');
-                                    await service.toggleEnrollmentSuspension(enrollment.id, value ?? false);
+                                    final enrollment = enrollments.firstWhere(
+                                        (e) =>
+                                            e.userId == student.id &&
+                                            e.status == 'accepted');
+                                    await service.toggleEnrollmentSuspension(
+                                        enrollment.id, value ?? false);
                                   },
                                   activeColor: Colors.red,
                                 ),
@@ -924,10 +970,14 @@ class _SubjectDetailsScreenState extends State<SubjectDetailsScreen>
                                     );
                                   } else if (value == false && isEnrolled) {
                                     // Find the enrollment ID to remove or reject it
-                                    final enrollmentToRemove = enrollments.firstWhere(
-                                          (e) => e.userId == student.id && e.status == 'accepted',
+                                    final enrollmentToRemove =
+                                        enrollments.firstWhere(
+                                      (e) =>
+                                          e.userId == student.id &&
+                                          e.status == 'accepted',
                                     );
-                                    await service.rejectEnrollment(enrollmentToRemove.id);
+                                    await service.rejectEnrollment(
+                                        enrollmentToRemove.id);
                                   }
                                 },
                                 activeColor: const Color(0xFF00D1FF),
@@ -954,17 +1004,22 @@ class _SubjectDetailsScreenState extends State<SubjectDetailsScreen>
       return Icons.play_circle_outline;
     }
     if (type.contains('audio') || type.contains('mp3')) return Icons.audiotrack;
-    if (type.contains('jpg') || type.contains('png') || type.contains('image')) {
+    if (type.contains('jpg') ||
+        type.contains('png') ||
+        type.contains('image')) {
       return Icons.image;
     }
     return Icons.insert_drive_file;
   }
 
   void _showAddEvaluationDialog({EvaluationComponent? editableComponent}) {
-    final nameController = TextEditingController(text: editableComponent?.name ?? '');
-    final weightController = TextEditingController(text: ((editableComponent?.weight ?? 0.2) * 100).toStringAsFixed(0));
-    final pinController = TextEditingController(text: editableComponent?.pin ?? '');
-    
+    final nameController =
+        TextEditingController(text: editableComponent?.name ?? '');
+    final weightController = TextEditingController(
+        text: ((editableComponent?.weight ?? 0.2) * 100).toStringAsFixed(0));
+    final pinController =
+        TextEditingController(text: editableComponent?.pin ?? '');
+
     DateTime? startTime = editableComponent?.startTime;
     DateTime? endTime = editableComponent?.endTime;
 
@@ -973,7 +1028,10 @@ class _SubjectDetailsScreenState extends State<SubjectDetailsScreen>
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
           backgroundColor: const Color(0xFF1E293B),
-          title: Text(editableComponent == null ? 'Nova Componente' : 'Editar Componente',
+          title: Text(
+              editableComponent == null
+                  ? 'Nova Componente'
+                  : 'Editar Componente',
               style: const TextStyle(color: Colors.white)),
           content: SingleChildScrollView(
             child: Column(
@@ -982,8 +1040,8 @@ class _SubjectDetailsScreenState extends State<SubjectDetailsScreen>
                 TextField(
                     controller: nameController,
                     style: const TextStyle(color: Colors.white),
-                    decoration:
-                        const InputDecoration(labelText: 'Nome (Ex: Exame, TPC)')),
+                    decoration: const InputDecoration(
+                        labelText: 'Nome (Ex: Exame, TPC)')),
                 TextField(
                     controller: weightController,
                     keyboardType: TextInputType.number,
@@ -992,12 +1050,19 @@ class _SubjectDetailsScreenState extends State<SubjectDetailsScreen>
                 TextField(
                     controller: pinController,
                     style: const TextStyle(color: Colors.white),
-                    decoration: const InputDecoration(labelText: 'PIN de Acesso (Opcional)')),
+                    decoration: const InputDecoration(
+                        labelText: 'PIN de Acesso (Opcional)')),
                 const SizedBox(height: 16),
                 ListTile(
-                  title: const Text('Data/Hora Início', style: TextStyle(color: Colors.white70, fontSize: 13)),
-                  subtitle: Text(startTime != null ? '${startTime!.day}/${startTime!.month}/${startTime!.year} ${startTime!.hour}:${startTime!.minute.toString().padLeft(2, '0')}' : 'Não definido', style: const TextStyle(color: Colors.white)),
-                  trailing: const Icon(Icons.calendar_today, color: Color(0xFF00D1FF)),
+                  title: const Text('Data/Hora Início',
+                      style: TextStyle(color: Colors.white70, fontSize: 13)),
+                  subtitle: Text(
+                      startTime != null
+                          ? '${startTime!.day}/${startTime!.month}/${startTime!.year} ${startTime!.hour}:${startTime!.minute.toString().padLeft(2, '0')}'
+                          : 'Não definido',
+                      style: const TextStyle(color: Colors.white)),
+                  trailing: const Icon(Icons.calendar_today,
+                      color: Color(0xFF00D1FF)),
                   onTap: () async {
                     final date = await showDatePicker(
                       context: context,
@@ -1008,20 +1073,28 @@ class _SubjectDetailsScreenState extends State<SubjectDetailsScreen>
                     if (date != null && context.mounted) {
                       final time = await showTimePicker(
                         context: context,
-                        initialTime: TimeOfDay.fromDateTime(startTime ?? DateTime.now()),
+                        initialTime:
+                            TimeOfDay.fromDateTime(startTime ?? DateTime.now()),
                       );
                       if (time != null) {
                         setDialogState(() {
-                          startTime = DateTime(date.year, date.month, date.day, time.hour, time.minute);
+                          startTime = DateTime(date.year, date.month, date.day,
+                              time.hour, time.minute);
                         });
                       }
                     }
                   },
                 ),
                 ListTile(
-                  title: const Text('Data/Hora Fim', style: TextStyle(color: Colors.white70, fontSize: 13)),
-                  subtitle: Text(endTime != null ? '${endTime!.day}/${endTime!.month}/${endTime!.year} ${endTime!.hour}:${endTime!.minute.toString().padLeft(2, '0')}' : 'Não definido', style: const TextStyle(color: Colors.white)),
-                  trailing: const Icon(Icons.calendar_today, color: Color(0xFF00D1FF)),
+                  title: const Text('Data/Hora Fim',
+                      style: TextStyle(color: Colors.white70, fontSize: 13)),
+                  subtitle: Text(
+                      endTime != null
+                          ? '${endTime!.day}/${endTime!.month}/${endTime!.year} ${endTime!.hour}:${endTime!.minute.toString().padLeft(2, '0')}'
+                          : 'Não definido',
+                      style: const TextStyle(color: Colors.white)),
+                  trailing: const Icon(Icons.calendar_today,
+                      color: Color(0xFF00D1FF)),
                   onTap: () async {
                     final date = await showDatePicker(
                       context: context,
@@ -1032,11 +1105,13 @@ class _SubjectDetailsScreenState extends State<SubjectDetailsScreen>
                     if (date != null && context.mounted) {
                       final time = await showTimePicker(
                         context: context,
-                        initialTime: TimeOfDay.fromDateTime(endTime ?? DateTime.now()),
+                        initialTime:
+                            TimeOfDay.fromDateTime(endTime ?? DateTime.now()),
                       );
                       if (time != null) {
                         setDialogState(() {
-                          endTime = DateTime(date.year, date.month, date.day, time.hour, time.minute);
+                          endTime = DateTime(date.year, date.month, date.day,
+                              time.hour, time.minute);
                         });
                       }
                     }
@@ -1054,25 +1129,32 @@ class _SubjectDetailsScreenState extends State<SubjectDetailsScreen>
                 final weight = double.tryParse(weightController.text) ?? 0;
                 setState(() {
                   if (editableComponent != null) {
-                     final index = _currentSubject.evaluationComponents.indexWhere((c) => c.id == editableComponent.id);
-                     if (index != -1) {
-                       _currentSubject.evaluationComponents[index] = EvaluationComponent(
-                         id: editableComponent.id,
-                         name: nameController.text,
-                         weight: weight / 100,
-                         contentIds: editableComponent.contentIds,
-                         pin: pinController.text.trim().isEmpty ? null : pinController.text.trim(),
-                         startTime: startTime,
-                         endTime: endTime,
-                       );
-                     }
+                    final index = _currentSubject.evaluationComponents
+                        .indexWhere((c) => c.id == editableComponent.id);
+                    if (index != -1) {
+                      _currentSubject.evaluationComponents[index] =
+                          EvaluationComponent(
+                        id: editableComponent.id,
+                        name: nameController.text,
+                        weight: weight / 100,
+                        contentIds: editableComponent.contentIds,
+                        pin: pinController.text.trim().isEmpty
+                            ? null
+                            : pinController.text.trim(),
+                        startTime: startTime,
+                        endTime: endTime,
+                      );
+                    }
                   } else {
-                    _currentSubject.evaluationComponents.add(EvaluationComponent(
+                    _currentSubject.evaluationComponents
+                        .add(EvaluationComponent(
                       id: const Uuid().v4(),
                       name: nameController.text,
                       weight: weight / 100,
                       contentIds: [],
-                      pin: pinController.text.trim().isEmpty ? null : pinController.text.trim(),
+                      pin: pinController.text.trim().isEmpty
+                          ? null
+                          : pinController.text.trim(),
                       startTime: startTime,
                       endTime: endTime,
                     ));
@@ -1156,115 +1238,119 @@ class _SubjectDetailsScreenState extends State<SubjectDetailsScreen>
           content: SizedBox(
             width: double.maxFinite,
             child: StreamBuilder<List<AiGame>>(
-              stream: context.read<FirebaseService>().getAiGamesBySubject(_currentSubject.id),
-              builder: (context, snapshot) {
-                final aiGames = snapshot.data ?? [];
-                
-                if (eligibleContents.isEmpty && _currentSubject.games.isEmpty && aiGames.isEmpty) {
-                  return const Text('Não existem itens de avaliação para vincular.',
-                      style: TextStyle(color: Colors.white54));
-                }
+                stream: context
+                    .read<FirebaseService>()
+                    .getAiGamesBySubject(_currentSubject.id),
+                builder: (context, snapshot) {
+                  final aiGames = snapshot.data ?? [];
 
-                return ListView(
-                  shrinkWrap: true,
-                  children: [
-                    if (eligibleContents.isNotEmpty) ...[
-                      const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 8.0),
-                        child: Text('Ficheiros (Exames/Jogos)',
-                            style: TextStyle(
-                                color: Color(0xFF00D1FF),
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold)),
-                      ),
-                      ...eligibleContents.map((content) {
-                        final isLinked =
-                            component.contentIds.contains(content.id);
-                        return CheckboxListTile(
-                          title: Text(content.name,
-                              style: const TextStyle(
-                                  color: Colors.white, fontSize: 14)),
-                          value: isLinked,
-                          onChanged: (v) {
-                            setState(() {
-                              if (v == true) {
-                                component.contentIds.add(content.id);
-                              } else {
-                                component.contentIds.remove(content.id);
-                              }
-                              _updateSubject();
-                            });
-                            setDialogState(() {});
-                          },
-                        );
-                      }),
+                  if (eligibleContents.isEmpty &&
+                      _currentSubject.games.isEmpty &&
+                      aiGames.isEmpty) {
+                    return const Text(
+                        'Não existem itens de avaliação para vincular.',
+                        style: TextStyle(color: Colors.white54));
+                  }
+
+                  return ListView(
+                    shrinkWrap: true,
+                    children: [
+                      if (eligibleContents.isNotEmpty) ...[
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 8.0),
+                          child: Text('Ficheiros (Exames/Jogos)',
+                              style: TextStyle(
+                                  color: Color(0xFF00D1FF),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold)),
+                        ),
+                        ...eligibleContents.map((content) {
+                          final isLinked =
+                              component.contentIds.contains(content.id);
+                          return CheckboxListTile(
+                            title: Text(content.name,
+                                style: const TextStyle(
+                                    color: Colors.white, fontSize: 14)),
+                            value: isLinked,
+                            onChanged: (v) {
+                              setState(() {
+                                if (v == true) {
+                                  component.contentIds.add(content.id);
+                                } else {
+                                  component.contentIds.remove(content.id);
+                                }
+                                _updateSubject();
+                              });
+                              setDialogState(() {});
+                            },
+                          );
+                        }),
+                      ],
+                      if (_currentSubject.games.isNotEmpty) ...[
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 8.0),
+                          child: Text('Jogos (URL)',
+                              style: TextStyle(
+                                  color: Colors.orange,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold)),
+                        ),
+                        ..._currentSubject.games.map((game) {
+                          final isLinked =
+                              component.contentIds.contains(game.id);
+                          return CheckboxListTile(
+                            title: Text(game.name,
+                                style: const TextStyle(
+                                    color: Colors.white, fontSize: 14)),
+                            value: isLinked,
+                            onChanged: (v) {
+                              setState(() {
+                                if (v == true) {
+                                  component.contentIds.add(game.id);
+                                } else {
+                                  component.contentIds.remove(game.id);
+                                }
+                                _updateSubject();
+                              });
+                              setDialogState(() {});
+                            },
+                          );
+                        }),
+                      ],
+                      if (aiGames.isNotEmpty) ...[
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 8.0),
+                          child: Text('Jogos Gerados por IA',
+                              style: TextStyle(
+                                  color: Color(0xFF7B61FF),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold)),
+                        ),
+                        ...aiGames.map((game) {
+                          final isLinked =
+                              component.contentIds.contains(game.id);
+                          return CheckboxListTile(
+                            title: Text(game.title,
+                                style: const TextStyle(
+                                    color: Colors.white, fontSize: 14)),
+                            value: isLinked,
+                            onChanged: (v) {
+                              setState(() {
+                                if (v == true) {
+                                  component.contentIds.add(game.id);
+                                } else {
+                                  component.contentIds.remove(game.id);
+                                }
+                                _updateSubject();
+                              });
+                              setDialogState(() {});
+                            },
+                          );
+                        }),
+                      ],
                     ],
-                    if (_currentSubject.games.isNotEmpty) ...[
-                      const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 8.0),
-                        child: Text('Jogos (URL)',
-                            style: TextStyle(
-                                color: Colors.orange,
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold)),
-                      ),
-                      ..._currentSubject.games.map((game) {
-                        final isLinked =
-                            component.contentIds.contains(game.id);
-                        return CheckboxListTile(
-                          title: Text(game.name,
-                              style: const TextStyle(
-                                  color: Colors.white, fontSize: 14)),
-                          value: isLinked,
-                          onChanged: (v) {
-                            setState(() {
-                              if (v == true) {
-                                component.contentIds.add(game.id);
-                              } else {
-                                component.contentIds.remove(game.id);
-                              }
-                              _updateSubject();
-                            });
-                            setDialogState(() {});
-                          },
-                        );
-                      }),
-                    ],
-                    if (aiGames.isNotEmpty) ...[
-                      const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 8.0),
-                        child: Text('Jogos Gerados por IA',
-                            style: TextStyle(
-                                color: Color(0xFF7B61FF),
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold)),
-                      ),
-                      ...aiGames.map((game) {
-                        final isLinked =
-                            component.contentIds.contains(game.id);
-                        return CheckboxListTile(
-                          title: Text(game.title,
-                              style: const TextStyle(
-                                  color: Colors.white, fontSize: 14)),
-                          value: isLinked,
-                          onChanged: (v) {
-                            setState(() {
-                              if (v == true) {
-                                component.contentIds.add(game.id);
-                              } else {
-                                component.contentIds.remove(game.id);
-                              }
-                              _updateSubject();
-                            });
-                            setDialogState(() {});
-                          },
-                        );
-                      }),
-                    ],
-                  ],
-                );
-              }
-            ),
+                  );
+                }),
           ),
           actions: [
             TextButton(
@@ -1443,20 +1529,23 @@ class _SubjectDetailsScreenState extends State<SubjectDetailsScreen>
 
   Future<void> _confirmDeleteAiGame(String gameId) async {
     final service = context.read<FirebaseService>();
-    final hasResults = await service.hasEvaluationResults(_currentSubject.id, gameId: gameId);
+    final hasResults =
+        await service.hasEvaluationResults(_currentSubject.id, gameId: gameId);
 
     if (hasResults) {
       if (mounted) _showLockedItemDialog();
       return;
     }
 
-    final confirmed = await _confirmDeletetion(
-      'Eliminar Jogo AI',
-      'Tem a certeza que quer eliminar este jogo? Todos os dados associados serão removidos.'
-    );
+    final confirmed = await _confirmDeletetion('Eliminar Jogo AI',
+        'Tem a certeza que quer eliminar este jogo? Todos os dados associados serão removidos.');
 
     if (confirmed == true && mounted) {
       await service.deleteAiGame(gameId);
     }
+  }
+
+  Widget _buildSyllabusTab() {
+    return SyllabusManagementScreen(subject: _currentSubject);
   }
 }

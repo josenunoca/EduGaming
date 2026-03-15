@@ -23,8 +23,8 @@ class MessagingBadge extends StatelessWidget {
     return StreamBuilder<List<InternalMessage>>(
       stream: service.getInboxStream(userId),
       builder: (context, snapshot) {
-        final unreadCount = snapshot.hasData 
-            ? snapshot.data!.where((m) => !m.readBy.contains(userId)).length 
+        final unreadCount = snapshot.hasData
+            ? snapshot.data!.where((m) => !m.readBy.contains(userId)).length
             : 0;
 
         return Stack(

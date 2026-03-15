@@ -26,7 +26,7 @@ class StudentDashboard extends StatelessWidget {
       builder: (context, authSnapshot) {
         final currentUserId = authSnapshot.data?.uid ?? '';
         final effectiveStudentId = studentId ?? currentUserId;
-        
+
         if (currentUserId.isEmpty) {
           return const Scaffold(
               body: Center(child: CircularProgressIndicator()));
@@ -41,13 +41,16 @@ class StudentDashboard extends StatelessWidget {
                   body: Center(child: CircularProgressIndicator()));
             }
 
-            final bool isViewingAsParent = studentId != null && studentId != currentUserId;
+            final bool isViewingAsParent =
+                studentId != null && studentId != currentUserId;
 
             if (student.isSuspended) {
               return Scaffold(
                 backgroundColor: const Color(0xFF0F172A),
                 appBar: AppBar(
-                  title: AiTranslatedText(isViewingAsParent ? 'Conta Suspensa: ${student.name}' : 'Acesso Suspenso'),
+                  title: AiTranslatedText(isViewingAsParent
+                      ? 'Conta Suspensa: ${student.name}'
+                      : 'Acesso Suspenso'),
                   actions: [
                     if (!isViewingAsParent)
                       IconButton(
@@ -57,7 +60,8 @@ class StudentDashboard extends StatelessWidget {
                           if (context.mounted) {
                             Navigator.pushAndRemoveUntil(
                               context,
-                              MaterialPageRoute(builder: (_) => const LoginScreen()),
+                              MaterialPageRoute(
+                                  builder: (_) => const LoginScreen()),
                               (route) => false,
                             );
                           }
@@ -71,11 +75,14 @@ class StudentDashboard extends StatelessWidget {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                         Icon(Icons.lock_person, size: 80, color: Colors.red),
+                        Icon(Icons.lock_person, size: 80, color: Colors.red),
                         SizedBox(height: 24),
                         AiTranslatedText(
                           'Esta conta de aluno está suspensa.',
-                          style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold),
                           textAlign: TextAlign.center,
                         ),
                         SizedBox(height: 8),
@@ -93,7 +100,9 @@ class StudentDashboard extends StatelessWidget {
             return Scaffold(
               backgroundColor: const Color(0xFF0F172A),
               appBar: AppBar(
-                title: AiTranslatedText(isViewingAsParent ? 'Acompanhamento: ${student.name}' : 'Painel do Aluno'),
+                title: AiTranslatedText(isViewingAsParent
+                    ? 'Acompanhamento: ${student.name}'
+                    : 'Painel do Aluno'),
                 actions: [
                   if (!isViewingAsParent) ...[
                     IconButton(
@@ -110,7 +119,8 @@ class StudentDashboard extends StatelessWidget {
                       onPressed: () => Navigator.push(
                           context,
                           MaterialPageRoute(
-                              builder: (_) => CommunicationCenterScreen(forUserId: effectiveStudentId))),
+                              builder: (_) => CommunicationCenterScreen(
+                                  forUserId: effectiveStudentId))),
                     ),
                     IconButton(
                       icon: const Icon(Icons.logout),
@@ -190,56 +200,70 @@ class StudentDashboard extends StatelessWidget {
                                 padding: const EdgeInsets.only(bottom: 12),
                                 child: GlassCard(
                                   child: FutureBuilder<Subject?>(
-                                    future: service.getSubject(enrollment.subjectId),
-                                    builder: (context, subjectSnapshot) {
-                                      final subjectName = subjectSnapshot.data?.name ?? 'Disciplina ID: ${enrollment.subjectId}';
-                                      return ListTile(
-                                        title: AiTranslatedText(
-                                            subjectName,
-                                            style: const TextStyle(
-                                                color: Colors.white,
-                                                fontWeight: FontWeight.bold)),
-                                        subtitle: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            AiTranslatedText(
-                                                'Estado: ${_getStatusLabel(enrollment.status)}',
-                                                style: TextStyle(
-                                                    color: _getStatusColor(
-                                                        enrollment.status),
-                                                    fontSize: 12)),
-                                            if (enrollment.isSuspended)
-                                              const Padding(
-                                                padding: EdgeInsets.only(top: 4.0),
-                                                child: AiTranslatedText(
-                                                  'ACESSO SUSPENSO PELO DOCENTE',
-                                                  style: TextStyle(color: Colors.orange, fontSize: 10, fontWeight: FontWeight.bold),
-                                                ),
-                                              ),
-                                          ],
-                                        ),
-                                        trailing: (enrollment.status == 'accepted' && !enrollment.isSuspended)
-                                            ? const Icon(Icons.play_circle_fill,
-                                                color: Color(0xFF00D1FF))
-                                            : const Icon(Icons.lock_clock,
-                                                color: Colors.white24),
-                                        onTap: (enrollment.status == 'accepted' && !enrollment.isSuspended)
-                                            ? () {
-                                                Navigator.push(
-                                                  context,
-                                                  MaterialPageRoute(
-                                                    builder: (_) =>
-                                                        StudentSubjectScreen(
-                                                            subjectId: enrollment
-                                                                .subjectId,
-                                                            studentId: effectiveStudentId),
+                                      future: service
+                                          .getSubject(enrollment.subjectId),
+                                      builder: (context, subjectSnapshot) {
+                                        final subjectName = subjectSnapshot
+                                                .data?.name ??
+                                            'Disciplina ID: ${enrollment.subjectId}';
+                                        return ListTile(
+                                          title: AiTranslatedText(subjectName,
+                                              style: const TextStyle(
+                                                  color: Colors.white,
+                                                  fontWeight: FontWeight.bold)),
+                                          subtitle: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              AiTranslatedText(
+                                                  'Estado: ${_getStatusLabel(enrollment.status)}',
+                                                  style: TextStyle(
+                                                      color: _getStatusColor(
+                                                          enrollment.status),
+                                                      fontSize: 12)),
+                                              if (enrollment.isSuspended)
+                                                const Padding(
+                                                  padding:
+                                                      EdgeInsets.only(top: 4.0),
+                                                  child: AiTranslatedText(
+                                                    'ACESSO SUSPENSO PELO DOCENTE',
+                                                    style: TextStyle(
+                                                        color: Colors.orange,
+                                                        fontSize: 10,
+                                                        fontWeight:
+                                                            FontWeight.bold),
                                                   ),
-                                                );
-                                              }
-                                            : null,
-                                      );
-                                    }
-                                  ),
+                                                ),
+                                            ],
+                                          ),
+                                          trailing: (enrollment.status ==
+                                                      'accepted' &&
+                                                  !enrollment.isSuspended)
+                                              ? const Icon(
+                                                  Icons.play_circle_fill,
+                                                  color: Color(0xFF00D1FF))
+                                              : const Icon(Icons.lock_clock,
+                                                  color: Colors.white24),
+                                          onTap: (enrollment.status ==
+                                                      'accepted' &&
+                                                  !enrollment.isSuspended)
+                                              ? () {
+                                                  Navigator.push(
+                                                    context,
+                                                    MaterialPageRoute(
+                                                      builder: (_) =>
+                                                          StudentSubjectScreen(
+                                                              subjectId:
+                                                                  enrollment
+                                                                      .subjectId,
+                                                              studentId:
+                                                                  effectiveStudentId),
+                                                    ),
+                                                  );
+                                                }
+                                              : null,
+                                        );
+                                      }),
                                 ),
                               );
                             },

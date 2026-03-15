@@ -5,7 +5,8 @@ class Enrollment {
   final String studentEmail;
   final String subjectId;
   final String institutionId;
-  final String status; // 'pending_admin' | 'pending_teacher' | 'accepted' | 'rejected'
+  final String
+      status; // 'pending_admin' | 'pending_teacher' | 'accepted' | 'rejected'
   final bool isSuspended;
   final bool isSealed;
   final double? finalGrade;
@@ -113,7 +114,8 @@ class EvaluationComponent {
       weight: (map['weight'] as num? ?? 0.0).toDouble(),
       contentIds: List<String>.from(map['contentIds'] ?? []),
       pin: map['pin'],
-      startTime: map['startTime'] != null ? DateTime.parse(map['startTime']) : null,
+      startTime:
+          map['startTime'] != null ? DateTime.parse(map['startTime']) : null,
       endTime: map['endTime'] != null ? DateTime.parse(map['endTime']) : null,
     );
   }
@@ -173,7 +175,9 @@ class GameQuestion {
     required this.correctOptionIndex,
     required this.points,
     required this.timeLimitSeconds,
-    this.allowedAnswerTypes = const ['options'], // 'options', 'text', 'audio', 'image'
+    this.allowedAnswerTypes = const [
+      'options'
+    ], // 'options', 'text', 'audio', 'image'
     this.evaluationCriteria,
   });
 
@@ -198,7 +202,8 @@ class GameQuestion {
       correctOptionIndex: map['correctOptionIndex'] ?? 0,
       points: (map['points'] as num? ?? 10.0).toDouble(),
       timeLimitSeconds: map['timeLimitSeconds'] ?? 20,
-      allowedAnswerTypes: List<String>.from(map['allowedAnswerTypes'] ?? ['options']),
+      allowedAnswerTypes:
+          List<String>.from(map['allowedAnswerTypes'] ?? ['options']),
       evaluationCriteria: map['evaluationCriteria'],
     );
   }
@@ -256,7 +261,9 @@ class AiGame {
       subjectId: map['subjectId'] ?? '',
       sourceContentIds: List<String>.from(map['sourceContentIds'] ?? []),
       imageUrl: map['imageUrl'],
-      settings: map['settings'] != null ? Map<String, dynamic>.from(map['settings']) : null,
+      settings: map['settings'] != null
+          ? Map<String, dynamic>.from(map['settings'])
+          : null,
       pin: map['pin'],
     );
   }
@@ -313,6 +320,8 @@ class SyllabusSession {
   final String? proposedSummary;
   final String? finalSummary;
   final bool isFinalized;
+  final String? startTime; // HH:mm
+  final String? endTime; // HH:mm
 
   SyllabusSession({
     required this.id,
@@ -324,6 +333,8 @@ class SyllabusSession {
     this.proposedSummary,
     this.finalSummary,
     this.isFinalized = false,
+    this.startTime,
+    this.endTime,
   });
 
   Map<String, dynamic> toMap() {
@@ -337,6 +348,8 @@ class SyllabusSession {
       if (proposedSummary != null) 'proposedSummary': proposedSummary,
       if (finalSummary != null) 'finalSummary': finalSummary,
       'isFinalized': isFinalized,
+      if (startTime != null) 'startTime': startTime,
+      if (endTime != null) 'endTime': endTime,
     };
   }
 
@@ -351,6 +364,8 @@ class SyllabusSession {
       proposedSummary: map['proposedSummary'],
       finalSummary: map['finalSummary'],
       isFinalized: map['isFinalized'] ?? false,
+      startTime: map['startTime'],
+      endTime: map['endTime'],
     );
   }
 }
@@ -369,13 +384,14 @@ class Subject {
   final List<GameContent> games;
   final List<EvaluationComponent> evaluationComponents;
   final String? scientificArea;
+  final String? programDescription;
   final PautaStatus pautaStatus;
   final double teachingHours;
   final double nonTeachingHours;
   final DateTime? sealedAt;
   final String? sealedBy;
   final List<SyllabusSession> sessions;
-  
+
   // Marketplace & Revenue
   final double price;
   final String currency;
@@ -393,6 +409,7 @@ class Subject {
     required this.games,
     this.evaluationComponents = const [],
     this.scientificArea,
+    this.programDescription,
     this.pautaStatus = PautaStatus.draft,
     this.teachingHours = 0.0,
     this.nonTeachingHours = 0.0,
@@ -418,6 +435,7 @@ class Subject {
       'evaluationComponents':
           evaluationComponents.map((e) => e.toMap()).toList(),
       'scientificArea': scientificArea,
+      'programDescription': programDescription,
       'pautaStatus': pautaStatus.name,
       'teachingHours': teachingHours,
       'nonTeachingHours': nonTeachingHours,
@@ -450,13 +468,15 @@ class Subject {
           .map((e) => EvaluationComponent.fromMap(e))
           .toList(),
       scientificArea: map['scientificArea'],
+      programDescription: map['programDescription'],
       pautaStatus: PautaStatus.values.firstWhere(
         (e) => e.name == (map['pautaStatus'] ?? 'draft'),
         orElse: () => PautaStatus.draft,
       ),
       teachingHours: (map['teachingHours'] as num? ?? 0.0).toDouble(),
       nonTeachingHours: (map['nonTeachingHours'] as num? ?? 0.0).toDouble(),
-      sealedAt: map['sealedAt'] != null ? DateTime.parse(map['sealedAt']) : null,
+      sealedAt:
+          map['sealedAt'] != null ? DateTime.parse(map['sealedAt']) : null,
       sealedBy: map['sealedBy'],
       sessions: (map['sessions'] as List? ?? [])
           .map((e) => SyllabusSession.fromMap(e))
@@ -477,9 +497,12 @@ class AiGameResult {
   final double score;
   final List<int> correctAnswers; // Indices of questions answered correctly
   final List<int> incorrectAnswers; // Indices of questions answered incorrectly
-  final Map<int, int> selectedOptions; // New field: question index -> selected option index
-  final Map<int, Map<String, dynamic>> studentResponses; // questionIndex -> { 'type': 'text'|'audio'|'image', 'value': 'text'|'url' }
-  final Map<int, Map<String, dynamic>> aiGradingDetails; // questionIndex -> { 'suggestedScore': 8.5, 'reasoning': '...' }
+  final Map<int, int>
+      selectedOptions; // New field: question index -> selected option index
+  final Map<int, Map<String, dynamic>>
+      studentResponses; // questionIndex -> { 'type': 'text'|'audio'|'image', 'value': 'text'|'url' }
+  final Map<int, Map<String, dynamic>>
+      aiGradingDetails; // questionIndex -> { 'suggestedScore': 8.5, 'reasoning': '...' }
   final Map<int, double> teacherAdjustments; // questionIndex -> score
   final DateTime playedAt;
   final bool isEvaluation; // New field to distinguish mode
@@ -494,8 +517,10 @@ class AiGameResult {
     required this.correctAnswers,
     required this.incorrectAnswers,
     this.selectedOptions = const {},
-    this.studentResponses = const {}, // questionIndex -> { 'type': 'text'|'audio'|'image', 'value': 'text'|'url' }
-    this.aiGradingDetails = const {}, // questionIndex -> { 'suggestedScore': 8.5, 'reasoning': '...' }
+    this.studentResponses =
+        const {}, // questionIndex -> { 'type': 'text'|'audio'|'image', 'value': 'text'|'url' }
+    this.aiGradingDetails =
+        const {}, // questionIndex -> { 'suggestedScore': 8.5, 'reasoning': '...' }
     this.teacherAdjustments = const {}, // questionIndex -> score
     required this.playedAt,
     this.isEvaluation = false,
@@ -511,10 +536,14 @@ class AiGameResult {
       'score': score,
       'correctAnswers': correctAnswers,
       'incorrectAnswers': incorrectAnswers,
-      'selectedOptions': selectedOptions.map((k, v) => MapEntry(k.toString(), v)),
-      'studentResponses': studentResponses.map((k, v) => MapEntry(k.toString(), v)),
-      'aiGradingDetails': aiGradingDetails.map((k, v) => MapEntry(k.toString(), v)),
-      'teacherAdjustments': teacherAdjustments.map((k, v) => MapEntry(k.toString(), v)),
+      'selectedOptions':
+          selectedOptions.map((k, v) => MapEntry(k.toString(), v)),
+      'studentResponses':
+          studentResponses.map((k, v) => MapEntry(k.toString(), v)),
+      'aiGradingDetails':
+          aiGradingDetails.map((k, v) => MapEntry(k.toString(), v)),
+      'teacherAdjustments':
+          teacherAdjustments.map((k, v) => MapEntry(k.toString(), v)),
       'playedAt': playedAt.toIso8601String(),
       'isEvaluation': isEvaluation,
     };
@@ -536,10 +565,12 @@ class AiGameResult {
         ),
       ),
       studentResponses: (map['studentResponses'] as Map? ?? {}).map(
-        (k, v) => MapEntry(int.parse(k.toString()), Map<String, dynamic>.from(v)),
+        (k, v) =>
+            MapEntry(int.parse(k.toString()), Map<String, dynamic>.from(v)),
       ),
       aiGradingDetails: (map['aiGradingDetails'] as Map? ?? {}).map(
-        (k, v) => MapEntry(int.parse(k.toString()), Map<String, dynamic>.from(v)),
+        (k, v) =>
+            MapEntry(int.parse(k.toString()), Map<String, dynamic>.from(v)),
       ),
       teacherAdjustments: (map['teacherAdjustments'] as Map? ?? {}).map(
         (k, v) => MapEntry(int.parse(k.toString()), (v as num).toDouble()),
@@ -604,7 +635,7 @@ class AdvancedScoreStats {
   final double max;
   final double q1;
   final double q3;
-  final List<int> histogramBins; 
+  final List<int> histogramBins;
   final int totalParticipants;
   final List<QuestionStat> questionStats;
   final List<QuestionStat> topQuestions;
@@ -643,8 +674,10 @@ class AdvancedScoreStats {
       'questionStats': questionStats.map((e) => e.toMap()).toList(),
       'topQuestions': topQuestions.map((e) => e.toMap()).toList(),
       'bottomQuestions': bottomQuestions.map((e) => e.toMap()).toList(),
-      if (topStudents != null) 'topStudents': topStudents!.map((e) => e.toMap()).toList(),
-      if (bottomStudents != null) 'bottomStudents': bottomStudents!.map((e) => e.toMap()).toList(),
+      if (topStudents != null)
+        'topStudents': topStudents!.map((e) => e.toMap()).toList(),
+      if (bottomStudents != null)
+        'bottomStudents': bottomStudents!.map((e) => e.toMap()).toList(),
     };
   }
 
@@ -652,7 +685,8 @@ class AdvancedScoreStats {
     return AdvancedScoreStats(
       average: (map['average'] as num? ?? 0.0).toDouble(),
       median: (map['median'] as num? ?? 0.0).toDouble(),
-      modes: List<double>.from((map['modes'] as List? ?? []).map((e) => (e as num).toDouble())),
+      modes: List<double>.from(
+          (map['modes'] as List? ?? []).map((e) => (e as num).toDouble())),
       min: (map['min'] as num? ?? 0.0).toDouble(),
       max: (map['max'] as num? ?? 0.0).toDouble(),
       q1: (map['q1'] as num? ?? 0.0).toDouble(),
@@ -668,17 +702,23 @@ class AdvancedScoreStats {
       bottomQuestions: (map['bottomQuestions'] as List? ?? [])
           .map((e) => QuestionStat.fromMap(e))
           .toList(),
-      topStudents: (map['topStudents'] as List?)?.map((e) => AiGameResult.fromMap(e)).toList(),
-      bottomStudents: (map['bottomStudents'] as List?)?.map((e) => AiGameResult.fromMap(e)).toList(),
+      topStudents: (map['topStudents'] as List?)
+          ?.map((e) => AiGameResult.fromMap(e))
+          .toList(),
+      bottomStudents: (map['bottomStudents'] as List?)
+          ?.map((e) => AiGameResult.fromMap(e))
+          .toList(),
     );
   }
 }
+
 class StudentGradeAdjustment {
   final String id;
   final String studentId;
   final String subjectId;
   final double? finalGradeOverride;
-  final Map<String, double> componentOverrides; // componentId -> value (0-20 scale)
+  final Map<String, double>
+      componentOverrides; // componentId -> value (0-20 scale)
   final String? notes;
 
   StudentGradeAdjustment({
@@ -771,8 +811,51 @@ class ExamSession {
       authorizedReentry: map['authorizedReentry'] ?? false,
       currentScore: (map['currentScore'] as num? ?? 0.0).toDouble(),
       currentQuestionIndex: map['currentQuestionIndex'] ?? 0,
-      startTime: DateTime.parse(map['startTime'] ?? DateTime.now().toIso8601String()),
-      lastHeartbeat: DateTime.parse(map['lastHeartbeat'] ?? DateTime.now().toIso8601String()),
+      startTime:
+          DateTime.parse(map['startTime'] ?? DateTime.now().toIso8601String()),
+      lastHeartbeat: DateTime.parse(
+          map['lastHeartbeat'] ?? DateTime.now().toIso8601String()),
+    );
+  }
+}
+
+class Attendance {
+  final String id;
+  final String userId;
+  final String userName;
+  final String subjectId;
+  final String sessionId;
+  final DateTime timestamp;
+
+  Attendance({
+    required this.id,
+    required this.userId,
+    required this.userName,
+    required this.subjectId,
+    required this.sessionId,
+    required this.timestamp,
+  });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'userId': userId,
+      'userName': userName,
+      'subjectId': subjectId,
+      'sessionId': sessionId,
+      'timestamp': timestamp.toIso8601String(),
+    };
+  }
+
+  factory Attendance.fromMap(Map<String, dynamic> map) {
+    return Attendance(
+      id: map['id'] ?? '',
+      userId: map['userId'] ?? '',
+      userName: map['userName'] ?? '',
+      subjectId: map['subjectId'] ?? '',
+      sessionId: map['sessionId'] ?? '',
+      timestamp:
+          DateTime.parse(map['timestamp'] ?? DateTime.now().toIso8601String()),
     );
   }
 }

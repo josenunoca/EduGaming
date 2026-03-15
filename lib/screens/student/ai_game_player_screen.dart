@@ -49,9 +49,10 @@ class _AiGamePlayerScreenState extends State<AiGamePlayerScreen> {
 
   // New state for evaluation mode
   final Map<int, int?> _selectedAnswers = {};
-  final Map<int, Map<String, dynamic>> _studentResponses = {}; // questionIndex -> { 'type': ..., 'value': ... }
+  final Map<int, Map<String, dynamic>> _studentResponses =
+      {}; // questionIndex -> { 'type': ..., 'value': ... }
   final TextEditingController _textResponseController = TextEditingController();
-  
+
   final _audioRecorder = AudioRecorder();
   final _imagePicker = ImagePicker();
   bool _isRecording = false;
@@ -77,9 +78,11 @@ class _AiGamePlayerScreenState extends State<AiGamePlayerScreen> {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
-    final existing = await context.read<FirebaseService>().getExamSession(user.uid, widget.game.id);
+    final existing = await context
+        .read<FirebaseService>()
+        .getExamSession(user.uid, widget.game.id);
     if (!mounted) return;
-    
+
     if (existing != null) {
       if (existing.status == 'completed') {
         setState(() {
@@ -88,25 +91,29 @@ class _AiGamePlayerScreenState extends State<AiGamePlayerScreen> {
         });
         return;
       }
-      
+
       if (existing.status == 'abandoned' && !existing.authorizedReentry) {
         setState(() {
           _isBlocked = true;
-          _blockMessage = 'A avaliação foi interrompida. Solicite autorização ao professor para continuar.';
+          _blockMessage =
+              'A avaliação foi interrompida. Solicite autorização ao professor para continuar.';
         });
         return;
       }
-      
+
       _currentSession = existing;
       // Mark as active again if it was authorized or just reopening
       if (!mounted) return;
-      await context.read<FirebaseService>().setExamSessionStatus(existing.id, 'active');
+      await context
+          .read<FirebaseService>()
+          .setExamSessionStatus(existing.id, 'active');
     } else {
       // Create new session
       final newSession = ExamSession(
         id: const Uuid().v4(),
         studentId: user.uid,
-        studentName: user.displayName ?? user.email?.split('@').first ?? 'Aluno',
+        studentName:
+            user.displayName ?? user.email?.split('@').first ?? 'Aluno',
         subjectId: widget.game.subjectId,
         gameId: widget.game.id,
         status: 'active',
@@ -127,10 +134,7 @@ class _AiGamePlayerScreenState extends State<AiGamePlayerScreen> {
     _heartbeatTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
       if (_currentSession != null && !_isFinished) {
         context.read<FirebaseService>().updateExamSessionHeartbeat(
-          _currentSession!.id, 
-          _score, 
-          _currentQuestionIndex
-        );
+            _currentSession!.id, _score, _currentQuestionIndex);
       }
     });
   }
@@ -225,15 +229,16 @@ class _AiGamePlayerScreenState extends State<AiGamePlayerScreen> {
       if (answer != null) {
         selectedOptions[i] = answer;
       }
-      
+
       // Points calculation for options
       if (answer != null && answer == q.correctOptionIndex) {
         corrects.add(i);
         finalScore += q.points;
-      } else if (answer != null) { // Only add to incorrects if an option was selected and it was wrong
+      } else if (answer != null) {
+        // Only add to incorrects if an option was selected and it was wrong
         incorrects.add(i);
       }
-      
+
       // If it's multimodal, we might need manual grading, so score stays 0 for now or uses special logic
       // For now, we only score multiple choice questions automatically.
       // Multimodal responses (text, audio, image) will be saved but not automatically scored here.
@@ -248,14 +253,18 @@ class _AiGamePlayerScreenState extends State<AiGamePlayerScreen> {
     _finishGame(selectedOptions, _studentResponses);
   }
 
-  void _finishGame([Map<int, int>? finalSelectedOptions, Map<int, Map<String, dynamic>>? studentResponses]) {
+  void _finishGame(
+      [Map<int, int>? finalSelectedOptions,
+      Map<int, Map<String, dynamic>>? studentResponses]) {
     setState(() => _isFinished = true);
     _heartbeatTimer?.cancel();
 
     if (_currentSession != null) {
-      context.read<FirebaseService>().setExamSessionStatus(_currentSession!.id, 'completed');
+      context
+          .read<FirebaseService>()
+          .setExamSessionStatus(_currentSession!.id, 'completed');
     }
-    
+
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       Map<int, int> optionsToSave = finalSelectedOptions ?? {};
@@ -269,7 +278,8 @@ class _AiGamePlayerScreenState extends State<AiGamePlayerScreen> {
         id: const Uuid().v4(),
         gameId: widget.game.id,
         studentId: user.uid,
-        studentName: user.displayName ?? user.email?.split('@').first ?? 'Aluno',
+        studentName:
+            user.displayName ?? user.email?.split('@').first ?? 'Aluno',
         subjectId: widget.game.subjectId,
         score: _score,
         correctAnswers: _correctAnswersIndices,
@@ -299,8 +309,10 @@ class _AiGamePlayerScreenState extends State<AiGamePlayerScreen> {
 
     setState(() => _isUploading = true);
     try {
-      final fileName = '${DateTime.now().millisecondsSinceEpoch}_${p.basename(filePath)}';
-      final ref = FirebaseStorage.instance.ref().child('evaluations/$folder/$fileName');
+      final fileName =
+          '${DateTime.now().millisecondsSinceEpoch}_${p.basename(filePath)}';
+      final ref =
+          FirebaseStorage.instance.ref().child('evaluations/$folder/$fileName');
       await ref.putFile(file);
       return await ref.getDownloadURL();
     } catch (e) {
@@ -315,8 +327,9 @@ class _AiGamePlayerScreenState extends State<AiGamePlayerScreen> {
     try {
       if (await _audioRecorder.hasPermission()) {
         final directory = await getApplicationDocumentsDirectory();
-        final path = p.join(directory.path, 'recording_${DateTime.now().millisecondsSinceEpoch}.m4a');
-        
+        final path = p.join(directory.path,
+            'recording_${DateTime.now().millisecondsSinceEpoch}.m4a');
+
         const config = RecordConfig();
         await _audioRecorder.start(config, path: path);
         setState(() => _isRecording = true);
@@ -330,7 +343,7 @@ class _AiGamePlayerScreenState extends State<AiGamePlayerScreen> {
     try {
       final path = await _audioRecorder.stop();
       setState(() => _isRecording = false);
-      
+
       if (path != null) {
         final url = await _uploadFile(path, 'audio');
         if (url != null) {
@@ -349,7 +362,8 @@ class _AiGamePlayerScreenState extends State<AiGamePlayerScreen> {
 
   Future<void> _takePhoto() async {
     try {
-      final XFile? photo = await _imagePicker.pickImage(source: ImageSource.camera);
+      final XFile? photo =
+          await _imagePicker.pickImage(source: ImageSource.camera);
       if (photo != null) {
         final url = await _uploadFile(photo.path, 'images');
         if (url != null) {
@@ -380,8 +394,12 @@ class _AiGamePlayerScreenState extends State<AiGamePlayerScreen> {
                 children: [
                   const Icon(Icons.lock, color: Colors.redAccent, size: 48),
                   const SizedBox(height: 16),
-                  Text(_blockMessage ?? 'Acesso Bloqueado', 
-                    style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                  Text(
+                    _blockMessage ?? 'Acesso Bloqueado',
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 24),
@@ -397,7 +415,9 @@ class _AiGamePlayerScreenState extends State<AiGamePlayerScreen> {
       );
     }
 
-    if (widget.game.pin != null && widget.game.pin!.isNotEmpty && !_pinVerified) {
+    if (widget.game.pin != null &&
+        widget.game.pin!.isNotEmpty &&
+        !_pinVerified) {
       return _buildPinEntry();
     }
 
@@ -413,182 +433,199 @@ class _AiGamePlayerScreenState extends State<AiGamePlayerScreen> {
         _showExitConfirmation();
       },
       child: Scaffold(
-      backgroundColor: const Color(0xFF0F172A),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
+        backgroundColor: const Color(0xFF0F172A),
+        body: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
+            ),
           ),
-        ),
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16),
-            child: Column(
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.close, color: Colors.white54),
-                      onPressed: () {
-                        if (widget.isEvaluation) {
-                          _showExitConfirmation();
-                        } else {
-                          Navigator.pop(context);
-                        }
-                      },
-                    ),
-                    if (!widget.isEvaluation)
-                      Text(
-                        'Score: ${_score.toInt()}',
-                        style: const TextStyle(
-                            color: Color(0xFF00D1FF),
-                            fontWeight: FontWeight.bold,
-                            fontSize: 18),
-                      ),
-                    if (widget.isEvaluation)
-                      const Chip(
-                        label: AiTranslatedText('MODO EXAME',
-                            style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 12)),
-                        backgroundColor: Colors.redAccent,
-                      ),
-                    if (!widget.isEvaluation)
-                      FutureBuilder<Subject?>(
-                        future: context.read<FirebaseService>().getSubject(widget.game.subjectId),
-                        builder: (context, snapshot) {
-                          if (!snapshot.hasData) return const SizedBox();
-                          final subject = snapshot.data!;
-                          final gameContents = subject.contents.where((c) => widget.game.sourceContentIds.contains(c.id)).toList();
-                          
-                          if (gameContents.isEmpty) return const SizedBox();
-
-                          return IconButton(
-                            icon: const Icon(Icons.auto_awesome, color: Colors.amber),
-                            onPressed: () {
-                              showModalBottomSheet(
-                                context: context,
-                                isScrollControlled: true,
-                                backgroundColor: Colors.transparent,
-                                builder: (context) => SizedBox(
-                                  height: MediaQuery.of(context).size.height * 0.8,
-                                  child: AiChatDialog(
-                                    selectedContents: gameContents,
-                                    isStudent: true,
-                                  ),
-                                ),
-                              );
-                            },
-                            tooltip: 'IA Professor: Pedir Ajuda',
-                          );
+          child: SafeArea(
+            child: Padding(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16),
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.close, color: Colors.white54),
+                        onPressed: () {
+                          if (widget.isEvaluation) {
+                            _showExitConfirmation();
+                          } else {
+                            Navigator.pop(context);
+                          }
                         },
                       ),
-                  ],
-                ),
-                LinearProgressIndicator(
-                  value: progress,
-                  backgroundColor: Colors.white10,
-                  color: const Color(0xFF7B61FF),
-                ),
-                const SizedBox(height: 20),
-                if (!widget.isEvaluation) ...[
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          SizedBox(
-                            width: 50,
-                            height: 50,
-                            child: CircularProgressIndicator(
-                              value: _timeLeft / q.timeLimitSeconds,
-                              color: _timeLeft < 5
-                                  ? Colors.redAccent
-                                  : const Color(0xFF00D1FF),
-                              backgroundColor: Colors.white10,
-                            ),
-                          ),
-                          Text(
-                            '$_timeLeft',
-                            style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 18),
-                          ),
-                        ],
-                      ),
+                      if (!widget.isEvaluation)
+                        Text(
+                          'Score: ${_score.toInt()}',
+                          style: const TextStyle(
+                              color: Color(0xFF00D1FF),
+                              fontWeight: FontWeight.bold,
+                              fontSize: 18),
+                        ),
+                      if (widget.isEvaluation)
+                        const Chip(
+                          label: AiTranslatedText('MODO EXAME',
+                              style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12)),
+                          backgroundColor: Colors.redAccent,
+                        ),
+                      if (!widget.isEvaluation)
+                        FutureBuilder<Subject?>(
+                          future: context
+                              .read<FirebaseService>()
+                              .getSubject(widget.game.subjectId),
+                          builder: (context, snapshot) {
+                            if (!snapshot.hasData) return const SizedBox();
+                            final subject = snapshot.data!;
+                            final gameContents = subject.contents
+                                .where((c) =>
+                                    widget.game.sourceContentIds.contains(c.id))
+                                .toList();
+
+                            if (gameContents.isEmpty) return const SizedBox();
+
+                            return IconButton(
+                              icon: const Icon(Icons.auto_awesome,
+                                  color: Colors.amber),
+                              onPressed: () {
+                                showModalBottomSheet(
+                                  context: context,
+                                  isScrollControlled: true,
+                                  backgroundColor: Colors.transparent,
+                                  builder: (context) => SizedBox(
+                                    height: MediaQuery.of(context).size.height *
+                                        0.8,
+                                    child: AiChatDialog(
+                                      selectedContents: gameContents,
+                                      isStudent: true,
+                                    ),
+                                  ),
+                                );
+                              },
+                              tooltip: 'IA Professor: Pedir Ajuda',
+                            );
+                          },
+                        ),
                     ],
                   ),
-                ],
-                const SizedBox(height: 20),
-                if (_isUploading)
-                  const LinearProgressIndicator(
-                    backgroundColor: Colors.white12,
-                    valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF00D1FF)),
+                  LinearProgressIndicator(
+                    value: progress,
+                    backgroundColor: Colors.white10,
+                    color: const Color(0xFF7B61FF),
                   ),
-                Expanded(
-                  child: SingleChildScrollView(
-                    child: Column(
+                  const SizedBox(height: 20),
+                  if (!widget.isEvaluation) ...[
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        if (widget.game.type == 'jigsaw' && widget.game.imageUrl != null)
-                          JigsawPuzzleWidget(
-                            imageUrl: widget.game.imageUrl!,
-                            onWin: _finishGame,
-                          )
-                        else if (widget.game.type == 'word_search')
-                          WordSearchWidget(
-                            words: widget.game.questions.map((q) => q.question).toList(),
-                            onWin: _finishGame,
-                          )
-                        else if (widget.game.type == 'memory' && widget.game.settings?['pairs'] != null)
-                          MemoryGameWidget(
-                            pairs: List<Map<String, String>>.from(
-                              (widget.game.settings!['pairs'] as List).map((p) => Map<String, String>.from(p))
+                        Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            SizedBox(
+                              width: 50,
+                              height: 50,
+                              child: CircularProgressIndicator(
+                                value: _timeLeft / q.timeLimitSeconds,
+                                color: _timeLeft < 5
+                                    ? Colors.redAccent
+                                    : const Color(0xFF00D1FF),
+                                backgroundColor: Colors.white10,
+                              ),
                             ),
-                            onWin: _finishGame,
-                          )
-                        else if (widget.game.type == 'matching' && widget.game.settings?['pairs'] != null)
-                          MatchingPairsWidget(
-                            pairs: List<Map<String, String>>.from(
-                              (widget.game.settings!['pairs'] as List).map((p) => Map<String, String>.from(p))
+                            Text(
+                              '$_timeLeft',
+                              style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 18),
                             ),
-                            onWin: _finishGame,
-                          )
-                        else ...[
-                          AiTranslatedText(
-                            q.question,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                                fontSize: 22,
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold),
-                          ),
-                          const SizedBox(height: 32),
-                          if (q.allowedAnswerTypes.contains('options')) ...[
-                            ...List.generate(
-                                q.options.length, (i) => _buildOption(i, q)),
-                            const SizedBox(height: 24),
                           ],
-                          if (q.allowedAnswerTypes.contains('text')) _buildTextInput(),
-                          if (q.allowedAnswerTypes.contains('audio')) _buildAudioInput(),
-                          if (q.allowedAnswerTypes.contains('image')) _buildImageInput(),
-                        ],
+                        ),
                       ],
                     ),
+                  ],
+                  const SizedBox(height: 20),
+                  if (_isUploading)
+                    const LinearProgressIndicator(
+                      backgroundColor: Colors.white12,
+                      valueColor:
+                          AlwaysStoppedAnimation<Color>(Color(0xFF00D1FF)),
+                    ),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      child: Column(
+                        children: [
+                          if (widget.game.type == 'jigsaw' &&
+                              widget.game.imageUrl != null)
+                            JigsawPuzzleWidget(
+                              imageUrl: widget.game.imageUrl!,
+                              onWin: _finishGame,
+                            )
+                          else if (widget.game.type == 'word_search')
+                            WordSearchWidget(
+                              words: widget.game.questions
+                                  .map((q) => q.question)
+                                  .toList(),
+                              onWin: _finishGame,
+                            )
+                          else if (widget.game.type == 'memory' &&
+                              widget.game.settings?['pairs'] != null)
+                            MemoryGameWidget(
+                              pairs: List<Map<String, String>>.from(
+                                  (widget.game.settings!['pairs'] as List)
+                                      .map((p) => Map<String, String>.from(p))),
+                              onWin: _finishGame,
+                            )
+                          else if (widget.game.type == 'matching' &&
+                              widget.game.settings?['pairs'] != null)
+                            MatchingPairsWidget(
+                              pairs: List<Map<String, String>>.from(
+                                  (widget.game.settings!['pairs'] as List)
+                                      .map((p) => Map<String, String>.from(p))),
+                              onWin: _finishGame,
+                            )
+                          else ...[
+                            AiTranslatedText(
+                              q.question,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                  fontSize: 22,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(height: 32),
+                            if (q.allowedAnswerTypes.contains('options')) ...[
+                              ...List.generate(
+                                  q.options.length, (i) => _buildOption(i, q)),
+                              const SizedBox(height: 24),
+                            ],
+                            if (q.allowedAnswerTypes.contains('text'))
+                              _buildTextInput(),
+                            if (q.allowedAnswerTypes.contains('audio'))
+                              _buildAudioInput(),
+                            if (q.allowedAnswerTypes.contains('image'))
+                              _buildImageInput(),
+                          ],
+                        ],
+                      ),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 16),
-                _buildNavigationButtons(),
-                const SizedBox(height: 8),
-                AiTranslatedText(
-                  'Pergunta ${_currentQuestionIndex + 1} de ${widget.game.questions.length}',
-                  style: const TextStyle(color: Colors.white38, fontSize: 12),
-                ),
+                  const SizedBox(height: 16),
+                  _buildNavigationButtons(),
+                  const SizedBox(height: 8),
+                  AiTranslatedText(
+                    'Pergunta ${_currentQuestionIndex + 1} de ${widget.game.questions.length}',
+                    style: const TextStyle(color: Colors.white38, fontSize: 12),
+                  ),
                 ],
               ),
             ),
@@ -720,16 +757,27 @@ class _AiGamePlayerScreenState extends State<AiGamePlayerScreen> {
                 ),
               ),
               if (!widget.isEvaluation && _showCorrectness && isCorrect)
-                const Icon(Icons.check_circle, color: Colors.greenAccent, size: 20)
-                  .animate().scale(duration: 200.ms).then().shake(),
-              if (!widget.isEvaluation && _showCorrectness && isSelected && !isCorrect)
+                const Icon(Icons.check_circle,
+                        color: Colors.greenAccent, size: 20)
+                    .animate()
+                    .scale(duration: 200.ms)
+                    .then()
+                    .shake(),
+              if (!widget.isEvaluation &&
+                  _showCorrectness &&
+                  isSelected &&
+                  !isCorrect)
                 const Icon(Icons.cancel, color: Colors.redAccent, size: 20)
-                  .animate().shake(),
+                    .animate()
+                    .shake(),
               if (widget.isEvaluation && isSelected)
-                const Icon(Icons.radio_button_checked, color: Color(0xFF00D1FF), size: 20),
+                const Icon(Icons.radio_button_checked,
+                    color: Color(0xFF00D1FF), size: 20),
             ],
           ),
-        ).animate(target: isSelected ? 1 : 0).scale(begin: const Offset(1, 1), end: const Offset(1.02, 1.02)),
+        )
+            .animate(target: isSelected ? 1 : 0)
+            .scale(begin: const Offset(1, 1), end: const Offset(1.02, 1.02)),
       ),
     );
   }
@@ -873,7 +921,8 @@ class _AiGamePlayerScreenState extends State<AiGamePlayerScreen> {
               hintStyle: const TextStyle(color: Colors.white24),
               fillColor: Colors.white.withValues(alpha: 0.05),
               filled: true,
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              border:
+                  OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
             ),
             onChanged: (val) {
               _studentResponses[_currentQuestionIndex] = {
@@ -888,7 +937,8 @@ class _AiGamePlayerScreenState extends State<AiGamePlayerScreen> {
   }
 
   Widget _buildAudioInput() {
-    final hasResponse = _studentResponses[_currentQuestionIndex]?['type'] == 'audio';
+    final hasResponse =
+        _studentResponses[_currentQuestionIndex]?['type'] == 'audio';
     return Padding(
       padding: const EdgeInsets.only(bottom: 24.0),
       child: Column(
@@ -902,17 +952,34 @@ class _AiGamePlayerScreenState extends State<AiGamePlayerScreen> {
             child: Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: _isRecording ? Colors.red.withValues(alpha: 0.2) : (hasResponse ? Colors.green.withValues(alpha: 0.2) : Colors.white.withValues(alpha: 0.05)),
+                color: _isRecording
+                    ? Colors.red.withValues(alpha: 0.2)
+                    : (hasResponse
+                        ? Colors.green.withValues(alpha: 0.2)
+                        : Colors.white.withValues(alpha: 0.05)),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: _isRecording ? Colors.red : (hasResponse ? Colors.green : Colors.white10)),
+                border: Border.all(
+                    color: _isRecording
+                        ? Colors.red
+                        : (hasResponse ? Colors.green : Colors.white10)),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(_isRecording ? Icons.stop : (hasResponse ? Icons.check_circle : Icons.mic), color: Colors.white),
+                  Icon(
+                      _isRecording
+                          ? Icons.stop
+                          : (hasResponse ? Icons.check_circle : Icons.mic),
+                      color: Colors.white),
                   const SizedBox(width: 12),
-                  AiTranslatedText(_isRecording ? 'Parar Gravação...' : (hasResponse ? 'Áudio Gravado com Sucesso' : 'Premia para Gravar Áudio'),
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  AiTranslatedText(
+                      _isRecording
+                          ? 'Parar Gravação...'
+                          : (hasResponse
+                              ? 'Áudio Gravado com Sucesso'
+                              : 'Premia para Gravar Áudio'),
+                      style: const TextStyle(
+                          color: Colors.white, fontWeight: FontWeight.bold)),
                 ],
               ),
             ),
@@ -943,27 +1010,33 @@ class _AiGamePlayerScreenState extends State<AiGamePlayerScreen> {
               decoration: BoxDecoration(
                 color: Colors.white.withValues(alpha: 0.05),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: hasResponse ? Colors.greenAccent : Colors.white10),
-                image: hasResponse && imageUrl != null ? DecorationImage(
-                  image: NetworkImage(imageUrl),
-                  fit: BoxFit.contain,
-                ) : null,
+                border: Border.all(
+                    color: hasResponse ? Colors.greenAccent : Colors.white10),
+                image: hasResponse && imageUrl != null
+                    ? DecorationImage(
+                        image: NetworkImage(imageUrl),
+                        fit: BoxFit.contain,
+                      )
+                    : null,
               ),
-              child: !hasResponse ? const Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.camera_alt, color: Colors.white, size: 40),
-                  SizedBox(height: 12),
-                  AiTranslatedText('Capturar Foto da Resposta',
-                      style: TextStyle(color: Colors.white54)),
-                ],
-              ) : null,
+              child: !hasResponse
+                  ? const Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.camera_alt, color: Colors.white, size: 40),
+                        SizedBox(height: 12),
+                        AiTranslatedText('Capturar Foto da Resposta',
+                            style: TextStyle(color: Colors.white54)),
+                      ],
+                    )
+                  : null,
             ),
           ),
         ],
       ),
     );
   }
+
   void _showExitConfirmation() {
     showDialog(
       context: context,
@@ -982,7 +1055,9 @@ class _AiGamePlayerScreenState extends State<AiGamePlayerScreen> {
           TextButton(
             onPressed: () async {
               if (_currentSession != null) {
-                 await context.read<FirebaseService>().setExamSessionStatus(_currentSession!.id, 'abandoned');
+                await context
+                    .read<FirebaseService>()
+                    .setExamSessionStatus(_currentSession!.id, 'abandoned');
               }
               if (mounted) {
                 Navigator.pop(context); // Close dialog
