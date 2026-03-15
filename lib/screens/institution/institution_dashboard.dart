@@ -35,21 +35,48 @@ class InstitutionDashboard extends StatelessWidget {
       body: StreamBuilder<User?>(
         stream: service.user,
         builder: (context, authSnap) {
-          if (!authSnap.hasData) return const SizedBox();
+          if (authSnap.hasError) {
+            return Center(child: Text('Erro de autenticação: ${authSnap.error}'));
+          }
+          if (authSnap.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (!authSnap.hasData) {
+            return const Center(child: AiTranslatedText('Por favor, faça login novamente.'));
+          }
+
           return StreamBuilder<UserModel?>(
             stream: service.getUserStream(authSnap.data!.uid),
             builder: (context, userSnap) {
-              final user = userSnap.data;
-              if (user == null || user.institutionId == null) {
+              if (userSnap.hasError) {
+                return Center(child: Text('Erro ao carregar perfil: ${userSnap.error}'));
+              }
+              if (userSnap.connectionState == ConnectionState.waiting) {
                 return const Center(child: CircularProgressIndicator());
+              }
+              
+              final user = userSnap.data;
+              if (user == null) {
+                return const Center(child: AiTranslatedText('Perfil de utilizador não encontrado.'));
+              }
+              
+              if (user.institutionId == null) {
+                return const Center(child: AiTranslatedText('Erro: Esta conta não está associada a nenhuma instituição.'));
               }
 
               return StreamBuilder<InstitutionModel?>(
                 stream: service.getInstitutionStream(user.institutionId!),
                 builder: (context, instSnap) {
+                  if (instSnap.hasError) {
+                    return Center(child: Text('Erro ao carregar instituição: ${instSnap.error}'));
+                  }
+                  if (instSnap.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+
                   final institution = instSnap.data;
                   if (institution == null) {
-                    return const Center(child: CircularProgressIndicator());
+                    return const Center(child: AiTranslatedText('Instituição não encontrada ou sem permissões de acesso.'));
                   }
 
                   // Access check
