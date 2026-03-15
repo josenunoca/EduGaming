@@ -201,7 +201,7 @@ class _ComposeMessageScreenState extends State<ComposeMessageScreen> {
               return InputChip(
                 label: Text(user.name,
                     style: const TextStyle(color: Colors.white, fontSize: 12)),
-                backgroundColor: const Color(0xFF7B61FF).withOpacity(0.3),
+                backgroundColor: const Color(0xFF7B61FF).withValues(alpha: 0.3),
                 onDeleted: () => setState(() => selectedIds.remove(id)),
               );
             }),
@@ -300,7 +300,7 @@ class _ComposeMessageScreenState extends State<ComposeMessageScreen> {
                                   prefixIcon: const Icon(Icons.search,
                                       color: Color(0xFF00D1FF)),
                                   filled: true,
-                                  fillColor: Colors.white.withOpacity(0.05),
+                                  fillColor: Colors.white.withValues(alpha: 0.05),
                                   border: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(12),
                                       borderSide: BorderSide.none),
@@ -351,7 +351,7 @@ class _ComposeMessageScreenState extends State<ComposeMessageScreen> {
                                       activeColor: const Color(0xFF7B61FF),
                                       secondary: CircleAvatar(
                                         backgroundColor: const Color(0xFF7B61FF)
-                                            .withOpacity(0.2),
+                                            .withValues(alpha: 0.2),
                                         child: Text(
                                             user.name
                                                 .substring(0, 1)

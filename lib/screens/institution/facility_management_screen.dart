@@ -157,7 +157,7 @@ class _ClassroomCard extends StatelessWidget {
             const Spacer(),
             Align(
               alignment: Alignment.bottomRight,
-              child: Icon(Icons.calendar_today, size: 14, color: Colors.white.withOpacity(0.1)),
+              child: Icon(Icons.calendar_today, size: 14, color: Colors.white.withValues(alpha: 0.1)),
             ),
           ],
         ),

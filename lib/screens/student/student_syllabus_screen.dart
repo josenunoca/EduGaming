@@ -153,7 +153,7 @@ class StudentSyllabusScreen extends StatelessWidget {
               children: [
                 CircleAvatar(
                   radius: 14,
-                  backgroundColor: const Color(0xFF00D1FF).withOpacity(0.1),
+                  backgroundColor: const Color(0xFF00D1FF).withValues(alpha: 0.1),
                   child: Text(s.sessionNumber.toString(),
                       style: const TextStyle(
                           fontSize: 12,
@@ -174,20 +174,20 @@ class StudentSyllabusScreen extends StatelessWidget {
                       Row(
                         children: [
                           Icon(Icons.calendar_today,
-                              size: 12, color: Colors.white.withOpacity(0.5)),
+                              size: 12, color: Colors.white.withValues(alpha: 0.5)),
                           const SizedBox(width: 4),
                           Text(DateFormat('dd/MM/yyyy').format(s.date),
                               style: TextStyle(
-                                  color: Colors.white.withOpacity(0.5),
+                                  color: Colors.white.withValues(alpha: 0.5),
                                   fontSize: 12)),
                           if (s.startTime != null) ...[
                             const SizedBox(width: 8),
                             Icon(Icons.access_time,
-                                size: 12, color: Colors.white.withOpacity(0.5)),
+                                size: 12, color: Colors.white.withValues(alpha: 0.5)),
                             const SizedBox(width: 4),
                             Text('${s.startTime} - ${s.endTime ?? ""}',
                                 style: TextStyle(
-                                    color: Colors.white.withOpacity(0.5),
+                                    color: Colors.white.withValues(alpha: 0.5),
                                     fontSize: 12)),
                           ],
                         ],

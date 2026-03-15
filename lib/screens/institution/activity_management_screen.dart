@@ -235,7 +235,7 @@ class _ActivityCard extends StatelessWidget {
                 width: 60,
                 height: 60,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF7B61FF).withOpacity(0.1),
+                  color: const Color(0xFF7B61FF).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Icon(Icons.event_available, color: Color(0xFF7B61FF)),

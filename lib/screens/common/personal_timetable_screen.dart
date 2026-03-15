@@ -112,7 +112,7 @@ class PersonalTimetableScreen extends StatelessWidget {
                               ),
                             ),
                           )
-                        : Container(decoration: BoxDecoration(border: Border.all(color: Colors.white.withOpacity(0.01)))),
+                        : Container(decoration: BoxDecoration(border: Border.all(color: Colors.white.withValues(alpha: 0.01)))),
                     );
                   }),
                 ],

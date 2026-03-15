@@ -205,7 +205,7 @@ class _SubjectDetailsScreenState extends State<SubjectDetailsScreen>
                                     onPressed: () =>
                                         _showLinkContentDialog(comp),
                                     backgroundColor:
-                                        Colors.white.withOpacity(0.05),
+                                        Colors.white.withValues(alpha: 0.05),
                                   ),
                                   ActionChip(
                                     label: const AiTranslatedText('Editar',
@@ -213,7 +213,7 @@ class _SubjectDetailsScreenState extends State<SubjectDetailsScreen>
                                     onPressed: () => _showAddEvaluationDialog(
                                         editableComponent: comp),
                                     backgroundColor:
-                                        Colors.white.withOpacity(0.05),
+                                        Colors.white.withValues(alpha: 0.05),
                                   ),
                                   ActionChip(
                                     label: const AiTranslatedText('Remover',
@@ -247,7 +247,7 @@ class _SubjectDetailsScreenState extends State<SubjectDetailsScreen>
                                       }
                                     },
                                     backgroundColor:
-                                        Colors.redAccent.withOpacity(0.1),
+                                        Colors.redAccent.withValues(alpha: 0.1),
                                   ),
                                 ],
                               ),

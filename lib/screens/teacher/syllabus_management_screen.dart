@@ -358,10 +358,10 @@ class _SyllabusManagementScreenState extends State<SyllabusManagementScreen> {
                           padding: const EdgeInsets.all(8),
                           margin: const EdgeInsets.only(bottom: 12),
                           decoration: BoxDecoration(
-                            color: Colors.blueAccent.withOpacity(0.1),
+                            color: Colors.blueAccent.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(8),
                             border: Border.all(
-                                color: Colors.blueAccent.withOpacity(0.3)),
+                                color: Colors.blueAccent.withValues(alpha: 0.3)),
                           ),
                           child: const Row(
                             children: [
@@ -841,13 +841,13 @@ class _AttendanceManagementModalState
                         return Container(
                           margin: const EdgeInsets.only(bottom: 8),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.05),
+                            color: Colors.white.withValues(alpha: 0.05),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: ListTile(
                             leading: CircleAvatar(
                               backgroundColor: isPresent
-                                  ? Colors.greenAccent.withOpacity(0.2)
+                                  ? Colors.greenAccent.withValues(alpha: 0.2)
                                   : Colors.white10,
                               child: Icon(
                                 Icons.person,

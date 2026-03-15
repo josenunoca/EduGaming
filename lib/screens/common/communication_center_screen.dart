@@ -100,7 +100,7 @@ class _MessageList extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(Icons.mail_outline,
-                    size: 64, color: Colors.white.withOpacity(0.2)),
+                    size: 64, color: Colors.white.withValues(alpha: 0.2)),
                 const SizedBox(height: 16),
                 const AiTranslatedText('No messages found',
                     style: TextStyle(color: Colors.white54)),
@@ -120,14 +120,14 @@ class _MessageList extends StatelessWidget {
 
             return Card(
               color: isRead
-                  ? Colors.white.withOpacity(0.05)
-                  : Colors.white.withOpacity(0.12),
+                  ? Colors.white.withValues(alpha: 0.05)
+                  : Colors.white.withValues(alpha: 0.12),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
                 side: BorderSide(
                   color: isRead
                       ? Colors.transparent
-                      : const Color(0xFF7B61FF).withOpacity(0.5),
+                      : const Color(0xFF7B61FF).withValues(alpha: 0.5),
                   width: 1,
                 ),
               ),

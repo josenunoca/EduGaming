@@ -216,14 +216,14 @@ class _PersonalProfileScreenState extends State<PersonalProfileScreen> {
                               decoration: BoxDecoration(
                                 border: Border.all(color: Colors.white24),
                                 borderRadius: BorderRadius.circular(8),
-                                color: Colors.white.withOpacity(0.05),
+                                color: Colors.white.withValues(alpha: 0.05),
                               ),
                               child: Image.network(
                                 _signatureUrl!,
                                 fit: BoxFit.contain,
                                 errorBuilder: (context, error, stackTrace) {
                                   return Container(
-                                    color: Colors.red.withOpacity(0.1),
+                                    color: Colors.red.withValues(alpha: 0.1),
                                     child: const Center(
                                       child: Column(
                                         mainAxisAlignment:
@@ -304,7 +304,7 @@ class _PersonalProfileScreenState extends State<PersonalProfileScreen> {
                                 label: Text(s,
                                     style: const TextStyle(fontSize: 11)),
                                 onPressed: () => _addInterest(s),
-                                backgroundColor: Colors.white.withOpacity(0.05),
+                                backgroundColor: Colors.white.withValues(alpha: 0.05),
                                 labelStyle:
                                     const TextStyle(color: Colors.white70),
                               ))
@@ -320,7 +320,7 @@ class _PersonalProfileScreenState extends State<PersonalProfileScreen> {
                                     style:
                                         const TextStyle(color: Colors.white)),
                                 backgroundColor:
-                                    const Color(0xFF7B61FF).withOpacity(0.2),
+                                    const Color(0xFF7B61FF).withValues(alpha: 0.2),
                                 deleteIcon: const Icon(Icons.close,
                                     size: 14, color: Colors.white70),
                                 onDeleted: () => setState(
@@ -344,11 +344,11 @@ class _PersonalProfileScreenState extends State<PersonalProfileScreen> {
                           return Container(
                             padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF00D1FF).withOpacity(0.1),
+                              color: const Color(0xFF00D1FF).withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(
                                   color:
-                                      const Color(0xFF00D1FF).withOpacity(0.3)),
+                                      const Color(0xFF00D1FF).withValues(alpha: 0.3)),
                             ),
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,

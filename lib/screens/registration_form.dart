@@ -164,7 +164,8 @@ class _RegistrationFormState extends State<RegistrationForm> {
                               const SnackBar(
                                   content: Text('Conta criada com sucesso!')),
                             );
-                            Navigator.pop(context);
+                            if (!mounted) return;
+    Navigator.pop(context);
                           } else {
                             if (!mounted) return;
                             ScaffoldMessenger.of(context).showSnackBar(

@@ -77,7 +77,7 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
         const SizedBox(height: 4),
         Text(
           'Premium MVP Experience',
-          style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 16),
+          style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 16),
         ).animate().fadeIn(delay: 200.ms, duration: 600.ms),
       ],
     );
@@ -94,7 +94,7 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
             Text(
               'PRESTAÇÃO MENSAL',
               style: TextStyle(
-                color: Colors.white.withOpacity(0.7),
+                color: Colors.white.withValues(alpha: 0.7),
                 letterSpacing: 2,
                 fontSize: 12,
                 fontWeight: FontWeight.w600,

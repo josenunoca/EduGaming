@@ -428,7 +428,7 @@ class _AiGamePlayerScreenState extends State<AiGamePlayerScreen> {
 
     return PopScope(
       canPop: !widget.isEvaluation || _isFinished,
-      onPopInvoked: (didPop) {
+      onPopInvokedWithResult: (didPop, result) {
         if (didPop) return;
         _showExitConfirmation();
       },
@@ -693,20 +693,20 @@ class _AiGamePlayerScreenState extends State<AiGamePlayerScreen> {
 
     final bool isCorrect = index == q.correctOptionIndex;
 
-    Color color = Colors.white.withOpacity(0.05);
+    Color color = Colors.white.withValues(alpha: 0.05);
     Color borderColor = Colors.white10;
 
     if (!widget.isEvaluation && _showCorrectness) {
       if (isCorrect) {
-        color = Colors.greenAccent.withOpacity(0.2);
+        color = Colors.greenAccent.withValues(alpha: 0.2);
         borderColor = Colors.greenAccent;
       } else if (isSelected) {
-        color = Colors.redAccent.withOpacity(0.2);
+        color = Colors.redAccent.withValues(alpha: 0.2);
         borderColor = Colors.redAccent;
       }
     } else if (isSelected) {
       borderColor = const Color(0xFF00D1FF);
-      color = const Color(0xFF00D1FF).withOpacity(0.1);
+      color = const Color(0xFF00D1FF).withValues(alpha: 0.1);
     }
 
     return Padding(

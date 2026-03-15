@@ -181,7 +181,8 @@ class _AcademicManagementScreenState extends State<AcademicManagementScreen> {
                 // In a real app, logic to save this program to the specific course/subject
                 // and update all related Subject objects for teachers.
                 await service.saveInstitutionalProgram(widget.institution.id, selectedCourseId!, programController.text);
-                if (context.mounted) Navigator.pop(context);
+                if (!mounted) return;
+                Navigator.pop(context);
               },
               child: const AiTranslatedText('Carregar'),
             ),
@@ -236,7 +237,8 @@ class _AcademicManagementScreenState extends State<AcademicManagementScreen> {
                   institutionId: widget.institution.id,
                 );
                 await context.read<FirebaseService>().saveCourse(course);
-                if (mounted) Navigator.pop(ctx);
+                if (!mounted) return;
+                Navigator.pop(ctx);
               },
               child: const AiTranslatedText('Criar'),
             ),
@@ -254,7 +256,7 @@ class _CycleListTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      color: Colors.white.withOpacity(0.05),
+      color: Colors.white.withValues(alpha: 0.05),
       margin: const EdgeInsets.only(bottom: 8),
       child: ListTile(
         title: Text(cycle.name, style: const TextStyle(color: Colors.white)),
@@ -271,7 +273,7 @@ class _CourseListTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      color: Colors.white.withOpacity(0.05),
+      color: Colors.white.withValues(alpha: 0.05),
       margin: const EdgeInsets.only(bottom: 8),
       child: ListTile(
         title: Text(course.name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
