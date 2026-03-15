@@ -1,0 +1,40 @@
+﻿[ÔêÜ] Flutter (Channel stable, 3.41.4, on Microsoft Windows [Version 10.0.26200.8037], locale pt-PT) [263ms]
+    ÔÇó Flutter version 3.41.4 on channel stable at C:\dev\flutter\flutter
+    ÔÇó Upstream repository https://github.com/flutter/flutter.git
+    ÔÇó Framework revision ff37bef603 (12 days ago), 2026-03-03 16:03:22 -0800
+    ÔÇó Engine revision e4b8dca3f1
+    ÔÇó Dart version 3.11.1
+    ÔÇó DevTools version 2.54.1
+    ÔÇó Feature flags: enable-web, enable-linux-desktop, enable-macos-desktop, enable-windows-desktop, enable-android, enable-ios, cli-animations, enable-native-assets, omit-legacy-version-file, enable-lldb-debugging, enable-uiscene-migration
+
+[ÔêÜ] Windows Version (11 Home 64-bit, 25H2, 2009) [1┬á492ms]
+
+[!] Android toolchain - develop for Android devices (Android SDK version 36.1.0) [283ms]
+    ÔÇó Android SDK at C:\Users\josen\AppData\Local\Android\sdk
+    ÔÇó Emulator version 36.4.9.0 (build_id 14788078) (CL:N/A)
+    X cmdline-tools component is missing.
+      Try installing or updating Android Studio.
+      Alternatively, download the tools from https://developer.android.com/studio#command-line-tools-only and make sure to set the ANDROID_HOME environment variable.
+      See https://developer.android.com/studio/command-line for more details.
+    X Android license status unknown.
+      Run `flutter doctor --android-licenses` to accept the SDK licenses.
+      See https://flutter.dev/to/windows-android-setup for more details.
+
+[ÔêÜ] Chrome - develop for the web [8ms]
+    ÔÇó Chrome at C:\Program Files\Google\Chrome\Application\chrome.exe
+
+[X] Visual Studio - develop Windows apps [7ms]
+    X Visual Studio not installed; this is necessary to develop Windows apps.
+      Download at https://visualstudio.microsoft.com/downloads/.
+      Please install the "Desktop development with C++" workload, including all of its default components
+
+[ÔêÜ] Connected device (3 available) [242ms]
+    ÔÇó Windows (desktop) ÔÇó windows ÔÇó windows-x64    ÔÇó Microsoft Windows [Version 10.0.26200.8037]
+    ÔÇó Chrome (web)      ÔÇó chrome  ÔÇó web-javascript ÔÇó Google Chrome 145.0.7632.160
+    ÔÇó Edge (web)        ÔÇó edge    ÔÇó web-javascript ÔÇó Microsoft Edge 146.0.3856.59
+
+[ÔêÜ] Network resources [492ms]
+    ÔÇó All expected network resources are available.
+
+! Doctor found issues in 2 categories.
+

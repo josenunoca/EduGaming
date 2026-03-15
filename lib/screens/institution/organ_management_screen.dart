@@ -156,7 +156,9 @@ class _OrganCard extends StatelessWidget {
                     dense: true,
                     leading: const CircleAvatar(backgroundColor: Color(0xFF1E293B), child: Icon(Icons.person, size: 16, color: Colors.white54)),
                     title: Text(m.name, style: const TextStyle(color: Colors.white)),
-                    subtitle: Text(m.email, style: const TextStyle(color: Colors.white38, fontSize: 10)),
+                    subtitle: Text(
+                        '${m.function ?? "Membro"} • ${m.email}',
+                        style: const TextStyle(color: Colors.white38, fontSize: 10)),
                   )),
                   const SizedBox(height: 8),
                   SizedBox(
@@ -179,53 +181,82 @@ class _OrganCard extends StatelessWidget {
 
   void _showAddMemberDialog(BuildContext context) {
     List<UserModel> selectedMembers = [];
+    String selectedFunction = 'Membro';
+    final functions = [
+      'Presidente',
+      'Vice-Presidente',
+      'Secretário',
+      'Vogal',
+      'Membro',
+    ];
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: const Color(0xFF1E293B),
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(32))),
-      builder: (context) => Padding(
-        padding: EdgeInsets.only(
-            left: 24,
-            right: 24,
-            top: 24,
-            bottom: MediaQuery.of(context).viewInsets.bottom + 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const AiTranslatedText('Convidar Membros',
-                style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold)),
-            const SizedBox(height: 16),
-            InstitutionMemberSelector(
-              institutionId: organ.institutionId,
-              onSelectionChanged: (users) => selectedMembers = users,
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: () async {
-                final service = context.read<FirebaseService>();
-                for (var user in selectedMembers) {
-                  await service.inviteMemberToOrgan(
-                    organ.id,
-                    OrganMember(
-                      userId: user.id,
-                      name: user.name,
-                      email: user.email,
-                    ),
-                  );
-                }
-                if (context.mounted) Navigator.pop(context);
-              },
-              style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF7B61FF),
-                  minimumSize: const Size(double.infinity, 50)),
-              child: const AiTranslatedText('Confirmar Convites'),
-            ),
-          ],
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) => Padding(
+          padding: EdgeInsets.only(
+              left: 24,
+              right: 24,
+              top: 24,
+              bottom: MediaQuery.of(context).viewInsets.bottom + 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const AiTranslatedText('Convidar Membros',
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold)),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<String>(
+                initialValue: selectedFunction,
+                dropdownColor: const Color(0xFF1E293B),
+                style: const TextStyle(color: Colors.white),
+                decoration: const InputDecoration(
+                  labelText: 'Função / Cargo',
+                  labelStyle: TextStyle(color: Colors.white70),
+                ),
+                items: functions
+                    .map((f) => DropdownMenuItem(
+                          value: f,
+                          child: AiTranslatedText(f),
+                        ))
+                    .toList(),
+                onChanged: (val) => setModalState(() => selectedFunction = val!),
+              ),
+              const SizedBox(height: 16),
+              InstitutionMemberSelector(
+                institutionId: organ.institutionId,
+                onSelectionChanged: (users) => selectedMembers = users,
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: () async {
+                  final service = context.read<FirebaseService>();
+                  for (var user in selectedMembers) {
+                    await service.inviteMemberToOrgan(
+                      organ.id,
+                      OrganMember(
+                        userId: user.id,
+                        name: user.name,
+                        email: user.email,
+                        function: selectedFunction,
+                      ),
+                    );
+                  }
+                  if (context.mounted) Navigator.pop(context);
+                },
+                style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF7B61FF),
+                    minimumSize: const Size(double.infinity, 50)),
+                child: const AiTranslatedText('Confirmar Convites'),
+              ),
+            ],
+          ),
         ),
       ),
     );

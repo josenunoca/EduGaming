@@ -9,6 +9,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:audioplayers/audioplayers.dart';
 import '../../../services/firebase_service.dart';
 import '../../../models/subject_model.dart';
 import '../../../widgets/glass_card.dart';
@@ -18,6 +19,7 @@ import '../../../widgets/word_search_widget.dart';
 import '../../../widgets/memory_game_widget.dart';
 import '../../../widgets/matching_pairs_widget.dart';
 import '../../../widgets/ai_chat_dialog.dart';
+import '../../../services/ai_chat_service.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
 class AiGamePlayerScreen extends StatefulWidget {
@@ -57,6 +59,7 @@ class _AiGamePlayerScreenState extends State<AiGamePlayerScreen> {
   final _imagePicker = ImagePicker();
   bool _isRecording = false;
   bool _isUploading = false;
+  final AudioPlayer _player = AudioPlayer();
 
   // Real-time session fields
   ExamSession? _currentSession;
@@ -131,7 +134,7 @@ class _AiGamePlayerScreenState extends State<AiGamePlayerScreen> {
 
   void _startHeartbeat() {
     _heartbeatTimer?.cancel();
-    _heartbeatTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
+    _heartbeatTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
       if (_currentSession != null && !_isFinished) {
         context.read<FirebaseService>().updateExamSessionHeartbeat(
             _currentSession!.id, _score, _currentQuestionIndex);
@@ -153,6 +156,12 @@ class _AiGamePlayerScreenState extends State<AiGamePlayerScreen> {
         }
       }
     });
+
+    // Auto-play audio if dictation
+    final q = widget.game.questions[_currentQuestionIndex];
+    if (q.isDictation && q.mediaUrl != null) {
+      _player.play(UrlSource(q.mediaUrl!));
+    }
   }
 
   void _submitAnswer(int? index) {
@@ -300,6 +309,7 @@ class _AiGamePlayerScreenState extends State<AiGamePlayerScreen> {
     _pinController.dispose();
     _textResponseController.dispose();
     _audioRecorder.dispose();
+    _player.dispose();
     super.dispose();
   }
 
@@ -377,6 +387,81 @@ class _AiGamePlayerScreenState extends State<AiGamePlayerScreen> {
       }
     } catch (e) {
       debugPrint('Photo error: $e');
+    }
+  }
+
+  Future<void> _evaluateMultimodalResponse(
+      String answer, GameQuestion q) async {
+    setState(() => _isUploading = true);
+    try {
+      final ai = context.read<AiChatService>();
+      final result = await ai.evaluateResponse(
+        question: q.question,
+        studentAnswer: answer,
+        criteria: q.evaluationCriteria,
+      );
+
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            backgroundColor: const Color(0xFF1E293B),
+            title: Row(
+              children: [
+                Icon(
+                  result['isCorrect'] == true
+                      ? Icons.check_circle
+                      : Icons.error_outline,
+                  color:
+                      result['isCorrect'] == true ? Colors.green : Colors.amber,
+                ),
+                const SizedBox(width: 8),
+                const AiTranslatedText('Feedback da IA',
+                    style: TextStyle(color: Colors.white)),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(result['feedback'] ?? '',
+                    style: const TextStyle(color: Colors.white70)),
+                if (result['suggestedCorrection'] != null) ...[
+                  const SizedBox(height: 16),
+                  const AiTranslatedText('Sugestão:',
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12)),
+                  Text(result['suggestedCorrection'],
+                      style: const TextStyle(
+                          color: Color(0xFF00D1FF),
+                          fontWeight: FontWeight.bold)),
+                ],
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  if (!widget.isEvaluation) {
+                    if (result['isCorrect'] == true) {
+                      _submitAnswer(null); // Advance with points (simplified)
+                    } else {
+                      // Stay to try again or advance differently?
+                      // For now, we advance
+                      _submitAnswer(null);
+                    }
+                  }
+                },
+                child: const AiTranslatedText('Continuar'),
+              ),
+            ],
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isUploading = false);
     }
   }
 
@@ -594,6 +679,40 @@ class _AiGamePlayerScreenState extends State<AiGamePlayerScreen> {
                               onWin: _finishGame,
                             )
                           else ...[
+                            if (q.mediaUrl != null) ...[
+                              if (q.mediaType == 'image')
+                                Container(
+                                  margin: const EdgeInsets.only(bottom: 20),
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(16),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(alpha: 0.3),
+                                        blurRadius: 10,
+                                      )
+                                    ],
+                                  ),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(16),
+                                    child: Image.network(
+                                      q.mediaUrl!,
+                                      height: 200,
+                                      fit: BoxFit.cover,
+                                    ),
+                                  ),
+                                ).animate().fadeIn().scale()
+                              else if (q.mediaType == 'audio')
+                                Padding(
+                                  padding: const EdgeInsets.only(bottom: 20),
+                                  child: IconButton.filledTonal(
+                                    iconSize: 48,
+                                    onPressed: () =>
+                                        _player.play(UrlSource(q.mediaUrl!)),
+                                    icon: const Icon(Icons.play_circle_filled,
+                                        color: Color(0xFF00D1FF)),
+                                  ),
+                                ).animate().slideY(begin: 0.2),
+                            ],
                             AiTranslatedText(
                               q.question,
                               textAlign: TextAlign.center,
@@ -602,14 +721,39 @@ class _AiGamePlayerScreenState extends State<AiGamePlayerScreen> {
                                   color: Colors.white,
                                   fontWeight: FontWeight.bold),
                             ),
+                            if (q.isDictation)
+                              const Padding(
+                                padding: EdgeInsets.only(top: 8.0),
+                                child: AiTranslatedText(
+                                  'Ouve com atenção e escreve ou seleciona a resposta.',
+                                  style: TextStyle(
+                                      color: Color(0xFF00D1FF),
+                                      fontSize: 14,
+                                      fontStyle: FontStyle.italic),
+                                ),
+                              ),
                             const SizedBox(height: 32),
                             if (q.allowedAnswerTypes.contains('options')) ...[
                               ...List.generate(
                                   q.options.length, (i) => _buildOption(i, q)),
                               const SizedBox(height: 24),
                             ],
-                            if (q.allowedAnswerTypes.contains('text'))
+                            if (q.allowedAnswerTypes.contains('text')) ...[
                               _buildTextInput(),
+                              if (!widget.isEvaluation)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 16.0),
+                                  child: ElevatedButton.icon(
+                                    onPressed: () =>
+                                        _evaluateMultimodalResponse(
+                                            _textResponseController.text, q),
+                                    icon: const Icon(Icons.auto_awesome),
+                                    label: const AiTranslatedText('Verificar com IA'),
+                                    style: ElevatedButton.styleFrom(
+                                        backgroundColor: const Color(0xFF7B61FF)),
+                                  ),
+                                ),
+                            ],
                             if (q.allowedAnswerTypes.contains('audio'))
                               _buildAudioInput(),
                             if (q.allowedAnswerTypes.contains('image'))

@@ -8,6 +8,8 @@ import 'facility_management_screen.dart';
 import 'document_repository_screen.dart';
 import 'activity_management_screen.dart';
 
+import 'erp/erp_dashboard.dart';
+
 class InstitutionalManagementScreen extends StatelessWidget {
   final InstitutionModel institution;
   const InstitutionalManagementScreen({super.key, required this.institution});
@@ -92,7 +94,7 @@ class InstitutionalManagementScreen extends StatelessWidget {
                       ),
                     ),
                   ),
-                   _ManagementCard(
+                  _ManagementCard(
                     title: 'Plano de Atividades',
                     subtitle: 'Eventos, Logística e Relatórios',
                     icon: Icons.event_available,
@@ -101,6 +103,18 @@ class InstitutionalManagementScreen extends StatelessWidget {
                       context,
                       MaterialPageRoute(
                         builder: (_) => ActivityManagementScreen(institution: institution),
+                      ),
+                    ),
+                  ),
+                  _ManagementCard(
+                    title: 'Administração ERP 360º',
+                    subtitle: 'RH, Finanças e Operações',
+                    icon: Icons.business,
+                    color: const Color(0xFFE91E63),
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ErpDashboard(institution: institution),
                       ),
                     ),
                   ),

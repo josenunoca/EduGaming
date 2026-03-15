@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../services/firebase_service.dart';
 import '../models/user_model.dart';
 import '../models/institution_model.dart';
+import '../widgets/ai_translated_text.dart';
 
 class RegistrationForm extends StatefulWidget {
   final UserRole initialRole;
@@ -113,6 +114,13 @@ class _RegistrationFormState extends State<RegistrationForm> {
                     (v == null || v.length < 6) ? 'Mínimo 6 caracteres' : null,
               ),
               const SizedBox(height: 16),
+              if (_selectedRole == UserRole.other) ...[
+                const AiTranslatedText(
+                  'Este perfil é destinado a membros externos de conselhos e órgãos sociais.',
+                  style: TextStyle(fontSize: 12, color: Colors.blueAccent),
+                ),
+                const SizedBox(height: 16),
+              ],
               if (_selectedRole == UserRole.institution) ...[
                 const Text('Níveis de Ensino:',
                     style: TextStyle(fontWeight: FontWeight.bold)),

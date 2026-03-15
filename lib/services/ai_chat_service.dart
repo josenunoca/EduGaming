@@ -107,7 +107,7 @@ class AiChatService {
         if (response.statusCode == 403) {
           yield 'Erro: Chave de API inválida ou sem permissões para o Gemini.';
         } else if (response.statusCode == 429) {
-          yield 'Erro: Limite de cota atingido. Aguarde um momento.';
+          yield 'Erro: Limite de cota atingido pela elevada procura simultânea. Por favor, aguarde 30 segundos e tente novamente.';
         } else {
           yield 'Erro de comunicação [${response.statusCode}]. Tente novamente.';
         }
@@ -302,6 +302,124 @@ class AiChatService {
     debugPrint(
         'Podcast gerado com sucesso: ${(totalLength / 1024).toStringAsFixed(1)} KB de áudio.');
     return combined;
+  }
+
+  /// Synthesizes a single piece of text to speech (MP3)
+  Future<Uint8List?> synthesizeSpeech(String text, {bool isMale = true}) async {
+    const ttsEndpoint =
+        'https://texttospeech.googleapis.com/v1/text:synthesize';
+    final voice = isMale
+        ? {'languageCode': 'pt-PT', 'name': 'pt-PT-Wavenet-B'}
+        : {'languageCode': 'pt-PT', 'name': 'pt-PT-Wavenet-A'};
+
+    try {
+      final response = await http.post(
+        Uri.parse('$ttsEndpoint?key=$_apiKey'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'input': {'text': text},
+          'voice': voice,
+          'audioConfig': {
+            'audioEncoding': 'MP3',
+            'speakingRate': 1.0,
+            'pitch': 0,
+          }
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final base64Audio = data['audioContent'] as String?;
+        if (base64Audio != null) {
+          return base64Decode(base64Audio);
+        }
+      }
+    } catch (e) {
+      debugPrint('TTS single speech exception: $e');
+    }
+    return null;
+  }
+
+  /// Suggests answers for a given question/prompt (useful for dictation suggested options)
+  Future<List<String>> suggestAnswers(String question, {int count = 4}) async {
+    final prompt =
+        'Com base no enunciado/pergunta: "$question", sugere $count opções de resposta curtas e plausíveis, '
+        'incluindo a resposta correcta. Uma delas deve ser a correcta. As outras devem parecer plausíveis mas conter erros comuns (ex: erros ortográficos se for um ditado). '
+        'Retorna APENAS as opções separadas por linhas.';
+
+    try {
+      final response = await http.post(
+        Uri.parse('$_endpoint?key=$_apiKey'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'contents': [
+            {
+              'parts': [
+                {'text': prompt}
+              ]
+            }
+          ],
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final text = data['candidates']?[0]?['content']?['parts']?[0]?['text'] ?? '';
+        return text.split('\n').where((l) => l.trim().isNotEmpty).take(count).toList();
+      }
+    } catch (e) {
+      debugPrint('Suggest answers exception: $e');
+    }
+    return [];
+  }
+
+  /// Evaluates a student response against criteria
+  Future<Map<String, dynamic>> evaluateResponse({
+    required String question,
+    required String studentAnswer,
+    required String? criteria,
+  }) async {
+    final prompt = 'Avalia a resposta do aluno para a seguinte pergunta:\n'
+        'Pergunta: "$question"\n'
+        'Resposta do Aluno: "$studentAnswer"\n'
+        'Critérios de Avaliação: "${criteria ?? "Avalia a correção gramatical e semântica"}"\n\n'
+        'Retorna um JSON com:\n'
+        '- "isCorrect": booleano\n'
+        '- "score": número de 0 a 1\n'
+        '- "feedback": string curta e motivadora em português\n'
+        '- "suggestedCorrection": se estiver errado, a resposta certa';
+
+    try {
+      final response = await http.post(
+        Uri.parse('$_endpoint?key=$_apiKey'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'contents': [
+            {
+              'parts': [
+                {'text': prompt}
+              ]
+            }
+          ],
+          'generationConfig': {'response_mime_type': 'application/json'}
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final text =
+            data['candidates']?[0]?['content']?['parts']?[0]?['text'] ?? '{}';
+        return jsonDecode(text);
+      }
+    } catch (e) {
+      debugPrint('Evaluate response exception: $e');
+    }
+    return {
+      'isCorrect': false,
+      'score': 0.0,
+      'feedback': 'Erro ao avaliar resposta.',
+      'suggestedCorrection': null
+    };
   }
 
   /// Generates a structured game based on selected contents

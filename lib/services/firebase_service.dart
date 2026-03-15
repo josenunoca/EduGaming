@@ -4,9 +4,12 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 import '../models/user_model.dart';
+import '../models/erp_record_model.dart';
+import '../models/management_document_model.dart';
 import '../models/institution_model.dart';
 import '../models/internal_message.dart';
 import '../models/subject_model.dart';
+import '../models/questionnaire_model.dart';
 import '../models/live_session_model.dart';
 import '../models/credit_pricing_model.dart';
 import '../models/course_model.dart';
@@ -15,6 +18,10 @@ import '../models/facility_model.dart';
 import '../models/document_model.dart';
 import '../models/activity_model.dart';
 import '../models/credit_transaction.dart';
+import '../models/meeting_model.dart';
+import '../models/council_request_model.dart';
+import '../models/invitation_model.dart';
+import '../models/organ_document_model.dart';
 
 class FirebaseService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -296,6 +303,14 @@ class FirebaseService {
     }
   }
 
+  Future<String> uploadInstitutionLogo(String institutionId, Uint8List fileBytes) async {
+    final ref = _storage.ref().child('logos').child('$institutionId.png');
+    await ref.putData(fileBytes);
+    final url = await ref.getDownloadURL();
+    await _db.collection('institutions').doc(institutionId).update({'logoUrl': url});
+    return url;
+  }
+
   // --- File Storage ---
   Future<String?> uploadContentFile(Uint8List bytes, String fileName) async {
     try {
@@ -306,6 +321,20 @@ class FirebaseService {
       return await snapshot.ref.getDownloadURL();
     } catch (e) {
       debugPrint('Upload to storage error: $e');
+      return null;
+    }
+  }
+
+  Future<String?> uploadGameMedia(
+      String gameId, Uint8List bytes, String fileName) async {
+    try {
+      final safeName =
+          '${DateTime.now().millisecondsSinceEpoch}_${fileName.replaceAll(' ', '_')}';
+      final ref = _storage.ref().child('ai_games/$gameId/$safeName');
+      final TaskSnapshot snapshot = await ref.putData(bytes);
+      return await snapshot.ref.getDownloadURL();
+    } catch (e) {
+      debugPrint('Game media upload error: $e');
       return null;
     }
   }
@@ -1162,6 +1191,18 @@ class FirebaseService {
         .map((s) => s.docs.map((d) => StudyCycle.fromMap(d.data())).toList());
   }
 
+  Future<void> deleteStudyCycle(String cycleId) async {
+    final courses = await _db
+        .collection('courses')
+        .where('studyCycleId', isEqualTo: cycleId)
+        .get();
+    if (courses.docs.isNotEmpty) {
+      throw Exception(
+          'Não é possível anular o ciclo: existem cursos associados.');
+    }
+    await _db.collection('study_cycles').doc(cycleId).delete();
+  }
+
   Future<void> saveCourse(Course course) async {
     await _db.collection('courses').doc(course.id).set(course.toMap());
   }
@@ -1172,6 +1213,43 @@ class FirebaseService {
         .where('institutionId', isEqualTo: institutionId)
         .snapshots()
         .map((s) => s.docs.map((d) => Course.fromMap(d.data())).toList());
+  }
+
+  Future<void> deleteCourse(String courseId) async {
+    final courseDoc = await _db.collection('courses').doc(courseId).get();
+    if (!courseDoc.exists) return;
+
+    final course = Course.fromMap(courseDoc.data()!);
+    if (course.subjectIds.isNotEmpty) {
+      throw Exception(
+          'Não é possível anular o curso: existem disciplinas associadas.');
+    }
+    await _db.collection('courses').doc(courseId).delete();
+  }
+
+  Future<void> deleteAcademicYear(String courseId, String year) async {
+    final courseDoc = await _db.collection('courses').doc(courseId).get();
+    if (!courseDoc.exists) return;
+
+    final course = Course.fromMap(courseDoc.data()!);
+
+    // Check if any subject linked to this course is in this year
+    for (String subId in course.subjectIds) {
+      final subDoc = await _db.collection('subjects').doc(subId).get();
+      if (subDoc.exists) {
+        final subData = subDoc.data()!;
+        if (subData['academicYear'] == year) {
+          throw Exception(
+              'Não é possível anular o ano: existem disciplinas registadas para $year.');
+        }
+      }
+    }
+
+    final updatedYears = List<String>.from(course.academicYears)..remove(year);
+    await _db
+        .collection('courses')
+        .doc(courseId)
+        .update({'academicYears': updatedYears});
   }
 
   // --- Institutional Organ Management ---
@@ -1443,11 +1521,13 @@ class FirebaseService {
 
     // Teachers
     final teachers = allUsers.where((u) => u.role == UserRole.teacher).toList();
-    teachers.sort((a, b) => b.totalCreditsConsumed.compareTo(a.totalCreditsConsumed));
+    teachers.sort(
+        (a, b) => b.totalCreditsConsumed.compareTo(a.totalCreditsConsumed));
 
     // Students
     final students = allUsers.where((u) => u.role == UserRole.student).toList();
-    students.sort((a, b) => b.totalCreditsConsumed.compareTo(a.totalCreditsConsumed));
+    students.sort(
+        (a, b) => b.totalCreditsConsumed.compareTo(a.totalCreditsConsumed));
 
     return {
       'top_teachers': teachers.take(3).toList(),
@@ -1455,5 +1535,590 @@ class FirebaseService {
       'top_students': students.take(3).toList(),
       'bottom_students': students.reversed.take(3).toList(),
     };
+  }
+
+  // --- Course Coordinator and Delegate Assignment ---
+
+  Future<void> assignCourseCoordinator(String courseId, String teacherId) async {
+    // 1. Update Course
+    await _db.collection('courses').doc(courseId).update({
+      'coordinatorId': teacherId,
+    });
+    // 2. Update User role
+    await _db.collection('users').doc(teacherId).update({
+      'role': UserRole.courseCoordinator.name,
+    });
+  }
+
+  Future<void> assignClassDelegate(String courseId, String studentId) async {
+    await _db.collection('courses').doc(courseId).update({
+      'delegateId': studentId,
+    });
+  }
+
+  Stream<List<UserModel>> getEligibleDelegates(String courseId) {
+    return _db.collection('users')
+        .where('role', isEqualTo: UserRole.student.name)
+        .snapshots()
+        .map((snapshot) => snapshot.docs.map((doc) => UserModel.fromMap(doc.data())).toList());
+  }
+
+  Stream<List<Course>> getCoordinatorCourses(String coordinatorId) {
+    return _db.collection('courses')
+        .where('coordinatorId', isEqualTo: coordinatorId)
+        .snapshots()
+        .map((snapshot) => snapshot.docs.map((doc) => Course.fromMap(doc.data())).toList());
+  }
+
+  Stream<List<SyllabusSession>> getSessionsStream(String subjectId) {
+    return _db.collection('subjects').doc(subjectId).snapshots().map((doc) {
+      if (!doc.exists) return [];
+      final data = doc.data()!;
+      final sessionsData = data['sessions'] as List<dynamic>? ?? [];
+      return sessionsData.map((s) => SyllabusSession.fromMap(s as Map<String, dynamic>)).toList();
+    });
+  }
+
+  // --- Audit Login Updates ---
+
+  Future<void> updateSyllabusSessionWithAudit(
+      String subjectId, SyllabusSession session, ModificationEntry entry) async {
+    final updatedSession = SyllabusSession(
+      id: session.id,
+      sessionNumber: session.sessionNumber,
+      topic: session.topic,
+      date: session.date,
+      materialIds: session.materialIds,
+      bibliography: session.bibliography,
+      proposedSummary: session.proposedSummary,
+      finalSummary: session.finalSummary,
+      isFinalized: session.isFinalized,
+      startTime: session.startTime,
+      endTime: session.endTime,
+      modificationLog: [...session.modificationLog, entry],
+    );
+
+    // This requires updating the specific session in the sessions list of the Subject
+    final subjectDoc = await _db.collection('subjects').doc(subjectId).get();
+    if (!subjectDoc.exists) return;
+
+    final subject = Subject.fromMap(subjectDoc.data()!);
+    final sessions = subject.sessions.map((s) => s.id == session.id ? updatedSession : s).toList();
+
+    await _db.collection('subjects').doc(subjectId).update({
+      'sessions': sessions.map((s) => s.toMap()).toList(),
+    });
+  }
+
+  Stream<List<InternalMessage>> getMessagesByCategory(String userId, String category) {
+    return _db.collection('internal_messages')
+        .where('category', isEqualTo: category)
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => InternalMessage.fromMap(doc.data()))
+            .where((msg) =>
+                (msg.recipientIds.contains(userId) ||
+                    msg.ccIds.contains(userId)) &&
+                !msg.deletedBy.contains(userId))
+            .toList()
+          ..sort((a, b) => b.timestamp.compareTo(a.timestamp)));
+  }
+
+  // --- Academic Management (Cursos e Programas) ---
+  Future<Course?> getCourse(String courseId) async {
+    final doc = await _db.collection('courses').doc(courseId).get();
+    return doc.exists ? Course.fromMap(doc.data()!) : null;
+  }
+
+  Future<void> ensureAcademicYear(String courseId) async {
+    final course = await getCourse(courseId);
+    if (course == null) return;
+
+    final now = DateTime.now();
+    // Logic: If we are in March or later, ensure next year is present
+    // Simple format: 2024/2025
+    final currentYear = now.year;
+    final nextYear = currentYear + 1;
+    final yearString = "$currentYear/$nextYear";
+
+    if (!course.academicYears.contains(yearString)) {
+      final updatedYears = List<String>.from(course.academicYears)..add(yearString);
+      await _db.collection('courses').doc(courseId).update({'academicYears': updatedYears});
+    }
+  }
+
+  Future<void> duplicateSyllabus(Subject sourceSubject, String targetYear) async {
+    final newId = const Uuid().v4();
+    final newSubject = Subject(
+      id: newId,
+      name: sourceSubject.name,
+      level: sourceSubject.level,
+      academicYear: targetYear,
+      teacherId: sourceSubject.teacherId,
+      institutionId: sourceSubject.institutionId,
+      allowedStudentEmails: sourceSubject.allowedStudentEmails,
+      contents: sourceSubject.contents,
+      games: sourceSubject.games,
+      evaluationComponents: sourceSubject.evaluationComponents,
+      scientificArea: sourceSubject.scientificArea,
+      programDescription: sourceSubject.programDescription,
+      pautaStatus: PautaStatus.draft,
+      theoreticalHours: sourceSubject.theoreticalHours,
+      theoreticalPracticalHours: sourceSubject.theoreticalPracticalHours,
+      practicalHours: sourceSubject.practicalHours,
+      otherHours: sourceSubject.otherHours,
+      ects: sourceSubject.ects,
+      syllabusStatus: SyllabusStatus.provisional,
+      sessions: sourceSubject.sessions.map((s) => SyllabusSession(
+        id: const Uuid().v4(),
+        sessionNumber: s.sessionNumber,
+        topic: s.topic,
+        date: s.date.add(const Duration(days: 365)), // Approximate
+        materialIds: s.materialIds,
+        bibliography: s.bibliography,
+      )).toList(),
+      price: sourceSubject.price,
+      currency: sourceSubject.currency,
+      isMarketplaceEnabled: sourceSubject.isMarketplaceEnabled,
+    );
+
+    await _db.collection('subjects').doc(newId).set(newSubject.toMap());
+  }
+
+  Future<void> submitSyllabusToCouncil(String subjectId, SyllabusStatus nextStatus) async {
+    await _db.collection('subjects').doc(subjectId).update({
+      'syllabusStatus': nextStatus.name,
+    });
+  }
+
+  Future<void> approveSyllabus(String subjectId, SyllabusStatus finalStatus, String userId, String userName) async {
+    final now = DateTime.now();
+    final Map<String, dynamic> data = {
+      'syllabusStatus': finalStatus.name,
+    };
+
+    if (finalStatus == SyllabusStatus.inValidationPedagogical) {
+      data['scientificApprovalDate'] = now.toIso8601String();
+      data['scientificApprovedBy'] = userName;
+    } else if (finalStatus == SyllabusStatus.approved) {
+      data['pedagogicalApprovalDate'] = now.toIso8601String();
+      data['pedagogicalApprovedBy'] = userName;
+      data['pedagogicalSignatures'] = FieldValue.arrayUnion([userId]);
+    }
+
+    await _db.collection('subjects').doc(subjectId).update(data);
+  }
+
+
+  // --- Gestão de Conselhos e Pedidos ---
+
+  Future<void> submitCouncilRequest(CouncilRequest request) async {
+    await _db
+        .collection('council_requests')
+        .doc(request.id)
+        .set(request.toMap());
+  }
+
+  Stream<List<CouncilRequest>> getPendingRequestsByOrgan(String organId) {
+    return _db
+        .collection('council_requests')
+        .where('organId', isEqualTo: organId)
+        .where('status', isEqualTo: CouncilRequestStatus.pending.name)
+        .snapshots()
+        .map((s) => s.docs.map((d) => CouncilRequest.fromMap(d.data())).toList());
+  }
+
+  Future<void> scheduleMeetingAndNotify(AcademicMeeting meeting) async {
+    // 1. Save Meeting
+    await _db
+        .collection('academic_meetings')
+        .doc(meeting.id)
+        .set(meeting.toMap());
+
+    // 2. Notify Organ Members
+    final organDoc = await _db.collection('institutional_organs').doc(meeting.organId).get();
+    if (organDoc.exists) {
+      final organ = InstitutionalOrgan.fromMap(organDoc.data()!);
+      final memberIds = organ.members.map((m) => m.userId).whereType<String>().toList();
+
+      if (memberIds.isNotEmpty) {
+        final notification = InternalMessage(
+          id: DateTime.now().millisecondsSinceEpoch.toString(),
+          senderId: 'system',
+          senderName: 'Gestão Académica',
+          recipientIds: memberIds,
+          subject: 'Nova Reunião Agendada: ${meeting.title}',
+          body: 'Convocatória para reunião do órgão ${organ.name}.\nData: ${meeting.date}\nLocal: ${meeting.location ?? "Por definir"}',
+          timestamp: DateTime.now(),
+        );
+        await sendInternalMessage(notification);
+      }
+    }
+
+    // 3. Update associated requests and notify requesters
+    for (String requestId in meeting.requestedTopicIds) {
+      await _db.collection('council_requests').doc(requestId).update({
+        'status': CouncilRequestStatus.inAgenda.name,
+        'meetingId': meeting.id,
+      });
+
+      final reqDoc = await _db.collection('council_requests').doc(requestId).get();
+      if (reqDoc.exists) {
+        final request = CouncilRequest.fromMap(reqDoc.data()!);
+        final notification = InternalMessage(
+          id: 'req_${DateTime.now().millisecondsSinceEpoch}_$requestId',
+          senderId: 'system',
+          senderName: 'Gestão Académica',
+          recipientIds: [request.requesterId],
+          subject: 'Tema incluído na Ordem de Trabalhos',
+          body: 'O seu pedido "${request.title}" foi incluído na reunião: ${meeting.title}.\nData: ${meeting.date}',
+          timestamp: DateTime.now(),
+        );
+        await sendInternalMessage(notification);
+      }
+    }
+  }
+
+  Stream<List<InstitutionalOrgan>> getInstitutionalOrgans(String institutionId) {
+    return _db
+        .collection('institutional_organs')
+        .where('institutionId', isEqualTo: institutionId)
+        .snapshots()
+        .map((s) => s.docs.map((d) => InstitutionalOrgan.fromMap(d.data())).toList());
+  }
+
+  Stream<List<AcademicMeeting>> getAcademicMeetings(String institutionId) {
+    return _db
+        .collection('academic_meetings')
+        .where('institutionId', isEqualTo: institutionId)
+        .snapshots()
+        .map((s) =>
+            s.docs.map((d) => AcademicMeeting.fromMap(d.data())).toList());
+  }
+
+  Future<void> sendExternalInvite({
+    required String email,
+    required String institutionId,
+    required String organId,
+    required String invitedBy,
+  }) async {
+    final invite = ExternalInvitation(
+      id: _db.collection('invitations').doc().id,
+      email: email,
+      institutionId: institutionId,
+      organId: organId,
+      invitedBy: invitedBy,
+      createdAt: DateTime.now(),
+    );
+
+    await _db.collection('invitations').doc(invite.id).set(invite.toMap());
+
+    // Mock Email Sending
+    print('Sending invite to $email: https://edugaming.app/register?invite=${invite.id}');
+  }
+
+  Stream<List<Subject>> getSubjectsStreamByInstitution(String institutionId) {
+    return _db
+        .collection('subjects')
+        .where('institutionId', isEqualTo: institutionId)
+        .snapshots()
+        .map((s) => s.docs.map((d) => Subject.fromMap(d.data())).toList());
+  }
+
+  Future<void> completeExternalInvite(String inviteId, String userId) async {
+    final inviteDoc = await _db.collection('invitations').doc(inviteId).get();
+    if (!inviteDoc.exists) return;
+
+    final invite = ExternalInvitation.fromMap(inviteDoc.data()!);
+    if (invite.isUsed) return;
+
+    // 1. Mark invite as used
+    await _db.collection('invitations').doc(inviteId).update({'isUsed': true});
+
+    // 2. Add user to organ members
+    final organDoc = await _db.collection('institutional_organs').doc(invite.organId).get();
+    if (organDoc.exists) {
+      final organ = InstitutionalOrgan.fromMap(organDoc.data()!);
+      final userDoc = await _db.collection('users').doc(userId).get();
+      if (userDoc.exists) {
+        final user = UserModel.fromMap(userDoc.data()!);
+        final newMember = OrganMember(
+          email: user.email,
+          name: user.name,
+          userId: userId,
+        );
+        
+        await _db.collection('institutional_organs').doc(invite.organId).update({
+          'members': FieldValue.arrayUnion([newMember.toMap()])
+        });
+      }
+    }
+  }
+
+  // --- Documentos de Órgãos ---
+
+  Future<void> saveOrganDocument(OrganDocument document) async {
+    await _db
+        .collection('organ_documents')
+        .doc(document.id)
+        .set(document.toMap());
+  }
+
+  Stream<List<OrganDocument>> getDocumentsForMember(
+      String organId, String userId, bool isPresident) {
+    if (isPresident) {
+      // President sees everything for their organ
+      return _db
+          .collection('organ_documents')
+          .where('organId', isEqualTo: organId)
+          .snapshots()
+          .map((s) => s.docs.map((d) => OrganDocument.fromMap(d.data())).toList());
+    } else {
+      // Members see only what is visible to all
+      return _db
+          .collection('organ_documents')
+          .where('organId', isEqualTo: organId)
+          .where('isVisibleToAllMembers', isEqualTo: true)
+          .snapshots()
+          .map((s) => s.docs.map((d) => OrganDocument.fromMap(d.data())).toList());
+    }
+  }
+
+  Future<String> generateConvocationWithAi(AcademicMeeting meeting) async {
+    // Mock AI call
+    final agenda = meeting.customAgendaPoints.isNotEmpty 
+      ? meeting.customAgendaPoints.join('\n- ')
+      : 'Análise de temas pendentes';
+      
+    return '''
+CONVOCATÓRIA DE REUNIÃO
+
+Título: ${meeting.title}
+Data: ${meeting.date.toLocal()}
+Local: ${meeting.location ?? "Por definir"}
+
+ORDEM DE TRABALHOS:
+- $agenda
+
+Solicita-se a comparência de todos os membros.
+Este documento foi gerado com assistência de IA.
+''';
+  }
+
+  Future<void> updateOrgan(String organId, Map<String, dynamic> data) async {
+    await _db.collection('institutional_organs').doc(organId).update(data);
+  }
+
+  Stream<List<Subject>> getSubjectsStreamByCourse(String courseId) {
+    return _db.collection('subjects')
+        .where('courseId', isEqualTo: courseId)
+        .snapshots()
+        .map((snapshot) => snapshot.docs.map((doc) => Subject.fromMap(doc.data())).toList());
+  }
+
+  // --- Questionnaire System ---
+
+  Future<void> saveQuestionnaire(Questionnaire questionnaire) async {
+    await _db.collection('questionnaires').doc(questionnaire.id).set(questionnaire.toMap());
+    
+    // In a real app, logic to send push notifications to targetRoles would go here.
+    // We'll simulate by adding to a 'notifications' collection if needed.
+  }
+
+  Stream<List<Questionnaire>> getQuestionnaires(String institutionId) {
+    return _db.collection('questionnaires')
+        .where('institutionId', isEqualTo: institutionId)
+        .snapshots()
+        .map((snapshot) => snapshot.docs.map((doc) => Questionnaire.fromMap(doc.data())).toList());
+  }
+
+  Stream<List<Questionnaire>> getAvailableQuestionnaires(String userId, String userRole) {
+    // This is a simplified filter. In production, we'd use complex queries or composite indexes.
+    return _db.collection('questionnaires')
+        .where('isActive', isEqualTo: true)
+        .snapshots()
+        .map((snapshot) {
+          return snapshot.docs.map((doc) => Questionnaire.fromMap(doc.data())).where((q) {
+            final now = DateTime.now();
+            final isWithinDate = now.isAfter(q.startDate) && now.isBefore(q.endDate);
+            final isTargetRole = q.targetRoles.contains(userRole);
+            final isIndividualTarget = q.individualTargetIds.contains(userId);
+            return isWithinDate && (isTargetRole || isIndividualTarget);
+          }).toList();
+        });
+  }
+
+  Future<void> submitQuestionnaireResponse(QuestionnaireResponse response) async {
+    await _db.collection('questionnaire_responses').doc(response.id).set(response.toMap());
+  }
+
+  Stream<List<QuestionnaireResponse>> getQuestionnaireResponses(String questionnaireId) {
+    return _db.collection('questionnaire_responses')
+        .where('questionnaireId', isEqualTo: questionnaireId)
+        .snapshots()
+        .map((snapshot) => snapshot.docs.map((doc) => QuestionnaireResponse.fromMap(doc.data())).toList());
+  }
+
+  Future<void> reopenQuestionnaire(String questionnaireId, DateTime newEnd, String reason) async {
+    final docRef = _db.collection('questionnaires').doc(questionnaireId);
+    final doc = await docRef.get();
+    if (doc.exists) {
+      final q = Questionnaire.fromMap(doc.data()!);
+      final newHistory = List<ReopenLog>.from(q.reopenHistory);
+      newHistory.add(ReopenLog(startDate: DateTime.now(), endDate: newEnd, reason: reason));
+      
+      await docRef.update({
+        'endDate': newEnd.toIso8601String(),
+        'isActive': true,
+        'reopenHistory': newHistory.map((h) => h.toMap()).toList(),
+      });
+    }
+  }
+
+  Future<List<UserModel>> getEligibleUsers() async {
+    final snapshot = await _db.collection('users').get();
+    return snapshot.docs.map((doc) => UserModel.fromMap(doc.data())).toList();
+  }
+
+  Future<void> assignHealthSpecialist(
+      String institutionId, String userId) async {
+    await _db
+        .collection('institutions')
+        .doc(institutionId)
+        .update({'healthSpecialistId': userId});
+  }
+
+  Stream<List<QuestionnaireResponse>> getSpecialistAccessibleResponses(
+      String questionnaireId) {
+    return _db
+        .collection('questionnaire_responses')
+        .where('questionnaireId', isEqualTo: questionnaireId)
+        .where('consentToSpecialist', isEqualTo: true)
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs
+          .map((doc) => QuestionnaireResponse.fromMap(doc.data()))
+          .toList();
+    });
+  }
+
+  // --- Gestão Documental Universal (ManagementDocument) ---
+
+  Future<void> saveManagementDocument(ManagementDocument doc) async {
+    await _db
+        .collection('management_documents')
+        .doc(doc.id)
+        .set(doc.toMap());
+  }
+
+  Stream<List<ManagementDocument>> getManagementDocuments(
+      String ownerId, ManagementDocumentOwnerType type) {
+    return _db
+        .collection('management_documents')
+        .where('ownerId', isEqualTo: ownerId)
+        .where('ownerType', isEqualTo: type.name)
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => ManagementDocument.fromMap(doc.data()))
+            .toList());
+  }
+
+  Future<void> deleteManagementDocument(String docId) async {
+    await _db.collection('management_documents').doc(docId).delete();
+  }
+
+  Future<void> signDocument(String docId, SignatureEntry signature) async {
+    final docRef = _db.collection('management_documents').doc(docId);
+    final docSnap = await docRef.get();
+    
+    if (docSnap.exists) {
+      final doc = ManagementDocument.fromMap(docSnap.data()!);
+      final updatedSignatures = List<SignatureEntry>.from(doc.signatures);
+      
+      // Prevent double signing
+      if (updatedSignatures.any((s) => s.userId == signature.userId)) return;
+      
+      updatedSignatures.add(signature);
+      
+      ManagementDocumentStatus newStatus = doc.status;
+      if (updatedSignatures.length >= doc.requiredSignerIds.length) {
+        newStatus = ManagementDocumentStatus.completed;
+      } else {
+        newStatus = ManagementDocumentStatus.signing;
+      }
+
+      await docRef.update({
+        'signatures': updatedSignatures.map((s) => s.toMap()).toList(),
+        'status': newStatus.name,
+      });
+
+      // Notify next signer if it exists
+      if (newStatus == ManagementDocumentStatus.signing) {
+        final nextSignerId = doc.requiredSignerIds[updatedSignatures.length];
+        final notification = InternalMessage(
+          id: 'sign_${DateTime.now().millisecondsSinceEpoch}_$docId',
+          senderId: 'system',
+          senderName: 'Gestão de Documentos',
+          recipientIds: [nextSignerId],
+          subject: 'Documento Aguardando Assinatura: ${doc.title}',
+          body: 'O documento "${doc.title}" foi assinado por ${signature.userName} e aguarda agora a sua assinatura digital.',
+          timestamp: DateTime.now(),
+        );
+        await sendInternalMessage(notification);
+      } else if (newStatus == ManagementDocumentStatus.completed) {
+        // Notify creator
+        final notification = InternalMessage(
+          id: 'sign_comp_${DateTime.now().millisecondsSinceEpoch}_$docId',
+          senderId: 'system',
+          senderName: 'Gestão de Documentos',
+          recipientIds: [doc.createdBy],
+          subject: 'Documento Totalmente Assinado: ${doc.title}',
+          body: 'O processo de assinatura do documento "${doc.title}" foi concluído com sucesso.',
+          timestamp: DateTime.now(),
+        );
+        await sendInternalMessage(notification);
+      }
+    }
+  }
+
+  Stream<List<ManagementDocument>> getManagementDocumentsForUser(String userId) {
+    // Returns documents where user is a required signer or owner (if it's a teacher doc)
+    // Firestore doesn't support 'OR' queries well across different fields without composite indexes, 
+    // so we'll fetch based on requiredSignerIds and ownerId separately or use a combined stream.
+    
+    // For simplicity in this MVP, we fetch for requiredSignerIds
+    return _db
+        .collection('management_documents')
+        .where('requiredSignerIds', arrayContains: userId)
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => ManagementDocument.fromMap(doc.data()))
+            .toList());
+  }
+
+  // --- ERP 360 System ---
+
+  Future<void> saveErpRecord(ErpRecord record) async {
+    await _db.collection('erp_records').doc(record.id).set(record.toMap());
+  }
+
+  Stream<List<ErpRecord>> getErpRecords(String institutionId, {ErpModule? module}) {
+    var query = _db.collection('erp_records').where('institutionId', isEqualTo: institutionId);
+    if (module != null) {
+      query = query.where('module', isEqualTo: module.name);
+    }
+    return query.snapshots().map((snapshot) =>
+        snapshot.docs.map((doc) => ErpRecord.fromMap(doc.data())).toList());
+  }
+
+  Future<void> updateErpRecord(String recordId, Map<String, dynamic> data) async {
+    await _db.collection('erp_records').doc(recordId).update({
+      ...data,
+      'updatedAt': Timestamp.now(),
+    });
+  }
+
+  Future<void> deleteErpRecord(String recordId) async {
+    await _db.collection('erp_records').doc(recordId).delete();
   }
 }

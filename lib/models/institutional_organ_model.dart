@@ -2,12 +2,14 @@ class OrganMember {
   final String email;
   final String name;
   final String? userId; // Optional if already registered
+  final String? function; // Presidente, Vice-Presidente, Secretário, Vogal, Membro
   final Map<String, bool> permissions; // e.g., {'can_approve_minutes': true}
 
   OrganMember({
     required this.email,
     required this.name,
     this.userId,
+    this.function,
     this.permissions = const {},
   });
 
@@ -16,6 +18,7 @@ class OrganMember {
       'email': email,
       'name': name,
       'userId': userId,
+      'function': function,
       'permissions': permissions,
     };
   }
@@ -25,6 +28,7 @@ class OrganMember {
       email: map['email'] ?? '',
       name: map['name'] ?? '',
       userId: map['userId'],
+      function: map['function'],
       permissions: Map<String, bool>.from(map['permissions'] ?? {}),
     );
   }
@@ -34,6 +38,7 @@ class InstitutionalOrgan {
   final String id;
   final String name; // e.g., "Conselho Pedagógico"
   final String institutionId;
+  final String? presidentId;
   final List<OrganMember> members;
   final String description;
 
@@ -41,6 +46,7 @@ class InstitutionalOrgan {
     required this.id,
     required this.name,
     required this.institutionId,
+    this.presidentId,
     this.members = const [],
     this.description = '',
   });
@@ -50,6 +56,7 @@ class InstitutionalOrgan {
       'id': id,
       'name': name,
       'institutionId': institutionId,
+      'presidentId': presidentId,
       'members': members.map((m) => m.toMap()).toList(),
       'description': description,
     };
@@ -60,6 +67,7 @@ class InstitutionalOrgan {
       id: map['id'] ?? '',
       name: map['name'] ?? '',
       institutionId: map['institutionId'] ?? '',
+      presidentId: map['presidentId'],
       members: (map['members'] as List? ?? [])
           .map((m) => OrganMember.fromMap(m))
           .toList(),

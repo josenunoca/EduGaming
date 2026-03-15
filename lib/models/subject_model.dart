@@ -1,3 +1,40 @@
+class ModificationEntry {
+  final String userId;
+  final String userName;
+  final String userRole;
+  final DateTime timestamp;
+  final String action;
+
+  ModificationEntry({
+    required this.userId,
+    required this.userName,
+    required this.userRole,
+    required this.timestamp,
+    required this.action,
+  });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'userId': userId,
+      'userName': userName,
+      'userRole': userRole,
+      'timestamp': timestamp.toIso8601String(),
+      'action': action,
+    };
+  }
+
+  factory ModificationEntry.fromMap(Map<String, dynamic> map) {
+    return ModificationEntry(
+      userId: map['userId'] ?? '',
+      userName: map['userName'] ?? '',
+      userRole: map['userRole'] ?? '',
+      timestamp: DateTime.parse(
+          map['timestamp'] ?? DateTime.now().toIso8601String()),
+      action: map['action'] ?? '',
+    );
+  }
+}
+
 class Enrollment {
   final String id;
   final String userId;
@@ -165,8 +202,11 @@ class GameQuestion {
   final int correctOptionIndex;
   final double points;
   final int timeLimitSeconds;
-  final List<String> allowedAnswerTypes; // 'options', 'text', 'audio', 'image'
+  final List<String> allowedAnswerTypes;
   final String? evaluationCriteria;
+  final String? mediaUrl;
+  final String? mediaType; // 'image', 'audio', 'video'
+  final bool isDictation;
 
   GameQuestion({
     required this.id,
@@ -175,10 +215,11 @@ class GameQuestion {
     required this.correctOptionIndex,
     required this.points,
     required this.timeLimitSeconds,
-    this.allowedAnswerTypes = const [
-      'options'
-    ], // 'options', 'text', 'audio', 'image'
+    this.allowedAnswerTypes = const ['options'],
     this.evaluationCriteria,
+    this.mediaUrl,
+    this.mediaType,
+    this.isDictation = false,
   });
 
   Map<String, dynamic> toMap() {
@@ -191,6 +232,9 @@ class GameQuestion {
       'timeLimitSeconds': timeLimitSeconds,
       'allowedAnswerTypes': allowedAnswerTypes,
       if (evaluationCriteria != null) 'evaluationCriteria': evaluationCriteria,
+      if (mediaUrl != null) 'mediaUrl': mediaUrl,
+      if (mediaType != null) 'mediaType': mediaType,
+      'isDictation': isDictation,
     };
   }
 
@@ -205,6 +249,9 @@ class GameQuestion {
       allowedAnswerTypes:
           List<String>.from(map['allowedAnswerTypes'] ?? ['options']),
       evaluationCriteria: map['evaluationCriteria'],
+      mediaUrl: map['mediaUrl'],
+      mediaType: map['mediaType'],
+      isDictation: map['isDictation'] ?? false,
     );
   }
 }
@@ -277,6 +324,7 @@ class SubjectContent {
       type; // gamma, image, video, audio, spreadsheet, ai_comment, document
   final String category; // 'support' | 'exam' | 'game'
   final double weight; // weight if it's exam or game
+  final List<ModificationEntry> modificationLog;
 
   SubjectContent({
     required this.id,
@@ -285,6 +333,7 @@ class SubjectContent {
     required this.type,
     this.category = 'support',
     this.weight = 0.0,
+    this.modificationLog = const [],
   });
 
   Map<String, dynamic> toMap() {
@@ -295,6 +344,7 @@ class SubjectContent {
       'type': type,
       'category': category,
       'weight': weight,
+      'modificationLog': modificationLog.map((e) => e.toMap()).toList(),
     };
   }
 
@@ -306,6 +356,9 @@ class SubjectContent {
       type: map['type'] ?? 'file',
       category: map['category'] ?? 'support',
       weight: (map['weight'] as num? ?? 0.0).toDouble(),
+      modificationLog: (map['modificationLog'] as List? ?? [])
+          .map((e) => ModificationEntry.fromMap(e))
+          .toList(),
     );
   }
 }
@@ -322,6 +375,7 @@ class SyllabusSession {
   final bool isFinalized;
   final String? startTime; // HH:mm
   final String? endTime; // HH:mm
+  final List<ModificationEntry> modificationLog;
 
   SyllabusSession({
     required this.id,
@@ -335,6 +389,7 @@ class SyllabusSession {
     this.isFinalized = false,
     this.startTime,
     this.endTime,
+    this.modificationLog = const [],
   });
 
   Map<String, dynamic> toMap() {
@@ -350,6 +405,7 @@ class SyllabusSession {
       'isFinalized': isFinalized,
       if (startTime != null) 'startTime': startTime,
       if (endTime != null) 'endTime': endTime,
+      'modificationLog': modificationLog.map((e) => e.toMap()).toList(),
     };
   }
 
@@ -366,11 +422,16 @@ class SyllabusSession {
       isFinalized: map['isFinalized'] ?? false,
       startTime: map['startTime'],
       endTime: map['endTime'],
+      modificationLog: (map['modificationLog'] as List? ?? [])
+          .map((e) => ModificationEntry.fromMap(e))
+          .toList(),
     );
   }
 }
 
 enum PautaStatus { draft, finalized, sealed }
+
+enum SyllabusStatus { provisional, inValidationScientific, inValidationPedagogical, approved }
 
 class Subject {
   final String id;
@@ -386,11 +447,27 @@ class Subject {
   final String? scientificArea;
   final String? programDescription;
   final PautaStatus pautaStatus;
-  final double teachingHours;
-  final double nonTeachingHours;
+  final double teachingHours; // Legacy
+  final double nonTeachingHours; // Legacy
   final DateTime? sealedAt;
   final String? sealedBy;
   final List<SyllabusSession> sessions;
+
+  // New Academic Fields (Detailed Hours)
+  final double theoreticalHours;
+  final double theoreticalPracticalHours;
+  final double practicalHours;
+  final double otherHours;
+  final double ects;
+  final SyllabusStatus syllabusStatus;
+  
+  // Approval Info
+  final DateTime? scientificApprovalDate;
+  final String? scientificApprovedBy;
+  final DateTime? pedagogicalApprovalDate;
+  final String? pedagogicalApprovedBy;
+  final List<String> pedagogicalSignatures;
+  final String? syllabusFileUrl;
 
   // Marketplace & Revenue
   final double price;
@@ -419,6 +496,18 @@ class Subject {
     this.price = 0.0,
     this.currency = 'EUR',
     this.isMarketplaceEnabled = false,
+    this.theoreticalHours = 0.0,
+    this.theoreticalPracticalHours = 0.0,
+    this.practicalHours = 0.0,
+    this.otherHours = 0.0,
+    this.ects = 0.0,
+    this.syllabusStatus = SyllabusStatus.provisional,
+    this.scientificApprovalDate,
+    this.scientificApprovedBy,
+    this.pedagogicalApprovalDate,
+    this.pedagogicalApprovedBy,
+    this.pedagogicalSignatures = const [],
+    this.syllabusFileUrl,
   });
 
   Map<String, dynamic> toMap() {
@@ -445,6 +534,22 @@ class Subject {
       'price': price,
       'currency': currency,
       'isMarketplaceEnabled': isMarketplaceEnabled,
+      'theoreticalHours': theoreticalHours,
+      'theoreticalPracticalHours': theoreticalPracticalHours,
+      'practicalHours': practicalHours,
+      'otherHours': otherHours,
+      'ects': ects,
+      'syllabusStatus': syllabusStatus.name,
+      if (scientificApprovalDate != null)
+        'scientificApprovalDate': scientificApprovalDate!.toIso8601String(),
+      if (scientificApprovedBy != null)
+        'scientificApprovedBy': scientificApprovedBy,
+      if (pedagogicalApprovalDate != null)
+        'pedagogicalApprovalDate': pedagogicalApprovalDate!.toIso8601String(),
+      if (pedagogicalApprovedBy != null)
+        'pedagogicalApprovedBy': pedagogicalApprovedBy,
+      'pedagogicalSignatures': pedagogicalSignatures,
+      if (syllabusFileUrl != null) 'syllabusFileUrl': syllabusFileUrl,
     };
   }
 
@@ -484,6 +589,27 @@ class Subject {
       price: (map['price'] as num? ?? 0.0).toDouble(),
       currency: map['currency'] ?? 'EUR',
       isMarketplaceEnabled: map['isMarketplaceEnabled'] ?? false,
+      theoreticalHours: (map['theoreticalHours'] as num? ?? 0.0).toDouble(),
+      theoreticalPracticalHours:
+          (map['theoreticalPracticalHours'] as num? ?? 0.0).toDouble(),
+      practicalHours: (map['practicalHours'] as num? ?? 0.0).toDouble(),
+      otherHours: (map['otherHours'] as num? ?? 0.0).toDouble(),
+      ects: (map['ects'] as num? ?? 0.0).toDouble(),
+      syllabusStatus: SyllabusStatus.values.firstWhere(
+        (e) => e.name == (map['syllabusStatus'] ?? 'provisional'),
+        orElse: () => SyllabusStatus.provisional,
+      ),
+      scientificApprovalDate: map['scientificApprovalDate'] != null
+          ? DateTime.parse(map['scientificApprovalDate'])
+          : null,
+      scientificApprovedBy: map['scientificApprovedBy'],
+      pedagogicalApprovalDate: map['pedagogicalApprovalDate'] != null
+          ? DateTime.parse(map['pedagogicalApprovalDate'])
+          : null,
+      pedagogicalApprovedBy: map['pedagogicalApprovedBy'],
+      pedagogicalSignatures:
+          List<String>.from(map['pedagogicalSignatures'] ?? []),
+      syllabusFileUrl: map['syllabusFileUrl'],
     );
   }
 }

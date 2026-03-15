@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'dart:convert';
+import 'package:file_picker/file_picker.dart';
+import 'package:audioplayers/audioplayers.dart';
 import '../../../models/subject_model.dart';
 import '../../../services/firebase_service.dart';
+import '../../../services/ai_chat_service.dart';
 import '../../../widgets/glass_card.dart';
 import '../../../widgets/ai_translated_text.dart';
 
@@ -80,6 +84,11 @@ class _AiGameEditorScreenState extends State<AiGameEditorScreen> {
     List<String> allowedTypes = List.from(q.allowedAnswerTypes);
     final criteriaController =
         TextEditingController(text: q.evaluationCriteria);
+    String? mediaUrl = q.mediaUrl;
+    String? mediaType = q.mediaType;
+    bool isDictation = q.isDictation;
+    bool isGenerating = false;
+    final audioPlayer = AudioPlayer();
 
     showDialog(
       context: context,
@@ -219,6 +228,212 @@ class _AiGameEditorScreenState extends State<AiGameEditorScreen> {
                     ),
                   ),
                 ],
+                const Divider(color: Colors.white10, height: 32),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const AiTranslatedText('Modo Ditado',
+                        style: TextStyle(color: Colors.white, fontSize: 14)),
+                    Switch(
+                      value: isDictation,
+                      activeThumbColor: const Color(0xFF00D1FF),
+                      onChanged: (val) {
+                        setDialogState(() {
+                          isDictation = val;
+                          if (val) {
+                            mediaType = 'audio';
+                            if (!allowedTypes.contains('text')) {
+                              allowedTypes.add('text');
+                            }
+                          }
+                        });
+                      },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                const AiTranslatedText('Recursos Multimédia',
+                    style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                if (mediaUrl != null)
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 16),
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.05),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Column(
+                      children: [
+                        if (mediaType == 'image')
+                          Image.network(mediaUrl!,
+                              height: 100, fit: BoxFit.contain)
+                        else if (mediaType == 'audio')
+                          Row(
+                            children: [
+                              const Icon(Icons.audiotrack, color: Colors.white),
+                              const SizedBox(width: 8),
+                              const Expanded(
+                                  child: Text('Áudio Carregado',
+                                      style: TextStyle(
+                                          color: Colors.white, fontSize: 12))),
+                              IconButton(
+                                icon: const Icon(Icons.play_arrow,
+                                    color: Colors.white),
+                                onPressed: () =>
+                                    audioPlayer.play(UrlSource(mediaUrl!)),
+                              ),
+                            ],
+                          )
+                        else if (mediaType == 'video')
+                          const Row(
+                            children: [
+                              Icon(Icons.video_library, color: Colors.white),
+                              SizedBox(width: 8),
+                              Text('Vídeo Carregado',
+                                  style: TextStyle(
+                                      color: Colors.white, fontSize: 12)),
+                            ],
+                          ),
+                        TextButton.icon(
+                          onPressed: () =>
+                              setDialogState(() => mediaUrl = null),
+                          icon:
+                              const Icon(Icons.delete, color: Colors.redAccent),
+                          label: const AiTranslatedText('Remover',
+                              style: TextStyle(color: Colors.redAccent)),
+                        ),
+                      ],
+                    ),
+                  ),
+                if (isGenerating)
+                  const Center(
+                      child: Padding(
+                          padding: EdgeInsets.all(8.0),
+                          child: CircularProgressIndicator(strokeWidth: 2)))
+                else
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      ActionChip(
+                        avatar: const Icon(Icons.camera_alt, size: 16),
+                        label: const AiTranslatedText('Foto'),
+                        onPressed: () async {
+                          final result = await FilePicker.platform.pickFiles(
+                              type: FileType.image, withData: true);
+                          if (result != null && result.files.single.bytes != null) {
+                            setDialogState(() => isGenerating = true);
+                            final url = await context
+                                .read<FirebaseService>()
+                                .uploadGameMedia(widget.game.id,
+                                    result.files.single.bytes!, 'question_image.png');
+                            setDialogState(() {
+                              mediaUrl = url;
+                              mediaType = 'image';
+                              isGenerating = false;
+                            });
+                          }
+                        },
+                      ),
+                      ActionChip(
+                        avatar: const Icon(Icons.mic, size: 16),
+                        label: const AiTranslatedText('Áudio'),
+                        onPressed: () async {
+                          final result = await FilePicker.platform.pickFiles(
+                              type: FileType.audio, withData: true);
+                          if (result != null && result.files.single.bytes != null) {
+                            setDialogState(() => isGenerating = true);
+                            final url = await context
+                                .read<FirebaseService>()
+                                .uploadGameMedia(widget.game.id,
+                                    result.files.single.bytes!, 'question_audio.mp3');
+                            setDialogState(() {
+                              mediaUrl = url;
+                              mediaType = 'audio';
+                              isGenerating = false;
+                            });
+                          }
+                        },
+                      ),
+                      ActionChip(
+                        avatar: const Icon(Icons.auto_awesome, size: 16),
+                        label: const AiTranslatedText('Gerar Imagem (IA)'),
+                        onPressed: () async {
+                          setDialogState(() => isGenerating = true);
+                          try {
+                            final ai = context.read<AiChatService>();
+                            final fs = context.read<FirebaseService>();
+                            final base64Image =
+                                await ai.generateImage(qController.text);
+                            if (base64Image != null) {
+                              final bytes = base64Decode(base64Image);
+                              final url = await fs.uploadGameMedia(
+                                  widget.game.id, bytes, 'ai_image.png');
+                              setDialogState(() {
+                                mediaUrl = url;
+                                mediaType = 'image';
+                              });
+                            }
+                          } finally {
+                            setDialogState(() => isGenerating = false);
+                          }
+                        },
+                      ),
+                      ActionChip(
+                        avatar: const Icon(Icons.smart_toy, size: 16),
+                        label: const AiTranslatedText('Gerar Áudio (IA)'),
+                        onPressed: () async {
+                          setDialogState(() => isGenerating = true);
+                          try {
+                            final ai = context.read<AiChatService>();
+                            final fs = context.read<FirebaseService>();
+                            final bytes =
+                                await ai.synthesizeSpeech(qController.text);
+                            if (bytes != null) {
+                              final url = await fs.uploadGameMedia(
+                                  widget.game.id, bytes, 'ai_audio.mp3');
+                              setDialogState(() {
+                                mediaUrl = url;
+                                mediaType = 'audio';
+                              });
+                            }
+                          } finally {
+                            setDialogState(() => isGenerating = false);
+                          }
+                        },
+                      ),
+                      if (isDictation)
+                        ActionChip(
+                          avatar: const Icon(Icons.lightbulb, size: 16),
+                          label: const AiTranslatedText('Sugerir Opções'),
+                          onPressed: () async {
+                            setDialogState(() => isGenerating = true);
+                            try {
+                              final ai = context.read<AiChatService>();
+                              final suggestions =
+                                  await ai.suggestAnswers(qController.text);
+                              if (suggestions.isNotEmpty) {
+                                setDialogState(() {
+                                  for (int i = 0;
+                                      i <
+                                          suggestions.length.clamp(
+                                              0, optionControllers.length);
+                                      i++) {
+                                    optionControllers[i].text = suggestions[i];
+                                  }
+                                });
+                              }
+                            } finally {
+                              setDialogState(() => isGenerating = false);
+                            }
+                          },
+                        ),
+                    ],
+                  ),
               ],
             ),
           ),
@@ -240,8 +455,12 @@ class _AiGameEditorScreenState extends State<AiGameEditorScreen> {
                     evaluationCriteria: criteriaController.text.isNotEmpty
                         ? criteriaController.text
                         : null,
+                    mediaUrl: mediaUrl,
+                    mediaType: mediaType,
+                    isDictation: isDictation,
                   );
                 });
+                audioPlayer.dispose();
                 Navigator.pop(context);
               },
               child: const AiTranslatedText('Confirmar'),
@@ -297,11 +516,42 @@ class _AiGameEditorScreenState extends State<AiGameEditorScreen> {
                             ),
                             const SizedBox(width: 12),
                             Expanded(
-                              child: Text(
-                                q.question,
-                                style: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    q.question,
+                                    style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold),
+                                  ),
+                                  if (q.mediaUrl != null || q.isDictation)
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 4.0),
+                                      child: Row(
+                                        children: [
+                                          if (q.isDictation)
+                                            const Padding(
+                                              padding:
+                                                  EdgeInsets.only(right: 8.0),
+                                              child: Icon(Icons.mic,
+                                                  size: 14,
+                                                  color: Color(0xFF00D1FF)),
+                                            ),
+                                          if (q.mediaType == 'image')
+                                            const Icon(Icons.image,
+                                                size: 14, color: Colors.white54)
+                                          else if (q.mediaType == 'audio' &&
+                                              !q.isDictation)
+                                            const Icon(Icons.audiotrack,
+                                                size: 14, color: Colors.white54)
+                                          else if (q.mediaType == 'video')
+                                            const Icon(Icons.videocam,
+                                                size: 14, color: Colors.white54),
+                                        ],
+                                      ),
+                                    ),
+                                ],
                               ),
                             ),
                             IconButton(

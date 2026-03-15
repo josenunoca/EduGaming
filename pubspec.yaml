@@ -44,6 +44,8 @@ dependencies:
   archive: ^4.0.9
   xml: ^6.6.1
   syncfusion_flutter_pdf: 31.2.18
+  shared_preferences: 2.5.1
+  fl_chart: 0.71.0
 
 dev_dependencies:
   flutter_test:

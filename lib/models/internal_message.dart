@@ -9,6 +9,8 @@ class InternalMessage {
   final DateTime timestamp;
   final List<String> readBy;
   final List<String> deletedBy;
+  final String category; // 'academic', 'correspondence', 'admin', 'other'
+  final String? relatedEntityId; // ID of Subject, Course, etc.
 
   InternalMessage({
     required this.id,
@@ -21,6 +23,8 @@ class InternalMessage {
     required this.timestamp,
     this.readBy = const [],
     this.deletedBy = const [],
+    this.category = 'other',
+    this.relatedEntityId,
   });
 
   Map<String, dynamic> toMap() {
@@ -35,6 +39,8 @@ class InternalMessage {
       'timestamp': timestamp.toIso8601String(),
       'readBy': readBy,
       'deletedBy': deletedBy,
+      'category': category,
+      if (relatedEntityId != null) 'relatedEntityId': relatedEntityId,
     };
   }
 
@@ -52,6 +58,8 @@ class InternalMessage {
           : DateTime.now(),
       readBy: List<String>.from(map['readBy'] ?? []),
       deletedBy: List<String>.from(map['deletedBy'] ?? []),
+      category: map['category'] ?? 'other',
+      relatedEntityId: map['relatedEntityId'],
     );
   }
 }

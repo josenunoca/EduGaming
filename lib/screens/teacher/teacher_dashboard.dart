@@ -148,43 +148,54 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
               appBar: AppBar(
                 title: const AiTranslatedText('Painel do Professor'),
                 actions: [
-                  IconButton(
-                    icon: const Icon(Icons.person),
-                    onPressed: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (_) =>
-                                PersonalProfileScreen(user: teacher))),
-                    tooltip: 'Área Pessoal',
-                  ),
-                  MessagingBadge(
-                    icon: const Icon(Icons.mail),
-                    onPressed: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (_) => const CommunicationCenterScreen())),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.logout),
-                    onPressed: () async {
-                      await FirebaseAuth.instance.signOut();
-                      if (context.mounted) {
-                        Navigator.pushAndRemoveUntil(
+                  Tooltip(
+                    message: 'Ver e editar os seus dados pessoais',
+                    child: IconButton(
+                      icon: const Icon(Icons.person),
+                      onPressed: () => Navigator.push(
                           context,
                           MaterialPageRoute(
-                              builder: (_) => const LoginScreen()),
-                          (route) => false,
-                        );
-                      }
-                    },
+                              builder: (_) =>
+                                  PersonalProfileScreen(user: teacher))),
+                    ),
+                  ),
+                  Tooltip(
+                    message: 'Abrir centro de mensagens e correspondência',
+                    child: MessagingBadge(
+                      icon: const Icon(Icons.mail),
+                      onPressed: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) => const CommunicationCenterScreen())),
+                    ),
+                  ),
+                  Tooltip(
+                    message: 'Sair da conta e voltar ao ecrã de login',
+                    child: IconButton(
+                      icon: const Icon(Icons.logout),
+                      onPressed: () async {
+                        await FirebaseAuth.instance.signOut();
+                        if (context.mounted) {
+                          Navigator.pushAndRemoveUntil(
+                            context,
+                            MaterialPageRoute(
+                                builder: (_) => const LoginScreen()),
+                            (route) => false,
+                          );
+                        }
+                      },
+                    ),
                   ),
                 ],
               ),
-              floatingActionButton: FloatingActionButton.extended(
-                onPressed: () => _createNewSubject(context, teacher),
-                label: const AiTranslatedText('Nova Disciplina'),
-                icon: const Icon(Icons.add),
-                backgroundColor: const Color(0xFF7B61FF),
+              floatingActionButton: Tooltip(
+                message: 'Criar uma nova disciplina para lecionar',
+                child: FloatingActionButton.extended(
+                  onPressed: () => _createNewSubject(context, teacher),
+                  label: const AiTranslatedText('Nova Disciplina'),
+                  icon: const Icon(Icons.add),
+                  backgroundColor: const Color(0xFF7B61FF),
+                ),
               ),
               body: Container(
                 decoration: const BoxDecoration(
@@ -603,10 +614,11 @@ class _CreateSubjectModalState extends State<_CreateSubjectModal> {
                 contents: [],
                 games: [],
                 scientificArea: _selectedScientificArea,
-                teachingHours:
+                theoreticalHours:
                     double.tryParse(_teachingHoursController.text) ?? 0.0,
-                nonTeachingHours:
+                otherHours:
                     double.tryParse(_nonTeachingHoursController.text) ?? 0.0,
+                syllabusStatus: SyllabusStatus.provisional,
               );
               await service.updateSubject(s);
               if (mounted) Navigator.pop(context);

@@ -6,6 +6,8 @@ import '../../models/institution_model.dart';
 import '../../models/credit_pricing_model.dart';
 import '../../widgets/ai_translated_text.dart';
 import 'package:image_picker/image_picker.dart';
+import '../user/theme_settings_screen.dart';
+import '../user/user_lifestyle_screen.dart';
 
 class PersonalProfileScreen extends StatefulWidget {
   final UserModel user;
@@ -437,6 +439,35 @@ class _PersonalProfileScreenState extends State<PersonalProfileScreen> {
                         );
                       },
                     ),
+                    const SizedBox(height: 32),
+                    const Text(
+                      'Preferências e Bem-estar',
+                      style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white),
+                    ),
+                    const SizedBox(height: 16),
+                    ListTile(
+                      leading: const Icon(Icons.palette, color: Colors.amberAccent),
+                      title: const Text('Personalização Visual', style: TextStyle(color: Colors.white)),
+                      subtitle: const Text('Escolha o seu padrão de cores favorito', style: TextStyle(color: Colors.white54)),
+                      trailing: const Icon(Icons.chevron_right, color: Colors.white24),
+                      tileColor: Colors.white.withValues(alpha: 0.05),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ThemeSettingsScreen())),
+                    ),
+                    const SizedBox(height: 12),
+                    ListTile(
+                      leading: const Icon(Icons.favorite, color: Colors.pinkAccent),
+                      title: const Text('Meu Estilo de Vida', style: TextStyle(color: Colors.white)),
+                      subtitle: const Text('Questionários e dicas de saúde', style: TextStyle(color: Colors.white54)),
+                      trailing: const Icon(Icons.chevron_right, color: Colors.white24),
+                      tileColor: Colors.white.withValues(alpha: 0.05),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const UserLifestyleScreen())),
+                    ),
+                    const SizedBox(height: 32),
                   ],
                 ),
               ),

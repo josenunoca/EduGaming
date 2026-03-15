@@ -6,12 +6,15 @@ import '../models/user_model.dart';
 import '../widgets/glass_card.dart';
 import 'registration_form.dart';
 import 'admin/admin_dashboard.dart';
+import 'coordinator/coordinator_dashboard.dart';
 import 'teacher/teacher_dashboard.dart';
 import 'student/student_dashboard.dart';
 import 'institution/institution_dashboard.dart';
 import 'parent/parent_dashboard.dart';
 import '../logic/language_provider.dart';
 import '../widgets/ai_translated_text.dart';
+import 'other/other_dashboard.dart';
+import 'specialist/health_specialist_dashboard.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -271,6 +274,15 @@ class _LoginScreenState extends State<LoginScreen> {
         break;
       case UserRole.parent:
         target = const ParentDashboard();
+        break;
+      case UserRole.courseCoordinator:
+        target = const CoordinatorDashboard();
+        break;
+      case UserRole.healthSpecialist:
+        target = const HealthSpecialistDashboard();
+        break;
+      case UserRole.other:
+        target = const OtherDashboard();
         break;
     }
     Navigator.pushReplacement(

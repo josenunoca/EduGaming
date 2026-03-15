@@ -32,6 +32,9 @@ class Course {
   final String studyCycleId;
   final String institutionId;
   final List<String> subjectIds;
+  final List<String> academicYears;
+  final String? coordinatorId; // New: nominated teacher
+  final String? delegateId; // New: nominated student
 
   Course({
     required this.id,
@@ -39,6 +42,9 @@ class Course {
     required this.studyCycleId,
     required this.institutionId,
     this.subjectIds = const [],
+    this.academicYears = const [],
+    this.coordinatorId,
+    this.delegateId,
   });
 
   Map<String, dynamic> toMap() {
@@ -48,6 +54,9 @@ class Course {
       'studyCycleId': studyCycleId,
       'institutionId': institutionId,
       'subjectIds': subjectIds,
+      'academicYears': academicYears,
+      if (coordinatorId != null) 'coordinatorId': coordinatorId,
+      if (delegateId != null) 'delegateId': delegateId,
     };
   }
 
@@ -58,6 +67,9 @@ class Course {
       studyCycleId: map['studyCycleId'] ?? '',
       institutionId: map['institutionId'] ?? '',
       subjectIds: List<String>.from(map['subjectIds'] ?? []),
+      academicYears: List<String>.from(map['academicYears'] ?? []),
+      coordinatorId: map['coordinatorId'],
+      delegateId: map['delegateId'],
     );
   }
 }

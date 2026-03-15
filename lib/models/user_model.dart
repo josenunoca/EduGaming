@@ -4,6 +4,9 @@ enum UserRole {
   teacher,
   student,
   parent,
+  courseCoordinator,
+  healthSpecialist,
+  other,
 }
 
 class UserModel {

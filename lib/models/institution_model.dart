@@ -21,6 +21,7 @@ class InstitutionModel {
   final int totalCreditsRecharged;
   final Map<String, dynamic>?
       whiteLabelSettings; // logoUrl, customColors, domain
+  final String? logoUrl;
 
   final bool isVerified;
   final bool isSuspended;
@@ -45,6 +46,7 @@ class InstitutionModel {
     this.aiCredits = 0,
     this.totalCreditsRecharged = 0,
     this.whiteLabelSettings,
+    this.logoUrl,
     required this.createdAt,
   });
 
@@ -68,6 +70,7 @@ class InstitutionModel {
       'aiCredits': aiCredits,
       'totalCreditsRecharged': totalCreditsRecharged,
       if (whiteLabelSettings != null) 'whiteLabelSettings': whiteLabelSettings,
+      if (logoUrl != null) 'logoUrl': logoUrl,
       'createdAt': createdAt.toIso8601String(),
     };
   }
@@ -95,6 +98,7 @@ class InstitutionModel {
       whiteLabelSettings: map['whiteLabelSettings'] != null
           ? Map<String, dynamic>.from(map['whiteLabelSettings'])
           : null,
+      logoUrl: map['logoUrl'],
       createdAt:
           DateTime.parse(map['createdAt'] ?? DateTime.now().toIso8601String()),
     );

@@ -112,29 +112,35 @@ class StudentDashboard extends StatelessWidget {
                           MaterialPageRoute(
                               builder: (_) =>
                                   PersonalProfileScreen(user: student))),
-                      tooltip: 'Área Pessoal',
+                      tooltip: 'Ver e editar os seus dados pessoais',
                     ),
-                    MessagingBadge(
-                      icon: const Icon(Icons.mail),
-                      onPressed: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (_) => CommunicationCenterScreen(
-                                  forUserId: effectiveStudentId))),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.logout),
-                      onPressed: () async {
-                        await FirebaseAuth.instance.signOut();
-                        if (context.mounted) {
-                          Navigator.pushAndRemoveUntil(
+                    Tooltip(
+                      message: 'Abrir centro de mensagens e correspondência',
+                      child: MessagingBadge(
+                        icon: const Icon(Icons.mail),
+                        onPressed: () => Navigator.push(
                             context,
                             MaterialPageRoute(
-                                builder: (_) => const LoginScreen()),
-                            (route) => false,
-                          );
-                        }
-                      },
+                                builder: (_) => CommunicationCenterScreen(
+                                    forUserId: effectiveStudentId))),
+                      ),
+                    ),
+                    Tooltip(
+                      message: 'Sair da conta e voltar ao ecrã de login',
+                      child: IconButton(
+                        icon: const Icon(Icons.logout),
+                        onPressed: () async {
+                          await FirebaseAuth.instance.signOut();
+                          if (context.mounted) {
+                            Navigator.pushAndRemoveUntil(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (_) => const LoginScreen()),
+                              (route) => false,
+                            );
+                          }
+                        },
+                      ),
                     ),
                   ],
                 ],
@@ -153,19 +159,22 @@ class StudentDashboard extends StatelessWidget {
                             fontWeight: FontWeight.bold,
                             color: Colors.white)),
                     const SizedBox(height: 24),
-                    ElevatedButton.icon(
-                      onPressed: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (_) =>
-                                SubjectSelectionScreen(student: student)),
-                      ),
-                      icon: const Icon(Icons.search),
-                      label:
-                          const AiTranslatedText('Procurar Novas Disciplinas'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF7B61FF),
-                        minimumSize: const Size(double.infinity, 50),
+                    Tooltip(
+                      message: 'Clique para navegar e inscrever-se em novas disciplinas disponíveis',
+                      child: ElevatedButton.icon(
+                        onPressed: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) =>
+                                  SubjectSelectionScreen(student: student)),
+                        ),
+                        icon: const Icon(Icons.search),
+                        label:
+                            const AiTranslatedText('Procurar Novas Disciplinas'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF7B61FF),
+                          minimumSize: const Size(double.infinity, 50),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 32),

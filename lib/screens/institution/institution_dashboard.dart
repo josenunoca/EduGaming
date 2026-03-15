@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../services/firebase_service.dart';
@@ -11,7 +12,9 @@ import '../common/communication_center_screen.dart';
 import 'institution_professor_management_screen.dart';
 import 'institutional_management_screen.dart';
 import 'credit_management_screen.dart';
+import 'academic_management_screen.dart';
 import '../common/personal_profile_screen.dart';
+import 'lifestyle_management_screen.dart';
 import '../login_screen.dart';
 
 class InstitutionDashboard extends StatelessWidget {
@@ -142,11 +145,18 @@ class InstitutionDashboard extends StatelessWidget {
 
                   return Container(
                     padding: const EdgeInsets.all(24),
-                    child: GridView.count(
-                      crossAxisCount: 2,
-                      crossAxisSpacing: 16,
-                      mainAxisSpacing: 16,
-                      children: [
+                    child: SingleChildScrollView(
+                      child: Column(
+                        children: [
+                          _buildBrandingSection(context, service, institution),
+                          const SizedBox(height: 24),
+                          GridView.count(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            crossAxisCount: 2,
+                            crossAxisSpacing: 16,
+                            mainAxisSpacing: 16,
+                            children: [
                         _DashboardActionCard(
                           icon: Icons.people,
                           label: 'Gerir Professores',
@@ -183,10 +193,34 @@ class InstitutionDashboard extends StatelessWidget {
                                         institution: institution)),
                           ),
                         ),
-                        // Future: Add other institution actions
+                        _DashboardActionCard(
+                          icon: Icons.school,
+                          label: 'Gestão Académica',
+                          color: Colors.indigo,
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (_) =>
+                                    AcademicManagementScreen(
+                                        institution: institution)),
+                          ),
+                        ),
+                        _DashboardActionCard(
+                          icon: Icons.favorite,
+                          label: 'Estilo de Vida',
+                          color: Colors.pinkAccent,
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (_) => const LifestyleManagementScreen()),
+                          )
+                        ),
                       ],
                     ),
-                  );
+                  ],
+                ),
+              ),
+            );
                 },
               );
             },
@@ -194,6 +228,62 @@ class InstitutionDashboard extends StatelessWidget {
         },
       ),
     );
+  }
+
+  Widget _buildBrandingSection(BuildContext context, FirebaseService service, InstitutionModel inst) {
+    return GlassCard(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 30,
+              backgroundColor: Colors.white10,
+              backgroundImage: inst.logoUrl != null ? NetworkImage(inst.logoUrl!) : null,
+              child: inst.logoUrl == null ? const Icon(Icons.business, color: Colors.white54) : null,
+            ),
+            const SizedBox(width: 16),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  AiTranslatedText('Logótipo da Instituição',
+                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  AiTranslatedText('Este logótipo será usado em todos os documentos oficiais.',
+                      style: TextStyle(color: Colors.white54, fontSize: 12)),
+                ],
+              ),
+            ),
+            ElevatedButton.icon(
+              onPressed: () => _pickAndUploadLogo(context, service, inst.id),
+              icon: const Icon(Icons.upload, size: 16),
+              label: const AiTranslatedText('Alterar'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF00D1FF).withValues(alpha: 0.2),
+                foregroundColor: const Color(0xFF00D1FF),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickAndUploadLogo(BuildContext context, FirebaseService service, String institutionId) async {
+    final result = await FilePicker.platform.pickFiles(type: FileType.image);
+    if (result != null && result.files.single.bytes != null) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: AiTranslatedText('A carregar logótipo...')),
+        );
+      }
+      await service.uploadInstitutionLogo(institutionId, result.files.single.bytes!);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: AiTranslatedText('Logótipo atualizado com sucesso!')),
+        );
+      }
+    }
   }
 
   Widget _buildSuspendedView(String message) {
