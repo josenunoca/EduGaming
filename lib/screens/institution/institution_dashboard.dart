@@ -11,6 +11,8 @@ import '../common/communication_center_screen.dart';
 import 'institution_professor_management_screen.dart';
 import 'institutional_management_screen.dart';
 import 'credit_management_screen.dart';
+import '../common/personal_profile_screen.dart';
+import '../login_screen.dart';
 
 class InstitutionDashboard extends StatelessWidget {
   const InstitutionDashboard({super.key});
@@ -23,6 +25,28 @@ class InstitutionDashboard extends StatelessWidget {
       appBar: AppBar(
         title: const AiTranslatedText('Painel da Instituição'),
         actions: [
+          StreamBuilder<User?>(
+            stream: service.user,
+            builder: (context, authSnapshot) {
+              final uid = authSnapshot.data?.uid;
+              if (uid == null) return const SizedBox();
+              return StreamBuilder<UserModel?>(
+                stream: service.getUserStream(uid),
+                builder: (context, userSnapshot) {
+                  final user = userSnapshot.data;
+                  if (user == null) return const SizedBox();
+                  return IconButton(
+                    icon: const Icon(Icons.person),
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => PersonalProfileScreen(user: user)),
+                    ),
+                    tooltip: 'Área Pessoal',
+                  );
+                },
+              );
+            },
+          ),
           MessagingBadge(
             icon: const Icon(Icons.mail),
             onPressed: () => Navigator.push(
@@ -30,6 +54,20 @@ class InstitutionDashboard extends StatelessWidget {
               MaterialPageRoute(
                   builder: (_) => const CommunicationCenterScreen()),
             ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: () async {
+              await FirebaseAuth.instance.signOut();
+              if (context.mounted) {
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(builder: (_) => const LoginScreen()),
+                  (route) => false,
+                );
+              }
+            },
+            tooltip: 'Sair',
           ),
         ],
       ),
