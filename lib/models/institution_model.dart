@@ -18,6 +18,7 @@ class InstitutionModel {
   // Monetization & SaaS
   final String subscriptionPlan; // 'base', 'pro', 'enterprise'
   final int aiCredits;
+  final int totalCreditsRecharged;
   final Map<String, dynamic>?
       whiteLabelSettings; // logoUrl, customColors, domain
 
@@ -42,6 +43,7 @@ class InstitutionModel {
     this.signatureUrl,
     this.subscriptionPlan = 'base',
     this.aiCredits = 0,
+    this.totalCreditsRecharged = 0,
     this.whiteLabelSettings,
     required this.createdAt,
   });
@@ -64,6 +66,7 @@ class InstitutionModel {
       if (signatureUrl != null) 'signatureUrl': signatureUrl,
       'subscriptionPlan': subscriptionPlan,
       'aiCredits': aiCredits,
+      'totalCreditsRecharged': totalCreditsRecharged,
       if (whiteLabelSettings != null) 'whiteLabelSettings': whiteLabelSettings,
       'createdAt': createdAt.toIso8601String(),
     };
@@ -88,6 +91,7 @@ class InstitutionModel {
       signatureUrl: map['signatureUrl'],
       subscriptionPlan: map['subscriptionPlan'] ?? 'base',
       aiCredits: map['aiCredits'] ?? 0,
+      totalCreditsRecharged: map['totalCreditsRecharged'] ?? 0,
       whiteLabelSettings: map['whiteLabelSettings'] != null
           ? Map<String, dynamic>.from(map['whiteLabelSettings'])
           : null,

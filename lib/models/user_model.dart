@@ -27,6 +27,8 @@ class UserModel {
   final String? signatureUrl;
   final List<String> interests;
   final int aiCredits; // Credits for AI operations (games, chat)
+  final int? aiCreditLimit; // Weekly/Monthly limit set by institution
+  final int totalCreditsConsumed; // Total historical consumption
   final String? preferredLanguage; // Support for localization strategy
 
   UserModel({
@@ -50,6 +52,8 @@ class UserModel {
     this.signatureUrl,
     this.interests = const [],
     this.aiCredits = 10, // Default signup credits
+    this.aiCreditLimit,
+    this.totalCreditsConsumed = 0,
     this.preferredLanguage,
   });
 
@@ -75,6 +79,8 @@ class UserModel {
       if (signatureUrl != null) 'signatureUrl': signatureUrl,
       'interests': interests,
       'aiCredits': aiCredits,
+      if (aiCreditLimit != null) 'aiCreditLimit': aiCreditLimit,
+      'totalCreditsConsumed': totalCreditsConsumed,
       if (preferredLanguage != null) 'preferredLanguage': preferredLanguage,
     };
   }
@@ -105,6 +111,8 @@ class UserModel {
       signatureUrl: map['signatureUrl'],
       interests: List<String>.from(map['interests'] ?? []),
       aiCredits: map['aiCredits'] ?? 10,
+      aiCreditLimit: map['aiCreditLimit'],
+      totalCreditsConsumed: map['totalCreditsConsumed'] ?? 0,
       preferredLanguage: map['preferredLanguage'],
     );
   }

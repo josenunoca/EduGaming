@@ -14,6 +14,7 @@ import '../models/institutional_organ_model.dart';
 import '../models/facility_model.dart';
 import '../models/document_model.dart';
 import '../models/activity_model.dart';
+import '../models/credit_transaction.dart';
 
 class FirebaseService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -1374,5 +1375,85 @@ class FirebaseService {
         .where('institutionId', isEqualTo: institutionId)
         .get();
     return users.docs.map((d) => UserModel.fromMap(d.data())).toList();
+  }
+
+  // --- Credit Management ---
+  Future<void> logCreditTransaction(CreditTransaction tx) async {
+    // 1. Save transaction
+    await _db.collection('credit_transactions').doc(tx.id).set(tx.toMap());
+
+    // 2. Update institution balance if it's a recharge
+    if (tx.type == TransactionType.recharge) {
+      await _db.collection('institutions').doc(tx.institutionId).update({
+        'aiCredits': FieldValue.increment(tx.amount),
+        'totalCreditsRecharged': FieldValue.increment(tx.amount),
+      });
+    }
+
+    // 3. Update user consumed credits if it's usage
+    if (tx.type == TransactionType.usage) {
+      await _db.collection('users').doc(tx.userId).update({
+        'totalCreditsConsumed': FieldValue.increment(tx.amount),
+      });
+      // Also decrement from institution pool
+      await _db.collection('institutions').doc(tx.institutionId).update({
+        'aiCredits': FieldValue.increment(-tx.amount),
+      });
+    }
+  }
+
+  Future<void> setUserCreditLimit(String uid, int? limit) async {
+    await _db.collection('users').doc(uid).update({'aiCreditLimit': limit});
+  }
+
+  Future<void> setBulkCreditLimit(
+      String institutionId, UserRole role, int? limit) async {
+    final users = await _db
+        .collection('users')
+        .where('institutionId', isEqualTo: institutionId)
+        .where('role', isEqualTo: role.name)
+        .get();
+
+    final batch = _db.batch();
+    for (var doc in users.docs) {
+      batch.update(doc.reference, {'aiCreditLimit': limit});
+    }
+    await batch.commit();
+  }
+
+  Stream<List<CreditTransaction>> getInstitutionTransactions(
+      String institutionId) {
+    return _db
+        .collection('credit_transactions')
+        .where('institutionId', isEqualTo: institutionId)
+        .orderBy('timestamp', descending: true)
+        .snapshots()
+        .map((s) =>
+            s.docs.map((d) => CreditTransaction.fromMap(d.data())).toList());
+  }
+
+  Future<Map<String, List<UserModel>>> getTopConsumptionStats(
+      String institutionId) async {
+    final users = await _db
+        .collection('users')
+        .where('institutionId', isEqualTo: institutionId)
+        .get();
+
+    final allUsers = users.docs.map((d) => UserModel.fromMap(d.data())).toList();
+
+    // Teachers
+    final teachers = allUsers.where((u) => u.role == UserRole.teacher).toList();
+    teachers.sort((a, b) => b.totalCreditsConsumed.compareTo(a.totalCreditsConsumed));
+
+    // Students
+    final students = allUsers.where((u) => u.role == UserRole.student).toList();
+    students.sort((a, b) => b.totalCreditsConsumed.compareTo(a.totalCreditsConsumed));
+
+    return {
+      'top_teachers': teachers.take(3).toList(),
+      'bottom_teachers': teachers.reversed.take(3).toList(),
+      'top_students': students.take(3).toList(),
+      'bottom_students': students.reversed.take(3).toList(),
+    };
   }
 }

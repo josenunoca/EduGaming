@@ -10,6 +10,7 @@ import '../../widgets/messaging_badge.dart';
 import '../common/communication_center_screen.dart';
 import 'institution_professor_management_screen.dart';
 import 'institutional_management_screen.dart';
+import 'credit_management_screen.dart';
 
 class InstitutionDashboard extends StatelessWidget {
   const InstitutionDashboard({super.key});
@@ -129,6 +130,18 @@ class InstitutionDashboard extends StatelessWidget {
                             MaterialPageRoute(
                                 builder: (_) =>
                                     InstitutionalManagementScreen(
+                                        institution: institution)),
+                          ),
+                        ),
+                        _DashboardActionCard(
+                          icon: Icons.token,
+                          label: 'Gestão de Créditos',
+                          color: Colors.amber,
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (_) =>
+                                    InstitutionCreditManagementScreen(
                                         institution: institution)),
                           ),
                         ),
