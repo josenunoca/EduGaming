@@ -61,7 +61,23 @@ class InstitutionDashboard extends StatelessWidget {
               }
               
               if (user.institutionId == null) {
-                return const Center(child: AiTranslatedText('Erro: Esta conta não está associada a nenhuma instituição.'));
+                return FutureBuilder(
+                  future: service.repairInstitutionLink(authSnap.data!.uid, authSnap.data!.email!),
+                  builder: (context, repairSnap) {
+                    if (repairSnap.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    return const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(24.0),
+                        child: AiTranslatedText(
+                          'Erro: Vincule este utilizador a uma instituição no painel de Administrador ou verifique o email.',
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    );
+                  },
+                );
               }
 
               return StreamBuilder<InstitutionModel?>(

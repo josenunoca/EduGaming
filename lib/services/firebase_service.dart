@@ -140,11 +140,17 @@ class FirebaseService {
   }
 
   // --- Institution Management ---
-  Future<void> saveInstitution(InstitutionModel institution) async {
+  Future<void> saveInstitution(InstitutionModel institution, {String? creatorUid}) async {
     await _db
         .collection('institutions')
         .doc(institution.id)
         .set(institution.toMap());
+    
+    if (creatorUid != null) {
+      await _db.collection('users').doc(creatorUid).update({
+        'institutionId': institution.id,
+      });
+    }
   }
 
   Stream<List<InstitutionModel>> getInstitutions() {
@@ -260,6 +266,33 @@ class FirebaseService {
             u.name.toLowerCase().contains(query.toLowerCase()) ||
             u.email.toLowerCase().contains(query.toLowerCase()))
         .toList();
+  }
+
+  Future<void> repairInstitutionLink(String uid, String email) async {
+    // 1. Search for institutions where this user's email is the primary email
+    final instSnapshot = await _db
+        .collection('institutions')
+        .where('email', isEqualTo: email)
+        .limit(1)
+        .get();
+
+    if (instSnapshot.docs.isNotEmpty) {
+      final instId = instSnapshot.docs.first.id;
+      await _db.collection('users').doc(uid).update({'institutionId': instId});
+      return;
+    }
+
+    // 2. Search for institutions where this user is an authorized professor
+    final profSnapshot = await _db
+        .collection('institutions')
+        .where('authorizedProfessorIds', arrayContains: uid)
+        .limit(1)
+        .get();
+
+    if (profSnapshot.docs.isNotEmpty) {
+      final instId = profSnapshot.docs.first.id;
+      await _db.collection('users').doc(uid).update({'institutionId': instId});
+    }
   }
 
   // --- File Storage ---
