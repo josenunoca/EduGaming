@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../login_screen.dart';
+import '../../widgets/branded_title.dart';
 import '../../services/firebase_service.dart';
 import '../../models/user_model.dart';
+import '../../models/institution_model.dart';
 import '../../models/subject_model.dart';
 import '../../widgets/glass_card.dart';
 import 'subject_selection_screen.dart';
@@ -12,6 +14,7 @@ import '../../widgets/ai_translated_text.dart';
 import '../common/communication_center_screen.dart';
 import '../../widgets/messaging_badge.dart';
 import 'student_subject_screen.dart';
+import '../../widgets/user_notices_widget.dart';
 
 class StudentDashboard extends StatelessWidget {
   final String? studentId;
@@ -100,9 +103,21 @@ class StudentDashboard extends StatelessWidget {
             return Scaffold(
               backgroundColor: const Color(0xFF0F172A),
               appBar: AppBar(
-                title: AiTranslatedText(isViewingAsParent
-                    ? 'Acompanhamento: ${student.name}'
-                    : 'Painel do Aluno'),
+                title: StreamBuilder<InstitutionModel?>(
+                  stream: student.institutionId != null
+                      ? service.getInstitutionStream(student.institutionId!)
+                      : Stream.value(null),
+                  builder: (context, instSnap) {
+                    final institution = instSnap.data;
+                    return BrandedTitle(
+                      logoUrl: institution?.logoUrl,
+                      institutionName: institution?.name,
+                      defaultTitle: isViewingAsParent
+                          ? 'Acompanhamento: ${student.name}'
+                          : 'Painel do Aluno',
+                    );
+                  },
+                ),
                 actions: [
                   if (!isViewingAsParent) ...[
                     IconButton(
@@ -152,13 +167,13 @@ class StudentDashboard extends StatelessWidget {
                   children: [
                     AiTranslatedText('Olá, ${student.name}',
                         style: const TextStyle(
-                            fontSize: 18, color: Colors.white70)),
+                            fontSize: 16, color: Colors.white70)),
                     const AiTranslatedText('As Tuas Disciplinas',
                         style: TextStyle(
-                            fontSize: 24,
+                            fontSize: 22,
                             fontWeight: FontWeight.bold,
                             color: Colors.white)),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 12),
                     Tooltip(
                       message: 'Clique para navegar e inscrever-se em novas disciplinas disponíveis',
                       child: ElevatedButton.icon(
@@ -173,10 +188,12 @@ class StudentDashboard extends StatelessWidget {
                             const AiTranslatedText('Procurar Novas Disciplinas'),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF7B61FF),
-                          minimumSize: const Size(double.infinity, 50),
+                          minimumSize: const Size(double.infinity, 36),
                         ),
                       ),
                     ),
+                    const SizedBox(height: 12),
+                    UserNoticesWidget(user: student),
                     const SizedBox(height: 32),
                     const AiTranslatedText('Inscrições e Acesso',
                         style: TextStyle(
@@ -208,9 +225,10 @@ class StudentDashboard extends StatelessWidget {
                               return Padding(
                                 padding: const EdgeInsets.only(bottom: 12),
                                 child: GlassCard(
-                                  child: FutureBuilder<Subject?>(
-                                      future: service
-                                          .getSubject(enrollment.subjectId),
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                                  child: StreamBuilder<Subject?>(
+                                      stream: service
+                                          .getSubjectStream(enrollment.subjectId),
                                       builder: (context, subjectSnapshot) {
                                         final subjectName = subjectSnapshot
                                                 .data?.name ??
@@ -219,7 +237,8 @@ class StudentDashboard extends StatelessWidget {
                                           title: AiTranslatedText(subjectName,
                                               style: const TextStyle(
                                                   color: Colors.white,
-                                                  fontWeight: FontWeight.bold)),
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 16)),
                                           subtitle: Column(
                                             crossAxisAlignment:
                                                 CrossAxisAlignment.start,

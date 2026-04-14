@@ -1,15 +1,15 @@
 import 'dart:convert';
-import 'package:http/http.dart' as http;
+import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
+import 'package:google_generative_ai/google_generative_ai.dart';
 import '../models/subject_model.dart';
 
 class AiChatService {
   final String _apiKey;
-  final List<Map<String, dynamic>> _history = [];
+  late GenerativeModel _model;
+  ChatSession? _chat;
   String _systemPrompt = '';
-
-  static const _endpoint =
-      'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
 
   static const _systemInstruction =
       'Você é um professor e pesquisador de vanguarda, um especialista altamente qualificado na área científica dos documentos fornecidos. '
@@ -18,189 +18,110 @@ class AiChatService {
       'Se o usuário perguntar algo fora do escopo dos documentos, explique educadamente que sua especialidade nestas sessões se limita ao conteúdo selecionado. '
       'Mantenha um tom encorajador, acadêmico e visionário. Responda no idioma em que for questionado.';
 
-  AiChatService(String apiKey) : _apiKey = apiKey;
+  AiChatService(String apiKey) : _apiKey = apiKey {
+    _model = GenerativeModel(
+      model: 'gemini-flash-latest',
+      apiKey: _apiKey,
+      systemInstruction: Content.system(_systemInstruction),
+    );
+  }
 
   Future<void> initializeSession(List<SubjectContent> contents) async {
-    _history.clear();
-
-    // Build context from content URLs (text-based summary for v1 REST)
+    // Build context from content URLs
     final contentSummaries = contents
         .where((c) => c.url.isNotEmpty)
         .map((c) => '- ${c.name} (${c.type}): ${c.url}')
         .join('\n');
 
-    _systemPrompt =
-        '$_systemInstruction\n\nDocumentos de referência disponíveis:\n$contentSummaries';
+    _systemPrompt = '$_systemInstruction\n\nDocumentos de referência disponíveis:\n$contentSummaries';
 
-    // Prime the conversation with context
-    _history.add({
-      'role': 'user',
-      'parts': [
-        {
-          'text':
-              'Aqui estão os documentos que vamos discutir:\n$contentSummaries'
-        }
-      ]
-    });
-    _history.add({
-      'role': 'model',
-      'parts': [
-        {
-          'text':
-              'Entendido. Analisei os documentos e estou pronto para discutir os temas abordados de forma profissional e detalhada. Como posso ajudar?'
-        }
-      ]
-    });
+    // Initialize new model with updated system instruction
+    _model = GenerativeModel(
+      model: 'gemini-flash-latest',
+      apiKey: _apiKey,
+      systemInstruction: Content.system(_systemPrompt),
+    );
+
+    // Start fresh chat session
+    _chat = _model.startChat();
   }
 
   Stream<String> sendMessage(String message) async* {
-    _history.add({
-      'role': 'user',
-      'parts': [
-        {'text': message}
-      ]
-    });
+    _chat ??= _model.startChat();
 
     try {
-      final requestBody = {
-        'system_instruction': {
-          'parts': [
-            {
-              'text':
-                  _systemPrompt.isNotEmpty ? _systemPrompt : _systemInstruction
-            }
-          ]
-        },
-        'contents': _history,
-        'generationConfig': {
-          'temperature': 0.7,
-          'maxOutputTokens': 8192,
-        }
-      };
+      final response = _chat!.sendMessageStream(Content.text(message));
 
-      final response = await http.post(
-        Uri.parse('$_endpoint?key=$_apiKey'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode(requestBody),
-      );
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final reply = data['candidates']?[0]?['content']?['parts']?[0]?['text']
-            ?.toString()
-            .trim();
-
-        if (reply != null && reply.isNotEmpty) {
-          _history.add({
-            'role': 'model',
-            'parts': [
-              {'text': reply}
-            ]
-          });
-          yield reply;
-        } else {
-          yield 'Não obtive uma resposta válida. Tente novamente.';
-        }
-      } else {
-        debugPrint(
-            'AI Chat HTTP Error [${response.statusCode}]: ${response.body}');
-        if (response.statusCode == 403) {
-          yield 'Erro: Chave de API inválida ou sem permissões para o Gemini.';
-        } else if (response.statusCode == 429) {
-          yield 'Erro: Limite de cota atingido pela elevada procura simultânea. Por favor, aguarde 30 segundos e tente novamente.';
-        } else {
-          yield 'Erro de comunicação [${response.statusCode}]. Tente novamente.';
+      await for (final chunk in response) {
+        if (chunk.text != null) {
+          yield chunk.text!;
         }
       }
     } catch (e) {
       debugPrint('AI Chat Error: $e');
-      yield 'Erro técnico: $e';
+      yield 'Erro na comunicação com a IA. Por favor, tente novamente. Detalhes: $e';
     }
   }
 
   Future<String?> generateImage(String prompt) async {
-    const endpoint =
-        'https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-001:generateContent';
-    final fullPrompt =
-        'Educational illustration: $prompt. Style: Professional, clean, and clear.';
+    const modelId = 'imagen-4.0-fast-generate-001';
+    const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/$modelId:predict';
+    final fullPrompt = 'Educational illustration: $prompt. Style: Professional, clean, and clear.';
 
     try {
       final response = await http.post(
         Uri.parse('$endpoint?key=$_apiKey'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
-          'contents': [
-            {
-              'parts': [
-                {'text': fullPrompt}
-              ]
-            }
-          ]
+          'instances': [
+            {'prompt': fullPrompt}
+          ],
+          'parameters': {
+            'sampleCount': 1,
+          }
         }),
       );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        final base64Image = data['candidates']?[0]?['content']?['parts']?[0]
-            ?['inlineData']?['data'];
-        return base64Image;
+        final predictions = data['predictions'];
+        if (predictions != null && predictions.isNotEmpty) {
+          final base64Image = predictions[0]?['bytesBase64Encoded'];
+          if (base64Image != null) return base64Image;
+        }
+        debugPrint('Image Gen: Success response but no image data found. Body: ${response.body}');
+        return null;
+      } else {
+        if (response.statusCode == 404) {
+          throw Exception('Erro ao gerar imagem: 404 (Modelo não encontrado ou acesso restringido à região/allowlist)');
+        }
+        throw Exception('Erro ao gerar imagem: ${response.statusCode}');
       }
-      debugPrint('Image Gen Error: ${response.statusCode} - ${response.body}');
     } catch (e) {
       debugPrint('Image Gen Exception: $e');
+      rethrow;
     }
-    return null;
   }
 
   Future<String> generatePodcastScript() async {
-    if (_history.isEmpty) return '';
-
-    // Use the full conversation history as context for the script
-    final scriptContents = List<Map<String, dynamic>>.from(_history);
+    if (_chat == null) return '';
 
     const prompt =
         'Com base em TODA a conversa acima, cria um roteiro de podcast completo e profissional em português europeu. '
         'O podcast tem dois apresentadores: "JOANA" (entrevistadora dinâmica) e "PROFESSOR" (especialista apaixonado). '
         'O roteiro deve cobrir TODOS os temas importantes discutidos na conversa, de forma natural, fluida e educativa. '
         'Deve ser um podcast LONGO (pelo menos 15 a 20 trocas de falas). '
-        'Usa APENAS este formato para cada fala, uma por linha:\n'
+        'Usa APENAS e OBRIGATORIAMENTE este formato para cada fala, uma por linha:\n'
         'JOANA: [texto da fala]\n'
         'PROFESSOR: [texto da fala]\n\n'
-        'Não uses formatação especial, asteriscos, parênteses, ou marcações. Apenas falas diretas e naturais.\n'
+        'PROIBIDO: Não uses parênteses, não descrevas sons, não uses asteriscos, não dês nomes diferentes aos personagens. '
+        'NÃO incluas marcações de música ou efeitos sonoros como "(Música...)" ou "[Risos]". '
         'Começa com uma introdução cativante da JOANA e termina com uma conclusão inspiradora do PROFESSOR.\n'
         'IMPORTANTE: Retorna APENAS as falas, sem títulos, sem explicações, sem blocos de código.';
 
-    scriptContents.add({
-      'role': 'user',
-      'parts': [
-        {'text': prompt}
-      ]
-    });
-
-    final requestBody = {
-      'contents': scriptContents,
-      'generationConfig': {
-        'temperature': 0.75,
-        'maxOutputTokens': 4096,
-      }
-    };
-
     try {
-      final response = await http.post(
-        Uri.parse('$_endpoint?key=$_apiKey'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode(requestBody),
-      );
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return data['candidates']?[0]?['content']?['parts']?[0]?['text']
-                ?.toString()
-                .trim() ??
-            '';
-      }
-      debugPrint(
-          'Podcast Script Error: ${response.statusCode} - ${response.body}');
+      final response = await _chat!.sendMessage(Content.text(prompt));
+      return response.text?.trim() ?? '';
     } catch (e) {
       debugPrint('Podcast Script Exception: $e');
     }
@@ -223,16 +144,32 @@ class AiChatService {
     final lines = script.split('\n');
     final List<Map<String, dynamic>> segments = [];
 
-    for (final line in lines) {
+    for (int i = 0; i < lines.length; i++) {
+      final line = lines[i];
       final trimmed = line.trim();
-      if (trimmed.startsWith('JOANA:')) {
-        final text = trimmed.substring('JOANA:'.length).trim();
+      final upperLine = trimmed.toUpperCase();
+
+      if (upperLine.startsWith('JOANA:') || upperLine.contains('JOANA :')) {
+        final text = trimmed.substring(trimmed.indexOf(':') + 1).trim();
         if (text.isNotEmpty) segments.add({'text': text, 'voice': voiceJoana});
-      } else if (trimmed.startsWith('PROFESSOR:')) {
-        final text = trimmed.substring('PROFESSOR:'.length).trim();
-        if (text.isNotEmpty) {
+      } else if (upperLine.startsWith('PROFESSOR:') ||
+          upperLine.startsWith('PROFESSOR(A):') ||
+          upperLine.startsWith('PROF:') ||
+          upperLine.startsWith('HOST:') ||
+          upperLine.startsWith('NARRADOR:') ||
+          upperLine.startsWith('PROFESSOR :') ||
+          upperLine.startsWith('APRESENTADOR:')) {
+        final text = trimmed.substring(trimmed.indexOf(':') + 1).trim();
+        if (text.isNotEmpty)
           segments.add({'text': text, 'voice': voiceProfessor});
-        }
+      } else if (trimmed.startsWith('[') && trimmed.contains(']')) {
+        // Skip timestamp or segment markers like [05:00]
+        continue;
+      } else if (segments.isNotEmpty && !trimmed.contains(':')) {
+        // Append lines that don't have a colon to the previous segment's text
+        // (This handles bullet points or multi-line speeches)
+        final lastSegment = segments.last;
+        lastSegment['text'] = (lastSegment['text'] as String) + ' ' + trimmed;
       }
     }
 
@@ -275,10 +212,12 @@ class AiChatService {
           }
         } else {
           final errorData = jsonDecode(response.body);
-          final errorMessage =
-              errorData['error']?['message'] ?? 'Erro na API de Voz';
-          debugPrint('TTS Error for segment $i: $errorMessage');
-          // Continue with other segments instead of failing entirely
+          final errorMessage = errorData['error']?['message'] ?? 'Erro na API de Voz';
+          debugPrint('TTS Error for segment $i: $errorMessage (Status: ${response.statusCode})');
+          // If the error is 403 or 404, it's likely a configuration issue that won't resolve per-segment
+          if (response.statusCode == 403 || response.statusCode == 404) {
+            throw 'Erro na API de Voz (${response.statusCode}): $errorMessage. Verifique se a API "Cloud Text-to-Speech" está ativa e se a sua Chave API tem permissão para a usar.';
+          }
         }
       } catch (e) {
         debugPrint('TTS segment $i exception: $e');
@@ -286,8 +225,12 @@ class AiChatService {
     }
 
     if (audioParts.isEmpty) {
+      if (segments.isEmpty) {
+        throw Exception(
+            'Não foram encontradas falas válidas no roteiro. O formato deve ser "JOANA:" ou "PROFESSOR:".');
+      }
       throw Exception(
-          'Não foi possível gerar áudio para nenhuma fala do podcast.');
+          'A síntese de áudio falhou (403/404). Verifique se a API "Cloud Text-to-Speech" está ativa e se a sua Chave API tem permissão para a usar no Google Cloud Console.');
     }
 
     // Concatenate all raw MP3 bytes — browsers can play concatenated MP3 frames
@@ -330,17 +273,21 @@ class AiChatService {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final base64Audio = data['audioContent'] as String?;
-        if (base64Audio != null) {
-          return base64Decode(base64Audio);
-        }
+        if (base64Audio != null) return base64Decode(base64Audio);
+        return null;
+      } else if (response.statusCode == 403) {
+        throw Exception(
+            'Acesso negado (403). Certifique-se de que a "Cloud Text-to-Speech API" está ativada no seu Google Cloud Console.');
+      } else {
+        throw Exception(
+            'Erro na Síntese de Voz: ${response.statusCode} - ${response.body}');
       }
     } catch (e) {
       debugPrint('TTS single speech exception: $e');
+      rethrow;
     }
-    return null;
   }
 
-  /// Suggests answers for a given question/prompt (useful for dictation suggested options)
   Future<List<String>> suggestAnswers(String question, {int count = 4}) async {
     final prompt =
         'Com base no enunciado/pergunta: "$question", sugere $count opções de resposta curtas e plausíveis, '
@@ -348,69 +295,80 @@ class AiChatService {
         'Retorna APENAS as opções separadas por linhas.';
 
     try {
-      final response = await http.post(
-        Uri.parse('$_endpoint?key=$_apiKey'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'contents': [
-            {
-              'parts': [
-                {'text': prompt}
-              ]
-            }
-          ],
-        }),
-      );
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final text = data['candidates']?[0]?['content']?['parts']?[0]?['text'] ?? '';
-        return text.split('\n').where((l) => l.trim().isNotEmpty).take(count).toList();
-      }
+      final response = await _model.generateContent([Content.text(prompt)]);
+      final text = response.text ?? '';
+      return text.split('\n').where((l) => l.trim().isNotEmpty).take(count).toList();
     } catch (e) {
       debugPrint('Suggest answers exception: $e');
     }
     return [];
   }
 
-  /// Evaluates a student response against criteria
+  String _getAudioMimeType(String url) {
+    String mimeType = 'audio/mpeg'; // Default
+    final uri = Uri.parse(url);
+    final path = uri.path.toLowerCase();
+    if (path.endsWith('.m4a') || path.endsWith('.mp4')) {
+      mimeType = 'audio/mp4';
+    } else if (path.endsWith('.aac')) {
+      mimeType = 'audio/aac';
+    } else if (path.endsWith('.wav')) {
+      mimeType = 'audio/wav';
+    } else if (path.endsWith('.ogg')) {
+      mimeType = 'audio/ogg';
+    }
+    return mimeType;
+  }
+
   Future<Map<String, dynamic>> evaluateResponse({
     required String question,
     required String studentAnswer,
     required String? criteria,
+    String? audioUrl,
+    String? imageUrl,
   }) async {
-    final prompt = 'Avalia a resposta do aluno para a seguinte pergunta:\n'
-        'Pergunta: "$question"\n'
-        'Resposta do Aluno: "$studentAnswer"\n'
-        'Critérios de Avaliação: "${criteria ?? "Avalia a correção gramatical e semântica"}"\n\n'
-        'Retorna um JSON com:\n'
-        '- "isCorrect": booleano\n'
-        '- "score": número de 0 a 1\n'
-        '- "feedback": string curta e motivadora em português\n'
-        '- "suggestedCorrection": se estiver errado, a resposta certa';
-
     try {
-      final response = await http.post(
-        Uri.parse('$_endpoint?key=$_apiKey'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'contents': [
-            {
-              'parts': [
-                {'text': prompt}
-              ]
-            }
-          ],
-          'generationConfig': {'response_mime_type': 'application/json'}
-        }),
-      );
+      final List<Part> parts = [
+        TextPart('Avalia a resposta do aluno para a seguinte pergunta:\n'
+            'Pergunta: "$question"\n'
+            'Resposta do Aluno (Texto/Transcrição): "$studentAnswer"\n'
+            'Critérios de Avaliação: "${criteria ?? "Avalia a correção gramatical e semântica"}"\n\n'
+            'Se for fornecido áudio ou imagem em anexo, usa-os como fonte principal para a avaliação. '
+            'Retorna um JSON com:\n'
+            '- "isCorrect": booleano\n'
+            '- "score": número de 0 a 1\n'
+            '- "feedback": string curta e motivadora em português\n'
+            '- "suggestedCorrection": se estiver errado, a resposta certa')
+      ];
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final text =
-            data['candidates']?[0]?['content']?['parts']?[0]?['text'] ?? '{}';
-        return jsonDecode(text);
+      if (audioUrl != null && audioUrl.isNotEmpty) {
+        final audioResponse = await http.get(Uri.parse(audioUrl));
+        if (audioResponse.statusCode == 200) {
+          parts.add(DataPart(_getAudioMimeType(audioUrl), audioResponse.bodyBytes));
+        }
       }
+
+      if (imageUrl != null && imageUrl.isNotEmpty) {
+        final imageResponse = await http.get(Uri.parse(imageUrl));
+        if (imageResponse.statusCode == 200) {
+          String mimeType = 'image/jpeg'; // Default
+          final path = Uri.parse(imageUrl).path.toLowerCase();
+          if (path.endsWith('.png')) {
+            mimeType = 'image/png';
+          } else if (path.endsWith('.webp')) {
+            mimeType = 'image/webp';
+          }
+          
+          parts.add(DataPart(mimeType, imageResponse.bodyBytes));
+        }
+      }
+
+      final response = await _model.generateContent(
+        [Content.multi(parts)],
+        generationConfig: GenerationConfig(responseMimeType: 'application/json'),
+      );
+      final text = response.text ?? '{}';
+      return jsonDecode(text);
     } catch (e) {
       debugPrint('Evaluate response exception: $e');
     }
@@ -420,6 +378,43 @@ class AiChatService {
       'feedback': 'Erro ao avaliar resposta.',
       'suggestedCorrection': null
     };
+  }
+
+  /// Generates meeting minutes from a recorded audio URL
+  Future<Map<String, dynamic>> generateMeetingMinutes(String audioUrl, {String? previousMinutes, String? context}) async {
+    final prompt = 'Abaixo está uma gravação de uma reunião institucional (em áudio). '
+        'Por favor, faz a transcrição completa e gera uma proposta de ATA formal. '
+        'A ATA deve conter: Título da Reunião, Data, Ordem de Trabalhos, e Resumo das Decisões e Intervenções. '
+        'Mantém o tom formal e profissional de uma instituição de ensino. '
+        '${context != null ? "Usa o seguinte contexto de documentos de apoio fornecidos: $context" : ""} '
+        '${previousMinutes != null ? "Usa o seguinte estilo de atas anteriores como referência: $previousMinutes" : ""} '
+        'Retorna um JSON com os campos "transcript" (texto completo) e "minutes" (a ata formatada para impressão).';
+
+    try {
+      final List<Part> parts = [TextPart(prompt)];
+      
+      final audioResponse = await http.get(Uri.parse(audioUrl));
+      if (audioResponse.statusCode == 200) {
+        parts.add(DataPart(_getAudioMimeType(audioUrl), audioResponse.bodyBytes));
+      } else {
+        throw Exception('Erro ao baixar o áudio: ${audioResponse.statusCode}');
+      }
+
+      final response = await _model.generateContent(
+        [Content.multi(parts)],
+        generationConfig: GenerationConfig(responseMimeType: 'application/json'),
+      );
+      
+      final text = response.text ?? '{}';
+      final cleaned = text.replaceAll('```json', '').replaceAll('```', '').trim();
+      return jsonDecode(cleaned);
+    } catch (e) {
+      debugPrint('Generate minutes exception: $e');
+      return {
+        'transcript': 'Erro na transcrição: $e',
+        'minutes': 'Erro na geração da ata.'
+      };
+    }
   }
 
   /// Generates a structured game based on selected contents
@@ -445,7 +440,7 @@ class AiChatService {
           '  "type": "jigsaw",\n'
           '  "imageUrl": "https://images.unsplash.com/photo-1614728263952-84ea206f25b1?q=80&w=1000", // Link de exemplo ou prompt para IA\n'
           '  "settings": { "gridRows": 3, "gridCols": 3 },\n'
-          '  "questions": []\n'
+          '  "questions": [{"question": "Pergunta sobre a imagem", "studyReference": "Capítulo X, Pág Y"}]\n'
           '}\n\n'
           'IMPORTANTE: Retorna APENAS o JSON.';
     } else if (gameType == 'memory') {
@@ -457,7 +452,7 @@ class AiChatService {
           '  "title": "Título do Jogo da Memória",\n'
           '  "type": "memory",\n'
           '  "settings": { "pairs": [{"a": "Termo 1", "b": "Definição/Imagem 1"}, ...] },\n'
-          '  "questions": []\n'
+          '  "questions": [{"question": "Conceito 1", "studyReference": "Capítulo X, Pág Y"}]\n'
           '}\n\n'
           'IMPORTANTE: Retorna APENAS o JSON.';
     } else if (gameType == 'word_search') {
@@ -468,7 +463,7 @@ class AiChatService {
           '{\n'
           '  "title": "Sopa de Letras Educativa",\n'
           '  "type": "word_search",\n'
-          '  "questions": [{"question": "PALAVRA1"}, {"question": "PALAVRA2"}, ...]\n'
+          '  "questions": [{"question": "PALAVRA1", "studyReference": "Capítulo X, Pág Y"}, {"question": "PALAVRA2", "studyReference": "Capítulo Z, Pág W"}, ...]\n'
           '}\n\n'
           'IMPORTANTE: Retorna APENAS o JSON.';
     } else if (gameType == 'matching') {
@@ -480,7 +475,7 @@ class AiChatService {
           '  "title": "Desafio de Correspondência",\n'
           '  "type": "matching",\n'
           '  "settings": { "pairs": [{"a": "Conceito 1", "b": "Definição 1"}, ...] },\n'
-          '  "questions": []\n'
+          '  "questions": [{"question": "Pares de Conceitos", "studyReference": "Capítulo X, Pág Y"}]\n'
           '}\n\n'
           'IMPORTANTE: Retorna APENAS o JSON.';
     } else {
@@ -497,52 +492,36 @@ class AiChatService {
           '      "options": ["Opção A", "Opção B", "Opção C", "Opção D"],\n'
           '      "correctOptionIndex": 0,\n'
           '      "points": 10.0,\n'
-          '      "timeLimitSeconds": 20\n'
+          '      "timeLimitSeconds": 20,\n'
+          '      "studyReference": "Capítulo X, Pág Y"\n'
           '    }\n'
           '  ]\n'
           '}\n\n'
           'Gera pelo menos 10 perguntas variadas e interessantes. '
+          'Para cada pergunta, identifica obrigatoriamente o Capítulo ou Tópico e a página específica do documento de origem (ex: "Capítulo 2, Pág 12") e inclui no campo "studyReference". '
           'IMPORTANTE: Retorna APENAS o JSON.';
     }
 
     try {
-      final response = await http.post(
-        Uri.parse('$_endpoint?key=$_apiKey'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'contents': [
-            {
-              'parts': [
-                {'text': prompt}
-              ]
-            }
-          ],
-          'generationConfig': {
-            'temperature': 0.8,
-            'maxOutputTokens': 4096,
-            'responseMimeType': 'application/json',
-          }
-        }),
+      final response = await _model.generateContent(
+        [Content.text(prompt)],
+        generationConfig: GenerationConfig(
+          temperature: 0.8,
+          maxOutputTokens: 4096,
+          responseMimeType: 'application/json',
+        ),
       );
+      final textResponse = response.text ?? '';
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final textResponse =
-            data['candidates']?[0]?['content']?['parts']?[0]?['text'] ?? '';
+      debugPrint('AI Game Raw Response: $textResponse');
 
-        debugPrint('AI Game Raw Response: $textResponse');
-
-        try {
-          return jsonDecode(_cleanJsonResponse(textResponse));
-        } catch (e) {
-          debugPrint('AI Game JSON Parse Error: $e');
-          debugPrint('Cleaned JSON: ${_cleanJsonResponse(textResponse)}');
-          return null;
-        }
+      try {
+        return jsonDecode(_cleanJsonResponse(textResponse));
+      } catch (e) {
+        debugPrint('AI Game JSON Parse Error: $e');
+        debugPrint('Cleaned JSON: ${_cleanJsonResponse(textResponse)}');
+        return null;
       }
-      debugPrint(
-          'AI Game Gen Error: ${response.statusCode} - ${response.body}');
-      debugPrint('Endpoint used: $_endpoint');
     } catch (e) {
       debugPrint('AI Game Gen Exception: $e');
     }
@@ -550,13 +529,11 @@ class AiChatService {
   }
 
   String _cleanJsonResponse(String text) {
-    // Remove markdown code blocks if present
-    if (text.contains('```')) {
-      final startIndex = text.indexOf('{');
-      final endIndex = text.lastIndexOf('}');
-      if (startIndex != -1 && endIndex != -1 && endIndex > startIndex) {
-        return text.substring(startIndex, endIndex + 1);
-      }
+    // Robustly find the first { and last } to extract JSON even with intro text or markdown
+    final startIndex = text.indexOf('{');
+    final endIndex = text.lastIndexOf('}');
+    if (startIndex != -1 && endIndex != -1 && endIndex > startIndex) {
+      return text.substring(startIndex, endIndex + 1);
     }
     return text.trim();
   }
@@ -587,34 +564,86 @@ IMPORTANTE:
 ''';
 
     try {
-      final response = await http.post(
-        Uri.parse('$_endpoint?key=$_apiKey'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'contents': [
-            {
-              'parts': [
-                {'text': prompt}
-              ]
-            }
-          ],
-          'generationConfig': {
-            'temperature': 0.3,
-            'maxOutputTokens': 1024,
-            'responseMimeType': 'application/json',
-          }
-        }),
+      final response = await _model.generateContent(
+        [Content.text(prompt)],
+        generationConfig: GenerationConfig(
+          temperature: 0.3,
+          maxOutputTokens: 1024,
+          responseMimeType: 'application/json',
+        ),
       );
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final textResponse =
-            data['candidates']?[0]?['content']?['parts']?[0]?['text'] ?? '';
-        return jsonDecode(_cleanJsonResponse(textResponse));
-      }
+      final textResponse = response.text ?? '';
+      return jsonDecode(_cleanJsonResponse(textResponse));
     } catch (e) {
       debugPrint('AI Evaluation Exception: $e');
     }
     return null;
+  }
+
+  /// Refines a meeting agenda using IA
+  Future<String> refineMeetingAgenda(String currentAgenda) async {
+    final prompt = 'Abaixo está a Ordem de Trabalhos (Agenda) de uma reunião institucional. '
+        'Por favor, melhora a redação, organiza os pontos de forma lógica e profissional, '
+        'e sugere tópicos adicionais se parecerem relevantes para uma reunião institucional. '
+        'Mantém o tom formal. Retorna APENAS o texto da agenda melhorada.\n\n'
+        'AGENDA ATUAL:\n$currentAgenda';
+
+    try {
+      final response = await _model.generateContent([Content.text(prompt)]);
+      return response.text?.trim() ?? currentAgenda;
+    } catch (e) {
+      debugPrint('Refine agenda exception: $e');
+      return currentAgenda;
+    }
+  }
+
+  /// Generates a formal meeting invitation/notice
+  Future<String> generateMeetingInvitation({
+    required String title,
+    required String agenda,
+    required String date,
+    required String time,
+    required String location,
+  }) async {
+    final prompt = 'Abaixo estão os detalhes de uma reunião institucional. '
+        'Por favor, gera uma Convocatória (Convite) formal e profissional em português. '
+        'A convocatória deve incluir: Título, Data, Hora de Início, Local e a Ordem de Trabalhos. '
+        'Deixa um espaço ou marcador [NOME DO PARTICIPANTE] se quiseres que seja personalizada. '
+        'O tom deve ser institucional e educado.\n\n'
+        'TÍTULO: $title\n'
+        'DATA: $date\n'
+        'HORA: $time\n'
+        'LOCAL: $location\n'
+        'ORDEM DE TRABALHOS:\n$agenda\n\n'
+        'Retorna APENAS o texto da convocatória pronta para enviar.';
+
+    try {
+      final response = await _model.generateContent([Content.text(prompt)]);
+      return response.text?.trim() ?? '';
+    } catch (e) {
+      debugPrint('Generate invitation exception: $e');
+      return '';
+    }
+  }
+
+  /// Transcribes audio dictation and suggests a professional meeting agenda
+  Future<String> transcribeAndImproveAgenda(Uint8List audioBytes) async {
+    final prompt = 'Abaixo está um ficheiro de áudio com a gravação de uma pessoa a ditar os pontos da ordem de trabalhos para uma reunião. '
+        'Por favor, faz a transcrição e organiza esses pontos de forma profissional, lógica e institucional. '
+        'Melhora a redação e sugere tópicos adicionais se necessário. '
+        'Retorna APENAS o texto da agenda resultante, formatado com numeração ou pontos.';
+
+    try {
+      final parts = [
+        TextPart(prompt),
+        DataPart('audio/mpeg', audioBytes),
+      ];
+
+      final response = await _model.generateContent([Content.multi(parts)]);
+      return response.text?.trim() ?? 'Não foi possível gerar a agenda a partir do áudio.';
+    } catch (e) {
+      debugPrint('Transcribe and improve agenda exception: $e');
+      return 'Erro ao processar áudio da agenda: $e';
+    }
   }
 }

@@ -15,6 +15,7 @@ import 'dart:convert';
 import 'package:syncfusion_flutter_pdf/pdf.dart';
 import 'package:archive/archive.dart' as archive;
 import 'package:xml/xml.dart' as xml;
+import 'attendance_matrix_screen.dart';
 
 class SyllabusManagementScreen extends StatefulWidget {
   final Subject subject;
@@ -84,24 +85,22 @@ class _SyllabusManagementScreenState extends State<SyllabusManagementScreen> {
             _sessions
                 .sort((a, b) => a.sessionNumber.compareTo(b.sessionNumber));
           });
-          final updatedSubject = Subject(
-            id: widget.subject.id,
-            name: widget.subject.name,
-            level: widget.subject.level,
-            academicYear: widget.subject.academicYear,
-            teacherId: widget.subject.teacherId,
-            institutionId: widget.subject.institutionId,
-            allowedStudentEmails: widget.subject.allowedStudentEmails,
-            contents: widget.subject.contents,
-            games: widget.subject.games,
-            evaluationComponents: widget.subject.evaluationComponents,
-            scientificArea: widget.subject.scientificArea,
-            pautaStatus: widget.subject.pautaStatus,
-            sealedAt: widget.subject.sealedAt,
-            sealedBy: widget.subject.sealedBy,
-            sessions: _sessions,
-          );
-          await context.read<FirebaseService>().updateSubject(updatedSubject);
+          try {
+            final updatedSubject = widget.subject.copyWith(sessions: _sessions);
+            await service.updateSubject(updatedSubject);
+            
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                  content: AiTranslatedText('Sumário guardado com sucesso!'),
+                  backgroundColor: Colors.green));
+            }
+          } catch (e) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                  content: Text('Erro ao guardar sumário: $e'),
+                  backgroundColor: Colors.red));
+            }
+          }
         },
       ),
     );
@@ -128,6 +127,16 @@ class _SyllabusManagementScreenState extends State<SyllabusManagementScreen> {
               PdfService.generateSummariesPDF(widget.subject, allAttendances);
             },
             tooltip: 'Download Sumários',
+          ),
+          IconButton(
+            icon: const Icon(Icons.grid_on),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => AttendanceMatrixScreen(subject: widget.subject),
+              ),
+            ),
+            tooltip: 'Matrix de Presenças',
           ),
         ],
       ),
@@ -438,6 +447,7 @@ class _SyllabusManagementScreenState extends State<SyllabusManagementScreen> {
         games: widget.subject.games,
         evaluationComponents: widget.subject.evaluationComponents,
         scientificArea: widget.subject.scientificArea,
+        courseId: widget.subject.courseId,
         programDescription: content,
         pautaStatus: widget.subject.pautaStatus,
         sealedAt: widget.subject.sealedAt,
@@ -673,6 +683,7 @@ class _SyllabusManagementScreenState extends State<SyllabusManagementScreen> {
                         evaluationComponents:
                             widget.subject.evaluationComponents,
                         scientificArea: widget.subject.scientificArea,
+                        courseId: widget.subject.courseId,
                         programDescription: controller.text,
                         pautaStatus: widget.subject.pautaStatus,
                         sealedAt: widget.subject.sealedAt,

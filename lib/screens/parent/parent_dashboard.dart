@@ -12,6 +12,7 @@ import '../common/communication_center_screen.dart';
 import '../student/student_dashboard.dart';
 import '../student/subject_selection_screen.dart';
 import '../login_screen.dart';
+import '../../widgets/branded_title.dart';
 
 class ParentDashboard extends StatelessWidget {
   const ParentDashboard({super.key});
@@ -21,48 +22,23 @@ class ParentDashboard extends StatelessWidget {
     final service = context.watch<FirebaseService>();
     final currentUserId = FirebaseAuth.instance.currentUser?.uid ?? '';
 
-    return Scaffold(
-      backgroundColor: const Color(0xFF0F172A),
-      appBar: AppBar(
-        title: const AiTranslatedText('Painel de Encarregado'),
-        actions: [
-          MessagingBadge(
-            icon: const Icon(Icons.mail),
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                  builder: (_) => const CommunicationCenterScreen()),
-            ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () async {
-              await FirebaseAuth.instance.signOut();
-              if (context.mounted) {
-                Navigator.pushAndRemoveUntil(
-                  context,
-                  MaterialPageRoute(builder: (_) => const LoginScreen()),
-                  (route) => false,
-                );
-              }
-            },
-          ),
-        ],
-      ),
-      body: StreamBuilder<UserModel?>(
-        stream: service.getUserStream(currentUserId),
-        builder: (context, parentSnap) {
-          final parent = parentSnap.data;
-          if (parentSnap.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (parent == null) {
-            return const Center(
-                child: AiTranslatedText('Utilizador não encontrado'));
-          }
+    return StreamBuilder<UserModel?>(
+      stream: service.getUserStream(currentUserId),
+      builder: (context, parentSnap) {
+        final parent = parentSnap.data;
+        if (parentSnap.connectionState == ConnectionState.waiting) {
+          return const Scaffold(body: Center(child: CircularProgressIndicator()));
+        }
+        if (parent == null) {
+          return const Scaffold(
+              body: Center(child: AiTranslatedText('Utilizador não encontrado')));
+        }
 
-          if (parent.isSuspended) {
-            return const Center(
+        if (parent.isSuspended) {
+          return Scaffold(
+            backgroundColor: const Color(0xFF0F172A),
+            appBar: AppBar(title: const AiTranslatedText('Acesso Suspenso')),
+            body: const Center(
               child: Padding(
                 padding: EdgeInsets.all(24.0),
                 child: Column(
@@ -87,10 +63,51 @@ class ParentDashboard extends StatelessWidget {
                   ],
                 ),
               ),
-            );
-          }
+            ),
+          );
+        }
 
-          return Container(
+        return Scaffold(
+          backgroundColor: const Color(0xFF0F172A),
+          appBar: AppBar(
+            title: StreamBuilder<InstitutionModel?>(
+              stream: parent.institutionId != null
+                  ? service.getInstitutionStream(parent.institutionId!)
+                  : Stream.value(null),
+              builder: (context, instSnap) {
+                final institution = instSnap.data;
+                return BrandedTitle(
+                  logoUrl: institution?.logoUrl,
+                  institutionName: institution?.name,
+                  defaultTitle: 'Painel de Encarregado',
+                );
+              },
+            ),
+            actions: [
+              MessagingBadge(
+                icon: const Icon(Icons.mail),
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (_) => const CommunicationCenterScreen()),
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.logout),
+                onPressed: () async {
+                  await FirebaseAuth.instance.signOut();
+                  if (context.mounted) {
+                    Navigator.pushAndRemoveUntil(
+                      context,
+                      MaterialPageRoute(builder: (_) => const LoginScreen()),
+                      (route) => false,
+                    );
+                  }
+                },
+              ),
+            ],
+          ),
+          body: Container(
             decoration: const BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
@@ -140,17 +157,20 @@ class ParentDashboard extends StatelessWidget {
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 12),
                       child: GlassCard(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                         child: Column(
                           children: [
                             ListTile(
                               leading: const CircleAvatar(
                                 backgroundColor: Color(0xFF7B61FF),
-                                child: Icon(Icons.person, color: Colors.white),
+                                radius: 16,
+                                child: Icon(Icons.person, color: Colors.white, size: 16),
                               ),
                               title: Text(child.name,
                                   style: const TextStyle(
                                       color: Colors.white,
-                                      fontWeight: FontWeight.bold)),
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16)),
                               subtitle: FutureBuilder<List<InstitutionModel>>(
                                   future: service.getInstitutions().first,
                                   builder: (context, snapshot) {
@@ -202,9 +222,11 @@ class ParentDashboard extends StatelessWidget {
                                     ),
                                     icon: const Icon(Icons.school, size: 18),
                                     label: const AiTranslatedText(
-                                        'Inscrever em Disciplinas'),
+                                        'Inscrever em Disciplinas',
+                                        style: TextStyle(fontSize: 13)),
                                     style: TextButton.styleFrom(
                                       foregroundColor: const Color(0xFF00D1FF),
+                                      padding: EdgeInsets.zero,
                                     ),
                                   ),
                                 ],
@@ -218,16 +240,16 @@ class ParentDashboard extends StatelessWidget {
                 );
               },
             ),
-          );
-        },
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () =>
-            _showRegisterChildDialog(context, service, currentUserId),
-        label: const AiTranslatedText('Registar Filho'),
-        icon: const Icon(Icons.add),
-        backgroundColor: const Color(0xFF7B61FF),
-      ),
+          ),
+          floatingActionButton: FloatingActionButton.extended(
+            onPressed: () =>
+                _showRegisterChildDialog(context, service, currentUserId),
+            label: const AiTranslatedText('Registar Filho'),
+            icon: const Icon(Icons.add),
+            backgroundColor: const Color(0xFF7B61FF),
+          ),
+        );
+      },
     );
   }
 

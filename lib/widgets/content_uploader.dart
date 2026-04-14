@@ -113,7 +113,7 @@ class _ContentUploaderState extends State<ContentUploader> {
                   style: const TextStyle(color: Colors.white70, fontSize: 12)),
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
-                initialValue: selectedCategory,
+                value: selectedCategory,
                 dropdownColor: const Color(0xFF1E293B),
                 style: const TextStyle(color: Colors.white),
                 decoration:

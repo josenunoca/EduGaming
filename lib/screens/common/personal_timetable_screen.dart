@@ -85,7 +85,7 @@ class PersonalTimetableScreen extends StatelessWidget {
                     final day = dayIndex + 1;
                     final entry = entries.firstWhere(
                       (e) => e.weekday == day && e.startTime.startsWith(timeStr.substring(0, 2)),
-                      orElse: () => TimetableEntry(id: '', subjectId: '', classroomId: '', weekday: 0, startTime: '', endTime: '', institutionId: ''),
+                      orElse: () => TimetableEntry(id: '', weekday: 0, startTime: '', institutionId: ''),
                     );
 
                     return Container(
@@ -100,11 +100,11 @@ class PersonalTimetableScreen extends StatelessWidget {
                                 child: Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    Text(entry.subjectId, // In real app, resolve subject name
+                                    Text(entry.subjectId ?? '', // In real app, resolve subject name
                                       style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
                                       textAlign: TextAlign.center,
                                     ),
-                                    Text(entry.classroomId, // Resolve room name
+                                    Text(entry.classroomId ?? '', // Resolve room name
                                       style: const TextStyle(color: Colors.white54, fontSize: 8),
                                     ),
                                   ],

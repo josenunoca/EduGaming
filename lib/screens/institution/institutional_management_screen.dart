@@ -3,7 +3,7 @@ import '../../models/institution_model.dart';
 import '../../widgets/ai_translated_text.dart';
 import '../../widgets/glass_card.dart';
 import 'academic_management_screen.dart';
-import 'organ_management_screen.dart';
+import '../institutional/institutional_organs_screen.dart';
 import 'facility_management_screen.dart';
 import 'document_repository_screen.dart';
 import 'activity_management_screen.dart';
@@ -42,9 +42,10 @@ class InstitutionalManagementScreen extends StatelessWidget {
             const SizedBox(height: 32),
             Expanded(
               child: GridView.count(
-                crossAxisCount: 2,
-                crossAxisSpacing: 20,
-                mainAxisSpacing: 20,
+                crossAxisCount: 3,
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 12,
+                childAspectRatio: 1.1,
                 children: [
                   _ManagementCard(
                     title: 'Gestão Académica',
@@ -66,7 +67,7 @@ class InstitutionalManagementScreen extends StatelessWidget {
                     onTap: () => Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => OrganManagementScreen(institution: institution),
+                        builder: (_) => const InstitutionalOrgansScreen(),
                       ),
                     ),
                   ),
@@ -145,40 +146,45 @@ class _ManagementCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
-      child: GlassCard(
-        child: Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.1),
-                  shape: BoxShape.circle,
+    return Tooltip(
+      message: title,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        splashColor: color.withValues(alpha: 0.1),
+        highlightColor: color.withValues(alpha: 0.05),
+        child: GlassCard(
+          child: Padding(
+            padding: const EdgeInsets.all(10.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(icon, size: 28, color: color),
                 ),
-                child: Icon(icon, size: 40, color: color),
-              ),
-              const SizedBox(height: 16),
-              AiTranslatedText(
-                title,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
+                const SizedBox(height: 8),
+                AiTranslatedText(
+                  title,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 4),
-              AiTranslatedText(
-                subtitle,
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.white54, fontSize: 12),
-              ),
-            ],
+                const SizedBox(height: 4),
+                AiTranslatedText(
+                  subtitle,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Colors.white54, fontSize: 12),
+                ),
+              ],
+            ),
           ),
         ),
       ),

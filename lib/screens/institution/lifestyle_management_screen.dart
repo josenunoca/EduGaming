@@ -7,6 +7,7 @@ import '../../services/firebase_service.dart';
 import '../../services/lifestyle_ai_service.dart';
 import '../../models/questionnaire_model.dart';
 import '../../models/user_model.dart';
+import '../../widgets/custom_button.dart';
 
 class LifestyleManagementScreen extends StatefulWidget {
   const LifestyleManagementScreen({super.key});
@@ -136,7 +137,7 @@ class _LifestyleManagementScreenState extends State<LifestyleManagementScreen> {
             ),
             const SizedBox(height: 32),
             Center(
-              child: ElevatedButton.icon(
+              child: CustomButton(
                 onPressed: () async {
                   final q = Questionnaire(
                     id: const Uuid().v4(),
@@ -163,14 +164,9 @@ class _LifestyleManagementScreenState extends State<LifestyleManagementScreen> {
                   if (!mounted) return;
                   setState(() => _isCreating = false);
                 },
-                icon: const Icon(Icons.save),
-                label: const Text('Publicar e Notificar'),
-                style: ElevatedButton.styleFrom(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-                  backgroundColor: Theme.of(context).colorScheme.primary,
-                  foregroundColor: Colors.white,
-                ),
+                icon: Icons.save,
+                label: 'Publicar e Notificar',
+                isFullWidth: true,
               ),
             ),
             TextButton(
@@ -301,7 +297,7 @@ class _LifestyleManagementScreenState extends State<LifestyleManagementScreen> {
           TextButton(
               onPressed: () => Navigator.pop(context),
               child: const Text('Cancelar')),
-          ElevatedButton(
+          CustomButton(
             onPressed: () async {
               final fbService = context.read<FirebaseService>();
               await fbService.reopenQuestionnaire(
@@ -309,7 +305,7 @@ class _LifestyleManagementScreenState extends State<LifestyleManagementScreen> {
               if (!mounted) return;
               Navigator.pop(context);
             },
-            child: const Text('Confirmar Reabertura'),
+            label: 'Confirmar Reabertura',
           ),
         ],
       ),

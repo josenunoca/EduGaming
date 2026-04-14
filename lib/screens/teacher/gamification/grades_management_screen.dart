@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../../models/subject_model.dart';
 import '../../../models/credit_pricing_model.dart';
@@ -33,11 +34,21 @@ class _GradesManagementScreenState extends State<GradesManagementScreen> {
   late Subject _subject;
   UserModel? _teacher;
 
+  final List<StreamSubscription> _subscriptions = [];
+
   @override
   void initState() {
     super.initState();
     _subject = widget.subject;
-    _loadData();
+    _setupStreams();
+  }
+
+  @override
+  void dispose() {
+    for (var sub in _subscriptions) {
+      sub.cancel();
+    }
+    super.dispose();
   }
 
   @override
@@ -47,46 +58,80 @@ class _GradesManagementScreenState extends State<GradesManagementScreen> {
       setState(() {
         _subject = widget.subject;
       });
+      // Re-setup if subject ID changed
+      if (widget.subject.id != oldWidget.subject.id) {
+        _setupStreams();
+      }
     }
   }
 
-  Future<void> _loadData() async {
+  void _setupStreams() {
+    for (var sub in _subscriptions) {
+      sub.cancel();
+    }
+    _subscriptions.clear();
+
     setState(() => _isLoading = true);
-    try {
-      // 1. Get Students
-      final students =
-          await _firebaseService.getEnrollmentsForSubject(_subject.id).first;
 
-      // 2. Get All Results
-      final results =
-          await _firebaseService.getAllSubjectGameResults(_subject.id);
+    // 1. Students Stream
+    _subscriptions.add(
+      _firebaseService.getEnrollmentsForSubject(_subject.id).listen((students) {
+        setState(() => _students = students);
+        _checkLoading();
+      }),
+    );
 
-      // 3. Get Adjustments
-      final adjustments =
-          await _firebaseService.getGradeAdjustments(_subject.id).first;
+    // 2. Results Stream
+    _subscriptions.add(
+      _firebaseService.getAllSubjectGameResultsStream(_subject.id).listen((results) {
+        setState(() => _allResults = results);
+        _checkLoading();
+      }),
+    );
 
-      // 4. Fetch Games to know total weights/points per question
-      Map<String, AiGame> gMap = {};
-      final games =
-          await _firebaseService.getAiGamesBySubject(_subject.id).first;
-      for (var g in games) {
-        gMap[g.id] = g;
+    // 3. Adjustments Stream
+    _subscriptions.add(
+      _firebaseService.getGradeAdjustments(_subject.id).listen((adjustments) {
+        setState(() => _adjustments = adjustments);
+        _checkLoading();
+      }),
+    );
+
+    // 4. Games Stream
+    _subscriptions.add(
+      _firebaseService.getAiGamesBySubject(_subject.id).listen((games) {
+        Map<String, AiGame> gMap = {};
+        for (var g in games) {
+          gMap[g.id] = g;
+        }
+        setState(() => _gamesMap = gMap);
+        _checkLoading();
+      }),
+    );
+
+    // 5. Teacher (One-time fetch is okay, but let's keep it separate)
+    _firebaseService.getUserModel(_subject.teacherId).then((teacher) {
+      if (mounted) {
+        setState(() => _teacher = teacher);
+        _checkLoading();
       }
+    });
+  }
 
-      // 5. Fetch Teacher info
-      final teacher = await _firebaseService.getUserModel(_subject.teacherId);
-
-      setState(() {
-        _students = students;
-        _allResults = results;
-        _adjustments = adjustments;
-        _gamesMap = gMap;
-        _teacher = teacher;
-        _isLoading = false;
+  void _checkLoading() {
+    // We consider it loaded when we have all initial data
+    if (_students.isNotEmpty || _allResults.isNotEmpty || _gamesMap.isNotEmpty) {
+      if (_isLoading) {
+        setState(() => _isLoading = false);
+      }
+    } else {
+      // If everything is empty, it might still be loading or just empty
+      // For now, let's just stop loading after a short delay if nothing comes
+      Future.delayed(const Duration(seconds: 2), () {
+        if (mounted && _isLoading) {
+          setState(() => _isLoading = false);
+        }
       });
-    } catch (e) {
-      debugPrint('Error loading grades data: $e');
-      setState(() => _isLoading = false);
     }
   }
 
@@ -143,6 +188,7 @@ class _GradesManagementScreenState extends State<GradesManagementScreen> {
         evaluationComponents: _subject.evaluationComponents,
         scientificArea: _subject.scientificArea,
         pautaStatus: newStatus,
+        courseId: _subject.courseId,
         teachingHours: _subject.teachingHours,
         nonTeachingHours: _subject.nonTeachingHours,
         sealedAt: newStatus == PautaStatus.sealed
@@ -253,10 +299,10 @@ class _GradesManagementScreenState extends State<GradesManagementScreen> {
           }
         }
 
-        await _loadData(); // Ensure we have updated subject in state
+        _setupStreams(); // Ensure we have updated subject in state
         await _generatePauta(full: false);
       } else {
-        await _loadData();
+        _setupStreams();
       }
 
       if (mounted) {
@@ -406,7 +452,7 @@ class _GradesManagementScreenState extends State<GradesManagementScreen> {
 
               await _firebaseService.saveGradeAdjustment(updated);
               if (context.mounted) Navigator.pop(context);
-              _loadData(); // Refresh
+              _setupStreams(); // Refresh
             },
             child: const AiTranslatedText('Guardar'),
           ),

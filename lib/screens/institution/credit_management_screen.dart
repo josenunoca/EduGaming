@@ -207,7 +207,10 @@ class _InstitutionCreditManagementScreenState extends State<InstitutionCreditMan
         StreamBuilder<List<UserModel>>(
           stream: service.getUsers(),
           builder: (context, snapshot) {
-            final members = (snapshot.data ?? []).where((u) => u.institutionId == widget.institution.id).toList();
+            final members = (snapshot.data ?? []).where((u) => 
+              u.institutionId == widget.institution.id && 
+              (u.role == UserRole.student || u.role == UserRole.teacher || u.role == UserRole.courseCoordinator)
+            ).toList();
             return ConstrainedBox(
               constraints: const BoxConstraints(maxHeight: 200),
               child: ListView.builder(

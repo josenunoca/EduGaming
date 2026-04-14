@@ -8,6 +8,7 @@ import '../../services/firebase_service.dart';
 import '../../widgets/ai_translated_text.dart';
 import '../../widgets/glass_card.dart';
 import '../../widgets/institution_member_selector.dart';
+import '../../widgets/custom_button.dart';
 
 class OrganManagementScreen extends StatefulWidget {
   final InstitutionModel institution;
@@ -62,11 +63,10 @@ class _OrganManagementScreenState extends State<OrganManagementScreen> {
           'Órgãos Sociais',
           style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
         ),
-        ElevatedButton.icon(
+        CustomButton(
           onPressed: onAdd,
-          icon: const Icon(Icons.add),
-          label: const AiTranslatedText('Novo Órgão'),
-          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF7B61FF)),
+          icon: Icons.add,
+          label: 'Novo Órgão',
         ),
       ],
     );
@@ -100,7 +100,7 @@ class _OrganManagementScreenState extends State<OrganManagementScreen> {
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const AiTranslatedText('Cancelar')),
-          ElevatedButton(
+          CustomButton(
             onPressed: () async {
               if (nameController.text.isEmpty) return;
               final organ = InstitutionalOrgan(
@@ -112,7 +112,7 @@ class _OrganManagementScreenState extends State<OrganManagementScreen> {
               await context.read<FirebaseService>().saveOrgan(organ);
               if (mounted) Navigator.pop(ctx);
             },
-            child: const AiTranslatedText('Criar'),
+            label: 'Criar',
           ),
         ],
       ),
@@ -163,11 +163,12 @@ class _OrganCard extends StatelessWidget {
                   const SizedBox(height: 8),
                   SizedBox(
                     width: double.infinity,
-                    child: ElevatedButton.icon(
+                    child: CustomButton(
                       onPressed: () => _showMinutesDialog(context),
-                      icon: const Icon(Icons.article),
-                      label: const AiTranslatedText('Gerir Atas (IA)'),
-                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1E293B)),
+                      icon: Icons.article,
+                      label: 'Gerar Atas (IA)',
+                      variant: CustomButtonVariant.secondary,
+                      isFullWidth: true,
                     ),
                   ),
                 ],
@@ -213,7 +214,7 @@ class _OrganCard extends StatelessWidget {
                       fontWeight: FontWeight.bold)),
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
-                initialValue: selectedFunction,
+                value: selectedFunction,
                 dropdownColor: const Color(0xFF1E293B),
                 style: const TextStyle(color: Colors.white),
                 decoration: const InputDecoration(
@@ -234,7 +235,7 @@ class _OrganCard extends StatelessWidget {
                 onSelectionChanged: (users) => selectedMembers = users,
               ),
               const SizedBox(height: 24),
-              ElevatedButton(
+               CustomButton(
                 onPressed: () async {
                   final service = context.read<FirebaseService>();
                   for (var user in selectedMembers) {
@@ -250,10 +251,8 @@ class _OrganCard extends StatelessWidget {
                   }
                   if (context.mounted) Navigator.pop(context);
                 },
-                style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF7B61FF),
-                    minimumSize: const Size(double.infinity, 50)),
-                child: const AiTranslatedText('Confirmar Convites'),
+                label: 'Confirmar Convites',
+                isFullWidth: true,
               ),
             ],
           ),
@@ -303,7 +302,7 @@ class _OrganCard extends StatelessWidget {
               const SizedBox(height: 24),
               isGenerating
                   ? const CircularProgressIndicator()
-                  : ElevatedButton.icon(
+                  : CustomButton(
                       onPressed: () async {
                         if (transcriptionController.text.isEmpty) return;
                         setModalState(() => isGenerating = true);
@@ -334,11 +333,9 @@ class _OrganCard extends StatelessWidget {
                           if (context.mounted) setModalState(() => isGenerating = false);
                         }
                       },
-                      icon: const Icon(Icons.auto_awesome),
-                      label: const AiTranslatedText('Gerar Ata'),
-                      style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF00D1FF),
-                          minimumSize: const Size(double.infinity, 50)),
+                      icon: Icons.auto_awesome,
+                      label: 'Gerar Ata',
+                      isFullWidth: true,
                     ),
             ],
           ),

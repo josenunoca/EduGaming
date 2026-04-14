@@ -7,7 +7,7 @@ class LifestyleAiService {
   late final GenerativeModel _model;
 
   LifestyleAiService(this.apiKey) {
-    _model = GenerativeModel(model: 'gemini-1.5-pro', apiKey: apiKey);
+    _model = GenerativeModel(model: 'gemini-flash-latest', apiKey: apiKey);
   }
 
   Future<Map<String, dynamic>> analyzeResults(
@@ -41,11 +41,19 @@ Retorne APENAS o JSON.
     
     try {
       final text = response.text ?? '{}';
-      final cleanJson = text.replaceAll('```json', '').replaceAll('```', '').trim();
-      return jsonDecode(cleanJson);
+      return jsonDecode(_cleanJsonResponse(text));
     } catch (e) {
       return {'error': 'Failed to parse AI response: $e'};
     }
+  }
+
+  String _cleanJsonResponse(String text) {
+    final startIndex = text.indexOf('{');
+    final endIndex = text.lastIndexOf('}');
+    if (startIndex != -1 && endIndex != -1 && endIndex > startIndex) {
+      return text.substring(startIndex, endIndex + 1);
+    }
+    return text.trim();
   }
 
   Future<String> generateProposalEvent(String strategy) async {

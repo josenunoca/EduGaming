@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'timetable_management_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 import '../../models/facility_model.dart';
 import '../../models/institution_model.dart';
 import '../../services/firebase_service.dart';
+import '../../widgets/custom_button.dart';
 import '../../widgets/ai_translated_text.dart';
 import '../../widgets/glass_card.dart';
 
@@ -40,9 +42,14 @@ class _FacilityManagementScreenState extends State<FacilityManagementScreen> {
                   if (rooms.isEmpty) return const Center(child: AiTranslatedText('Nenhuma sala cadastrada.', style: TextStyle(color: Colors.white54)));
 
                   return GridView.builder(
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, crossAxisSpacing: 16, mainAxisSpacing: 16, childAspectRatio: 1.5),
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 3,
+                        crossAxisSpacing: 10,
+                        mainAxisSpacing: 10,
+                        childAspectRatio: 1.2),
                     itemCount: rooms.length,
-                    itemBuilder: (context, index) => _ClassroomCard(room: rooms[index]),
+                    itemBuilder: (context, index) =>
+                        _ClassroomCard(room: rooms[index]),
                   );
                 },
               ),
@@ -51,10 +58,16 @@ class _FacilityManagementScreenState extends State<FacilityManagementScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const AiTranslatedText('Horários Globais', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-                ElevatedButton(
+                const AiTranslatedText('Horários Globais',
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold)),
+                CustomButton(
                   onPressed: () => _showTimetableBuilder(context),
-                  child: const AiTranslatedText('Gerir Horários'),
+                  label: 'Gerir Horários',
+                  variant: CustomButtonVariant.secondary,
+                  height: 32,
                 ),
               ],
             ),
@@ -107,8 +120,10 @@ class _FacilityManagementScreenState extends State<FacilityManagementScreen> {
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const AiTranslatedText('Cancelar')),
-          ElevatedButton(
+          TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const AiTranslatedText('Cancelar')),
+          CustomButton(
             onPressed: () async {
               if (nameController.text.isEmpty) return;
               final room = Classroom(
@@ -120,7 +135,8 @@ class _FacilityManagementScreenState extends State<FacilityManagementScreen> {
               await context.read<FirebaseService>().saveClassroom(room);
               if (mounted) Navigator.pop(ctx);
             },
-            child: const AiTranslatedText('Salvar'),
+            label: 'Salvar',
+            height: 36,
           ),
         ],
       ),
@@ -128,7 +144,12 @@ class _FacilityManagementScreenState extends State<FacilityManagementScreen> {
   }
   
   void _showTimetableBuilder(BuildContext context) {
-    // Future implementation for visual timetable builder
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => TimetableManagementScreen(institution: widget.institution),
+      ),
+    );
   }
 }
 

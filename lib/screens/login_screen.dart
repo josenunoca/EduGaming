@@ -285,6 +285,7 @@ class _LoginScreenState extends State<LoginScreen> {
         target = const OtherDashboard();
         break;
     }
+    if (!mounted) return;
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (context) => target),

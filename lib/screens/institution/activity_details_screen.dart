@@ -211,11 +211,10 @@ class _ActivityDetailsScreenState extends State<ActivityDetailsScreen> with Sing
     final service = context.read<FirebaseService>();
     final members = await service.getAllInstitutionMembers(widget.institution.id);
     await service.inviteGroupToActivity(widget.activity.id, 'institution', widget.institution.id, members);
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: AiTranslatedText('Convitados ${members.length} membros da instituição.'))
-      );
-    }
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: AiTranslatedText('Convitados ${members.length} membros da instituição.'))
+    );
   }
 
   void _showCourseSelector() {

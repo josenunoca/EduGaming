@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart';
 
 class AIService {
   // final String _apiKey = 'YOUR_GEMINI_API_KEY';
-  // final String _endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent';
+  // final String _endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
 
   Future<double> analyzeContent(String contentPath, String prompt) async {
     // This will be implemented when the user provides the Gemini API Key

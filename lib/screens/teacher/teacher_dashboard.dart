@@ -4,14 +4,17 @@ import '../login_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../models/subject_model.dart';
 import '../../models/user_model.dart';
+import '../../models/institution_model.dart';
 import '../../services/firebase_service.dart';
 import '../../widgets/glass_card.dart';
+import '../../widgets/branded_title.dart';
 import 'subject_details_screen.dart';
 import '../common/personal_profile_screen.dart';
 import '../common/communication_center_screen.dart';
 import '../../widgets/messaging_badge.dart';
 import '../../widgets/advanced_search_anchor.dart';
 import '../../widgets/ai_translated_text.dart';
+import '../../widgets/user_notices_widget.dart';
 
 class TeacherDashboard extends StatefulWidget {
   const TeacherDashboard({super.key});
@@ -144,264 +147,280 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
                   body: Center(child: CircularProgressIndicator()));
             }
 
-            return Scaffold(
-              appBar: AppBar(
-                title: const AiTranslatedText('Painel do Professor'),
-                actions: [
-                  Tooltip(
-                    message: 'Ver e editar os seus dados pessoais',
-                    child: IconButton(
-                      icon: const Icon(Icons.person),
-                      onPressed: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (_) =>
-                                  PersonalProfileScreen(user: teacher))),
-                    ),
-                  ),
-                  Tooltip(
-                    message: 'Abrir centro de mensagens e correspondência',
-                    child: MessagingBadge(
-                      icon: const Icon(Icons.mail),
-                      onPressed: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (_) => const CommunicationCenterScreen())),
-                    ),
-                  ),
-                  Tooltip(
-                    message: 'Sair da conta e voltar ao ecrã de login',
-                    child: IconButton(
-                      icon: const Icon(Icons.logout),
-                      onPressed: () async {
-                        await FirebaseAuth.instance.signOut();
-                        if (context.mounted) {
-                          Navigator.pushAndRemoveUntil(
-                            context,
-                            MaterialPageRoute(
-                                builder: (_) => const LoginScreen()),
-                            (route) => false,
-                          );
-                        }
-                      },
-                    ),
-                  ),
-                ],
-              ),
-              floatingActionButton: Tooltip(
-                message: 'Criar uma nova disciplina para lecionar',
-                child: FloatingActionButton.extended(
-                  onPressed: () => _createNewSubject(context, teacher),
-                  label: const AiTranslatedText('Nova Disciplina'),
-                  icon: const Icon(Icons.add),
-                  backgroundColor: const Color(0xFF7B61FF),
-                ),
-              ),
-              body: Container(
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
-                  ),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      AdvancedSearchAnchor(
-                        hintText: 'Pesquisar disciplinas ou alunos...',
-                        onSearchQuery: (query) async {
-                          final results = <SearchResult>[];
+            return StreamBuilder<InstitutionModel?>(
+              stream: teacher.institutionId != null
+                  ? service.getInstitutionStream(teacher.institutionId!)
+                  : Stream.value(null),
+              builder: (context, instSnap) {
+                final institution = instSnap.data;
 
-                          // Search Subjects
-                          final subs = await service
-                              .searchSubjects(query, teacherId: teacher.id)
-                              .first;
-                          results.addAll(subs.map((s) => SearchResult(
-                                id: s.id,
-                                title: s.name,
-                                subtitle: '${s.level} • ${s.academicYear}',
-                                icon: Icons.book,
-                                category: 'As Minhas Disciplinas',
-                                originalObject: s,
-                              )));
-
-                          // Search Students
-                          final students = await service
-                              .searchTeacherStudents(teacher.id, query)
-                              .first;
-                          results.addAll(students.map((u) => SearchResult(
-                                id: u.id,
-                                title: u.name,
-                                subtitle: u.email,
-                                icon: Icons.person,
-                                category: 'Alunos',
-                                originalObject: u,
-                              )));
-
-                          return results;
-                        },
-                        onResultSelected: (res) {
-                          if (res.category == 'As Minhas Disciplinas') {
-                            Navigator.push(
+                return Scaffold(
+                  appBar: AppBar(
+                    title: BrandedTitle(
+                      logoUrl: institution?.logoUrl,
+                      institutionName: institution?.name,
+                      defaultTitle: 'Painel do Professor',
+                    ),
+                    actions: [
+                      Tooltip(
+                        message: 'Ver e editar os seus dados pessoais',
+                        child: IconButton(
+                          icon: const Icon(Icons.person),
+                          onPressed: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (_) =>
+                                      PersonalProfileScreen(user: teacher))),
+                        ),
+                      ),
+                      Tooltip(
+                        message: 'Abrir centro de mensagens e correspondência',
+                        child: MessagingBadge(
+                          icon: const Icon(Icons.mail),
+                          onPressed: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (_) => const CommunicationCenterScreen())),
+                        ),
+                      ),
+                      Tooltip(
+                        message: 'Sair da conta e voltar ao ecrã de login',
+                        child: IconButton(
+                          icon: const Icon(Icons.logout),
+                          onPressed: () async {
+                            await FirebaseAuth.instance.signOut();
+                            if (context.mounted) {
+                              Navigator.pushAndRemoveUntil(
                                 context,
                                 MaterialPageRoute(
-                                    builder: (_) => SubjectDetailsScreen(
-                                        subject:
-                                            res.originalObject as Subject)));
-                          } else {
-                            setState(() => _searchQuery = res.title);
-                          }
-                        },
-                        onClear: () => setState(() => _searchQuery = ''),
-                      ),
-                      if (_searchQuery.isNotEmpty)
-                        Expanded(
-                            child: _buildSearchResults(
-                                context, service, teacher.id))
-                      else ...[
-                        AiTranslatedText('Bem-vindo, ${teacher.name}',
-                            style: const TextStyle(
-                                fontSize: 18, color: Colors.white70)),
-                        const AiTranslatedText('As Minhas Disciplinas',
-                            style: TextStyle(
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white)),
-                        const SizedBox(height: 16),
-                        DropdownButton<String?>(
-                          value: _selectedYearFilter,
-                          hint: const AiTranslatedText('Filtrar por Ano Letivo',
-                              style: TextStyle(color: Colors.white70)),
-                          dropdownColor: const Color(0xFF1E293B),
-                          style: const TextStyle(color: Colors.white),
-                          items: [
-                            const DropdownMenuItem(
-                                value: null, child: Text('Todos os Anos')),
-                            ...['2023/2024', '2024/2025', '2025/2026'].map(
-                                (y) =>
-                                    DropdownMenuItem(value: y, child: Text(y))),
-                          ],
-                          onChanged: (v) =>
-                              setState(() => _selectedYearFilter = v),
+                                    builder: (_) => const LoginScreen()),
+                                (route) => false,
+                              );
+                            }
+                          },
                         ),
-                        const SizedBox(height: 16),
-                        Expanded(
-                          child: StreamBuilder<List<Subject>>(
-                            stream: service.getSubjectsByTeacher(teacher.id,
-                                academicYear: _selectedYearFilter),
-                            builder: (context, snapshot) {
-                              if (snapshot.connectionState ==
-                                  ConnectionState.waiting) {
-                                return const Center(
-                                    child: CircularProgressIndicator());
+                      ),
+                    ],
+                  ),
+                  floatingActionButton: Tooltip(
+                    message: 'Criar uma nova disciplina para lecionar',
+                    child: FloatingActionButton.extended(
+                      onPressed: () => _createNewSubject(context, teacher),
+                      label: const AiTranslatedText('Nova Disciplina'),
+                      icon: const Icon(Icons.add),
+                      backgroundColor: const Color(0xFF7B61FF),
+                    ),
+                  ),
+                  body: Container(
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
+                      ),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          AdvancedSearchAnchor(
+                            hintText: 'Pesquisar disciplinas ou alunos...',
+                            onSearchQuery: (query) async {
+                              final results = <SearchResult>[];
+
+                              // Search Subjects
+                              final subs = await service
+                                  .searchSubjects(query, teacherId: teacher.id)
+                                  .first;
+                              results.addAll(subs.map((s) => SearchResult(
+                                    id: s.id,
+                                    title: s.name,
+                                    subtitle: '${s.level} • ${s.academicYear}',
+                                    icon: Icons.book,
+                                    category: 'As Minhas Disciplinas',
+                                    originalObject: s,
+                                  )));
+
+                              // Search Students
+                              final students = await service
+                                  .searchTeacherStudents(teacher.id, query)
+                                  .first;
+                              results.addAll(students.map((u) => SearchResult(
+                                    id: u.id,
+                                    title: u.name,
+                                    subtitle: u.email,
+                                    icon: Icons.person,
+                                    category: 'Alunos',
+                                    originalObject: u,
+                                  )));
+
+                              return results;
+                            },
+                            onResultSelected: (res) {
+                              if (res.category == 'As Minhas Disciplinas') {
+                                Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                        builder: (_) => SubjectDetailsScreen(
+                                            subject:
+                                                res.originalObject as Subject)));
+                              } else {
+                                setState(() => _searchQuery = res.title);
                               }
-                              final subjects = snapshot.data ?? [];
-                              return ListView.builder(
-                                itemCount: subjects.length,
-                                itemBuilder: (context, index) {
-                                  final subject = subjects[index];
-                                  return Padding(
-                                    padding:
-                                        const EdgeInsets.only(bottom: 12.0),
-                                    child: GlassCard(
-                                      padding: const EdgeInsets.all(20),
-                                      child: Row(
-                                        children: [
-                                          Container(
-                                            width: 50,
-                                            height: 50,
-                                            decoration: BoxDecoration(
-                                              color: const Color(0xFF7B61FF)
-                                                  .withValues(alpha: 0.2),
-                                              borderRadius:
-                                                  BorderRadius.circular(12),
-                                            ),
-                                            child: const Icon(Icons.book,
-                                                color: Color(0xFF7B61FF)),
-                                          ),
-                                          const SizedBox(width: 16),
-                                          Expanded(
-                                            child: Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                                AiTranslatedText(subject.name,
-                                                    style: const TextStyle(
-                                                        fontSize: 18,
-                                                        fontWeight:
-                                                            FontWeight.bold,
-                                                        color: Colors.white)),
-                                                AiTranslatedText(
-                                                    '${subject.level} • ${subject.academicYear}',
-                                                    style: const TextStyle(
-                                                        color: Colors.white54,
-                                                        fontSize: 13)),
-                                                AiTranslatedText(
-                                                    '${subject.contents.length} conteúdos',
-                                                    style: const TextStyle(
-                                                        color: Colors.white38,
-                                                        fontSize: 11)),
-                                              ],
-                                            ),
-                                          ),
-                                          Column(
+                            },
+                            onClear: () => setState(() => _searchQuery = ''),
+                          ),
+                          if (_searchQuery.isNotEmpty)
+                            Expanded(
+                                child: _buildSearchResults(
+                                    context, service, teacher.id))
+                          else ...[
+                            AiTranslatedText('Bem-vindo, ${teacher.name}',
+                                style: const TextStyle(
+                                    fontSize: 18, color: Colors.white70)),
+                            const AiTranslatedText('As Minhas Disciplinas',
+                                style: TextStyle(
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white)),
+                            const SizedBox(height: 12),
+                            UserNoticesWidget(user: teacher),
+                            const SizedBox(height: 16),
+                            DropdownButton<String?>(
+                              value: _selectedYearFilter,
+                              hint: const AiTranslatedText('Filtrar por Ano Letivo',
+                                  style: TextStyle(color: Colors.white70)),
+                              dropdownColor: const Color(0xFF1E293B),
+                              style: const TextStyle(color: Colors.white),
+                              items: [
+                                const DropdownMenuItem(
+                                    value: null, child: Text('Todos os Anos')),
+                                ...['2023/2024', '2024/2025', '2025/2026'].map(
+                                    (y) =>
+                                        DropdownMenuItem(value: y, child: Text(y))),
+                              ],
+                              onChanged: (v) =>
+                                  setState(() => _selectedYearFilter = v),
+                            ),
+                            const SizedBox(height: 16),
+                            Expanded(
+                              child: StreamBuilder<List<Subject>>(
+                                stream: service.getSubjectsByTeacher(teacher.id,
+                                    academicYear: _selectedYearFilter),
+                                builder: (context, snapshot) {
+                                  if (snapshot.connectionState ==
+                                      ConnectionState.waiting) {
+                                    return const Center(
+                                        child: CircularProgressIndicator());
+                                  }
+                                  final subjects = snapshot.data ?? [];
+                                  return ListView.builder(
+                                    itemCount: subjects.length,
+                                    itemBuilder: (context, index) {
+                                      final subject = subjects[index];
+                                      return Padding(
+                                        padding:
+                                            const EdgeInsets.only(bottom: 12.0),
+                                        child: GlassCard(
+                                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                          child: Row(
                                             children: [
-                                              ElevatedButton(
-                                                onPressed: () => Navigator.push(
-                                                  context,
-                                                  MaterialPageRoute(
-                                                      builder: (_) =>
-                                                          SubjectDetailsScreen(
-                                                              subject:
-                                                                  subject)),
+                                              Container(
+                                                width: 32,
+                                                height: 32,
+                                                decoration: BoxDecoration(
+                                                  color: const Color(0xFF7B61FF)
+                                                      .withValues(alpha: 0.2),
+                                                  borderRadius:
+                                                      BorderRadius.circular(12),
                                                 ),
-                                                style: ElevatedButton.styleFrom(
-                                                  backgroundColor:
-                                                      const Color(0xFF7B61FF),
-                                                  foregroundColor: Colors.white,
-                                                ),
-                                                child: const AiTranslatedText(
-                                                    'GERIR',
-                                                    style: TextStyle(
-                                                        fontWeight:
-                                                            FontWeight.bold,
-                                                        fontSize: 12)),
+                                                child: const Icon(Icons.book,
+                                                    color: Color(0xFF7B61FF),
+                                                    size: 16),
                                               ),
-                                              TextButton.icon(
-                                                onPressed: () =>
-                                                    _showDuplicateDialog(
-                                                        context,
-                                                        service,
-                                                        subject),
-                                                icon: const Icon(Icons.copy,
-                                                    size: 14,
-                                                    color: Colors.blueAccent),
-                                                label: const AiTranslatedText(
-                                                    'Duplicar',
-                                                    style: TextStyle(
-                                                        fontSize: 10,
-                                                        color:
-                                                            Colors.blueAccent)),
+                                              const SizedBox(width: 16),
+                                              Expanded(
+                                                child: Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                    AiTranslatedText(subject.name,
+                                                        style: const TextStyle(
+                                                            fontSize: 16,
+                                                            fontWeight:
+                                                                FontWeight.bold,
+                                                            color: Colors.white)),
+                                                    AiTranslatedText(
+                                                        '${subject.level} • ${subject.academicYear}',
+                                                        style: const TextStyle(
+                                                            color: Colors.white54,
+                                                            fontSize: 13)),
+                                                    AiTranslatedText(
+                                                        '${subject.contents.length} conteúdos',
+                                                        style: const TextStyle(
+                                                            color: Colors.white38,
+                                                            fontSize: 12)),
+                                                  ],
+                                                ),
+                                              ),
+                                              Column(
+                                                children: [
+                                                  ElevatedButton(
+                                                    onPressed: () => Navigator.push(
+                                                      context,
+                                                      MaterialPageRoute(
+                                                          builder: (_) =>
+                                                              SubjectDetailsScreen(
+                                                                  subject:
+                                                                      subject)),
+                                                    ),
+                                                    style: ElevatedButton.styleFrom(
+                                                      backgroundColor:
+                                                          const Color(0xFF7B61FF),
+                                                      foregroundColor: Colors.white,
+                                                    ),
+                                                    child: const AiTranslatedText(
+                                                        'GERIR',
+                                                        style: TextStyle(
+                                                            fontWeight:
+                                                                FontWeight.bold,
+                                                            fontSize: 11)),
+                                                  ),
+                                                  TextButton.icon(
+                                                    onPressed: () =>
+                                                        _showDuplicateDialog(
+                                                            context,
+                                                            service,
+                                                            subject),
+                                                    icon: const Icon(Icons.copy,
+                                                        size: 14,
+                                                        color: Colors.blueAccent),
+                                                    label: const AiTranslatedText(
+                                                        'Duplicar',
+                                                        style: TextStyle(
+                                                            fontSize: 10,
+                                                            color:
+                                                                Colors.blueAccent)),
+                                                  ),
+                                                ],
                                               ),
                                             ],
                                           ),
-                                        ],
-                                      ),
-                                    ),
+                                        ),
+                                      );
+                                    },
                                   );
                                 },
-                              );
-                            },
-                          ),
-                        ),
-                      ],
-                    ],
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
                   ),
-                ),
-              ),
+                );
+              },
             );
           },
         );
@@ -441,7 +460,6 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
             title: Text(u.name, style: const TextStyle(color: Colors.white)),
             subtitle: Text(u.email,
                 style: const TextStyle(color: Colors.white54, fontSize: 12)),
-            // Note: Teacher can view student progress if implemented
           ),
         ),
       ],
@@ -614,6 +632,7 @@ class _CreateSubjectModalState extends State<_CreateSubjectModal> {
                 contents: [],
                 games: [],
                 scientificArea: _selectedScientificArea,
+                courseId: 'standalone',
                 theoreticalHours:
                     double.tryParse(_teachingHoursController.text) ?? 0.0,
                 otherHours:
@@ -621,7 +640,7 @@ class _CreateSubjectModalState extends State<_CreateSubjectModal> {
                 syllabusStatus: SyllabusStatus.provisional,
               );
               await service.updateSubject(s);
-              if (mounted) Navigator.pop(context);
+              if (context.mounted) Navigator.pop(context);
             },
             style: ElevatedButton.styleFrom(
               minimumSize: const Size(double.infinity, 54),

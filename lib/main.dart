@@ -7,6 +7,7 @@ import 'services/ai_translation_service.dart';
 import 'services/ai_chat_service.dart';
 import 'services/lifestyle_ai_service.dart';
 import 'logic/theme_provider.dart';
+import 'services/institutional_service.dart';
 
 import 'package:firebase_core/firebase_core.dart';
 import 'config/app_config.dart';
@@ -40,6 +41,9 @@ void main() async {
         ),
         Provider<LifestyleAiService>(
           create: (_) => LifestyleAiService(AppConfig.geminiApiKey),
+        ),
+        Provider<InstitutionalService>(
+          create: (_) => InstitutionalService(),
         ),
       ],
       child: const EduGamingApp(),

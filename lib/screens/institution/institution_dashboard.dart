@@ -7,7 +7,10 @@ import '../../models/user_model.dart';
 import '../../models/institution_model.dart';
 import '../../widgets/glass_card.dart';
 import '../../widgets/ai_translated_text.dart';
+import '../../widgets/branded_title.dart';
 import '../../widgets/messaging_badge.dart';
+import '../../widgets/custom_button.dart';
+import '../../widgets/user_notices_widget.dart';
 import '../common/communication_center_screen.dart';
 import 'institution_professor_management_screen.dart';
 import 'institutional_management_screen.dart';
@@ -23,87 +26,38 @@ class InstitutionDashboard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final service = context.watch<FirebaseService>();
-    return Scaffold(
-      backgroundColor: const Color(0xFF0F172A),
-      appBar: AppBar(
-        title: const AiTranslatedText('Painel da Instituição'),
-        actions: [
-          StreamBuilder<User?>(
-            stream: service.user,
-            builder: (context, authSnapshot) {
-              final uid = authSnapshot.data?.uid;
-              if (uid == null) return const SizedBox();
-              return StreamBuilder<UserModel?>(
-                stream: service.getUserStream(uid),
-                builder: (context, userSnapshot) {
-                  final user = userSnapshot.data;
-                  if (user == null) return const SizedBox();
-                  return IconButton(
-                    icon: const Icon(Icons.person),
-                    onPressed: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => PersonalProfileScreen(user: user)),
-                    ),
-                    tooltip: 'Área Pessoal',
-                  );
-                },
-              );
-            },
-          ),
-          MessagingBadge(
-            icon: const Icon(Icons.mail),
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                  builder: (_) => const CommunicationCenterScreen()),
-            ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () async {
-              await FirebaseAuth.instance.signOut();
-              if (context.mounted) {
-                Navigator.pushAndRemoveUntil(
-                  context,
-                  MaterialPageRoute(builder: (_) => const LoginScreen()),
-                  (route) => false,
-                );
-              }
-            },
-            tooltip: 'Sair',
-          ),
-        ],
-      ),
-      body: StreamBuilder<User?>(
-        stream: service.user,
-        builder: (context, authSnap) {
-          if (authSnap.hasError) {
-            return Center(child: Text('Erro de autenticação: ${authSnap.error}'));
-          }
-          if (authSnap.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (!authSnap.hasData) {
-            return const Center(child: AiTranslatedText('Por favor, faça login novamente.'));
-          }
+    
+    return StreamBuilder<User?>(
+      stream: service.user,
+      builder: (context, authSnap) {
+        if (authSnap.hasError) {
+          return Scaffold(body: Center(child: Text('Erro de autenticação: ${authSnap.error}')));
+        }
+        if (authSnap.connectionState == ConnectionState.waiting) {
+          return const Scaffold(body: Center(child: CircularProgressIndicator()));
+        }
+        if (!authSnap.hasData) {
+          return const Scaffold(body: Center(child: AiTranslatedText('Por favor, faça login novamente.')));
+        }
 
-          return StreamBuilder<UserModel?>(
-            stream: service.getUserStream(authSnap.data!.uid),
-            builder: (context, userSnap) {
-              if (userSnap.hasError) {
-                return Center(child: Text('Erro ao carregar perfil: ${userSnap.error}'));
-              }
-              if (userSnap.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-              }
-              
-              final user = userSnap.data;
-              if (user == null) {
-                return const Center(child: AiTranslatedText('Perfil de utilizador não encontrado.'));
-              }
-              
-              if (user.institutionId == null) {
-                return FutureBuilder(
+        return StreamBuilder<UserModel?>(
+          stream: service.getUserStream(authSnap.data!.uid),
+          builder: (context, userSnap) {
+            if (userSnap.hasError) {
+              return Scaffold(body: Center(child: Text('Erro ao carregar perfil: ${userSnap.error}')));
+            }
+            if (userSnap.connectionState == ConnectionState.waiting) {
+              return const Scaffold(body: Center(child: CircularProgressIndicator()));
+            }
+            
+            final user = userSnap.data;
+            if (user == null) {
+              return const Scaffold(body: Center(child: AiTranslatedText('Perfil de utilizador não encontrado.')));
+            }
+            
+            if (user.institutionId == null) {
+              return Scaffold(
+                body: FutureBuilder(
                   future: service.repairInstitutionLink(authSnap.data!.uid, authSnap.data!.email!),
                   builder: (context, repairSnap) {
                     if (repairSnap.connectionState == ConnectionState.waiting) {
@@ -119,114 +73,157 @@ class InstitutionDashboard extends StatelessWidget {
                       ),
                     );
                   },
-                );
-              }
+                ),
+              );
+            }
 
-              return StreamBuilder<InstitutionModel?>(
-                stream: service.getInstitutionStream(user.institutionId!),
-                builder: (context, instSnap) {
-                  if (instSnap.hasError) {
-                    return Center(child: Text('Erro ao carregar instituição: ${instSnap.error}'));
-                  }
-                  if (instSnap.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
+            return StreamBuilder<InstitutionModel?>(
+              stream: service.getInstitutionStream(user.institutionId!),
+              builder: (context, instSnap) {
+                if (instSnap.hasError) {
+                  return Scaffold(body: Center(child: Text('Erro ao carregar instituição: ${instSnap.error}')));
+                }
+                if (instSnap.connectionState == ConnectionState.waiting) {
+                  return const Scaffold(body: Center(child: CircularProgressIndicator()));
+                }
 
-                  final institution = instSnap.data;
-                  if (institution == null) {
-                    return const Center(child: AiTranslatedText('Instituição não encontrada ou sem permissões de acesso.'));
-                  }
+                final institution = instSnap.data;
+                if (institution == null) {
+                  return const Scaffold(body: Center(child: AiTranslatedText('Instituição não encontrada ou sem permissões de acesso.')));
+                }
 
-                  // Access check
-                  if (institution.isSuspended) {
-                    return _buildSuspendedView(
-                        'Esta instituição está suspensa pela administração.');
-                  }
+                if (institution.isSuspended) {
+                  return Scaffold(body: _buildSuspendedView('Esta instituição está suspensa pela administração.'));
+                }
 
-                  return Container(
+                return Scaffold(
+                  backgroundColor: const Color(0xFF0F172A),
+                  appBar: AppBar(
+                    title: BrandedTitle(
+                      logoUrl: institution.logoUrl,
+                      institutionName: institution.name,
+                      defaultTitle: 'Painel da Instituição',
+                    ),
+                    actions: [
+                      IconButton(
+                        icon: const Icon(Icons.person),
+                        onPressed: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => PersonalProfileScreen(user: user)),
+                        ),
+                        tooltip: 'Área Pessoal',
+                      ),
+                      MessagingBadge(
+                        icon: const Icon(Icons.mail),
+                        onPressed: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) => const CommunicationCenterScreen()),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.logout),
+                        onPressed: () async {
+                          await FirebaseAuth.instance.signOut();
+                          if (context.mounted) {
+                            Navigator.pushAndRemoveUntil(
+                              context,
+                              MaterialPageRoute(builder: (_) => const LoginScreen()),
+                              (route) => false,
+                            );
+                          }
+                        },
+                        tooltip: 'Sair',
+                      ),
+                    ],
+                  ),
+                  body: Container(
                     padding: const EdgeInsets.all(24),
                     child: SingleChildScrollView(
                       child: Column(
                         children: [
                           _buildBrandingSection(context, service, institution),
                           const SizedBox(height: 24),
+                          UserNoticesWidget(user: user),
+                          const SizedBox(height: 24),
                           GridView.count(
                             shrinkWrap: true,
                             physics: const NeverScrollableScrollPhysics(),
-                            crossAxisCount: 2,
-                            crossAxisSpacing: 16,
-                            mainAxisSpacing: 16,
+                            crossAxisCount: 4,
+                            crossAxisSpacing: 8,
+                            mainAxisSpacing: 8,
+                            childAspectRatio: 1.5,
                             children: [
-                        _DashboardActionCard(
-                          icon: Icons.people,
-                          label: 'Gerir Professores',
-                          color: const Color(0xFF00D1FF),
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (_) =>
-                                    InstitutionProfessorManagementScreen(
-                                        institution: institution)),
+                              _DashboardActionCard(
+                                icon: Icons.people,
+                                label: 'Gerir Professores',
+                                color: const Color(0xFF00D1FF),
+                                onTap: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (_) =>
+                                          InstitutionProfessorManagementScreen(
+                                              institution: institution)),
+                                ),
+                              ),
+                              _DashboardActionCard(
+                                icon: Icons.admin_panel_settings,
+                                label: 'Gestão Global 360º',
+                                color: const Color(0xFF7B61FF),
+                                onTap: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (_) =>
+                                          InstitutionalManagementScreen(
+                                              institution: institution)),
+                                ),
+                              ),
+                              _DashboardActionCard(
+                                icon: Icons.token,
+                                label: 'Gestão de Créditos',
+                                color: Colors.amber,
+                                onTap: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (_) =>
+                                          InstitutionCreditManagementScreen(
+                                              institution: institution)),
+                                ),
+                              ),
+                              _DashboardActionCard(
+                                icon: Icons.school,
+                                label: 'Gestão Académica',
+                                color: Colors.indigo,
+                                onTap: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (_) =>
+                                          AcademicManagementScreen(
+                                              institution: institution)),
+                                ),
+                              ),
+                              _DashboardActionCard(
+                                icon: Icons.favorite,
+                                label: 'Estilo de Vida',
+                                color: Colors.pinkAccent,
+                                onTap: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (_) => const LifestyleManagementScreen()),
+                                )
+                              ),
+                            ],
                           ),
-                        ),
-                        _DashboardActionCard(
-                          icon: Icons.admin_panel_settings,
-                          label: 'Gestão Global 360º',
-                          color: const Color(0xFF7B61FF),
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (_) =>
-                                    InstitutionalManagementScreen(
-                                        institution: institution)),
-                          ),
-                        ),
-                        _DashboardActionCard(
-                          icon: Icons.token,
-                          label: 'Gestão de Créditos',
-                          color: Colors.amber,
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (_) =>
-                                    InstitutionCreditManagementScreen(
-                                        institution: institution)),
-                          ),
-                        ),
-                        _DashboardActionCard(
-                          icon: Icons.school,
-                          label: 'Gestão Académica',
-                          color: Colors.indigo,
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (_) =>
-                                    AcademicManagementScreen(
-                                        institution: institution)),
-                          ),
-                        ),
-                        _DashboardActionCard(
-                          icon: Icons.favorite,
-                          label: 'Estilo de Vida',
-                          color: Colors.pinkAccent,
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (_) => const LifestyleManagementScreen()),
-                          )
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ],
-                ),
-              ),
+                  ),
+                );
+              },
             );
-                },
-              );
-            },
-          );
-        },
-      ),
+          },
+        );
+      },
     );
   }
 
@@ -254,14 +251,11 @@ class InstitutionDashboard extends StatelessWidget {
                 ],
               ),
             ),
-            ElevatedButton.icon(
+            CustomButton(
               onPressed: () => _pickAndUploadLogo(context, service, inst.id),
-              icon: const Icon(Icons.upload, size: 16),
-              label: const AiTranslatedText('Alterar'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF00D1FF).withValues(alpha: 0.2),
-                foregroundColor: const Color(0xFF00D1FF),
-              ),
+              icon: Icons.upload,
+              label: 'Alterar',
+              variant: CustomButtonVariant.secondary,
             ),
           ],
         ),
@@ -329,12 +323,14 @@ class _DashboardActionCard extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 48, color: color),
-            const SizedBox(height: 12),
+            Icon(icon, size: 28, color: color),
+            const SizedBox(height: 2),
             AiTranslatedText(label,
                 textAlign: TextAlign.center,
                 style: const TextStyle(
-                    color: Colors.white, fontWeight: FontWeight.bold)),
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13)),
           ],
         ),
       ),

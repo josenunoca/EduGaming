@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'dart:convert';
-import 'package:file_picker/file_picker.dart';
+
 import 'package:audioplayers/audioplayers.dart';
+import 'package:uuid/uuid.dart';
 import '../../../models/subject_model.dart';
 import '../../../services/firebase_service.dart';
 import '../../../services/ai_chat_service.dart';
 import '../../../widgets/glass_card.dart';
 import '../../../widgets/ai_translated_text.dart';
+import 'package:file_picker/file_picker.dart';
+
 
 class AiGameEditorScreen extends StatefulWidget {
   final Subject subject;
@@ -37,7 +40,7 @@ class _AiGameEditorScreenState extends State<AiGameEditorScreen> {
     _isAssessment = widget.game.isAssessment;
   }
 
-  Future<void> _saveGame() async {
+  Future<void> _saveGame(bool isPublished) async {
     setState(() => _isSaving = true);
     try {
       final service = context.read<FirebaseService>();
@@ -49,15 +52,21 @@ class _AiGameEditorScreenState extends State<AiGameEditorScreen> {
         isAssessment: _isAssessment,
         subjectId: widget.game.subjectId,
         sourceContentIds: widget.game.sourceContentIds,
+        isPublished: isPublished,
+        imageUrl: widget.game.imageUrl,
+        settings: widget.game.settings,
+        pin: widget.game.pin,
       );
 
       await service.saveAiGame(updatedGame);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: AiTranslatedText('Jogo guardado com sucesso!'),
-              backgroundColor: Colors.green),
+          SnackBar(
+              content: AiTranslatedText(isPublished
+                  ? 'Jogo finalizado e publicado com sucesso!'
+                  : 'Jogo guardado (rascunho) com sucesso!'),
+              backgroundColor: isPublished ? Colors.green : Colors.blue),
         );
         Navigator.pop(context);
       }
@@ -70,6 +79,46 @@ class _AiGameEditorScreenState extends State<AiGameEditorScreen> {
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
+  }
+
+  void _addQuestion() {
+    setState(() {
+      _questions.add(GameQuestion(
+        id: const Uuid().v4(),
+        question: 'Nova Pergunta',
+        options: ['', '', '', ''],
+        correctOptionIndex: 0,
+        points: 10.0,
+        timeLimitSeconds: 20,
+        allowedAnswerTypes: ['options'],
+      ));
+    });
+    // Open the editor for the newly added question
+    _editQuestion(_questions.length - 1);
+  }
+
+  void _removeQuestion(int index) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1E293B),
+        title: const AiTranslatedText('Eliminar Pergunta'),
+        content: const AiTranslatedText('Tem a certeza que deseja eliminar esta pergunta?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const AiTranslatedText('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () {
+              setState(() => _questions.removeAt(index));
+              Navigator.pop(context);
+            },
+            child: const AiTranslatedText('Eliminar', style: TextStyle(color: Colors.redAccent)),
+          ),
+        ],
+      ),
+    );
   }
 
   void _editQuestion(int index) {
@@ -171,8 +220,10 @@ class _AiGameEditorScreenState extends State<AiGameEditorScreen> {
                         setDialogState(() {
                           if (val) {
                             allowedTypes.add('options');
-                          } else if (allowedTypes.length > 1)
+                          } else if (allowedTypes.length > 1) {
                             allowedTypes.remove('options');
+                          }
+
                         });
                       },
                     ),
@@ -183,8 +234,10 @@ class _AiGameEditorScreenState extends State<AiGameEditorScreen> {
                         setDialogState(() {
                           if (val) {
                             allowedTypes.add('text');
-                          } else if (allowedTypes.length > 1)
+                          } else if (allowedTypes.length > 1) {
                             allowedTypes.remove('text');
+                          }
+
                         });
                       },
                     ),
@@ -195,8 +248,10 @@ class _AiGameEditorScreenState extends State<AiGameEditorScreen> {
                         setDialogState(() {
                           if (val) {
                             allowedTypes.add('audio');
-                          } else if (allowedTypes.length > 1)
+                          } else if (allowedTypes.length > 1) {
                             allowedTypes.remove('audio');
+                          }
+
                         });
                       },
                     ),
@@ -207,8 +262,10 @@ class _AiGameEditorScreenState extends State<AiGameEditorScreen> {
                         setDialogState(() {
                           if (val) {
                             allowedTypes.add('image');
-                          } else if (allowedTypes.length > 1)
+                          } else if (allowedTypes.length > 1) {
                             allowedTypes.remove('image');
+                          }
+
                         });
                       },
                     ),
@@ -326,11 +383,15 @@ class _AiGameEditorScreenState extends State<AiGameEditorScreen> {
                           final result = await FilePicker.platform.pickFiles(
                               type: FileType.image, withData: true);
                           if (result != null && result.files.single.bytes != null) {
+                            final bytes = result.files.single.bytes!;
                             setDialogState(() => isGenerating = true);
+                            
+                            if (!context.mounted) return;
                             final url = await context
                                 .read<FirebaseService>()
                                 .uploadGameMedia(widget.game.id,
-                                    result.files.single.bytes!, 'question_image.png');
+                                    bytes, 'question_image.png');
+
                             setDialogState(() {
                               mediaUrl = url;
                               mediaType = 'image';
@@ -346,11 +407,15 @@ class _AiGameEditorScreenState extends State<AiGameEditorScreen> {
                           final result = await FilePicker.platform.pickFiles(
                               type: FileType.audio, withData: true);
                           if (result != null && result.files.single.bytes != null) {
+                            final bytes = result.files.single.bytes!;
                             setDialogState(() => isGenerating = true);
+                            
+                            if (!context.mounted) return;
                             final url = await context
                                 .read<FirebaseService>()
                                 .uploadGameMedia(widget.game.id,
-                                    result.files.single.bytes!, 'question_audio.mp3');
+                                    bytes, 'question_audio.mp3');
+
                             setDialogState(() {
                               mediaUrl = url;
                               mediaType = 'audio';
@@ -373,10 +438,25 @@ class _AiGameEditorScreenState extends State<AiGameEditorScreen> {
                               final bytes = base64Decode(base64Image);
                               final url = await fs.uploadGameMedia(
                                   widget.game.id, bytes, 'ai_image.png');
-                              setDialogState(() {
-                                mediaUrl = url;
-                                mediaType = 'image';
-                              });
+                              
+                              if (url != null) {
+                                setDialogState(() {
+                                  mediaUrl = url;
+                                  mediaType = 'image';
+                                });
+                              } else {
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: AiTranslatedText('Erro ao fazer upload da imagem gerada.')),
+                                  );
+                                }
+                              }
+                            }
+                          } catch (e) {
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Erro na IA: $e')),
+                              );
                             }
                           } finally {
                             setDialogState(() => isGenerating = false);
@@ -400,6 +480,12 @@ class _AiGameEditorScreenState extends State<AiGameEditorScreen> {
                                 mediaUrl = url;
                                 mediaType = 'audio';
                               });
+                            }
+                          } catch (e) {
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Erro na IA: $e')),
+                              );
                             }
                           } finally {
                             setDialogState(() => isGenerating = false);
@@ -483,10 +569,27 @@ class _AiGameEditorScreenState extends State<AiGameEditorScreen> {
                 child: Padding(
                     padding: EdgeInsets.all(16.0),
                     child: CircularProgressIndicator(strokeWidth: 2)))
-          else
-            IconButton(
-                onPressed: _saveGame,
-                icon: const Icon(Icons.save, color: Color(0xFF00D1FF))),
+          else ...[
+            TextButton.icon(
+              onPressed: () => _saveGame(false),
+              icon: const Icon(Icons.save_outlined, color: Colors.white, size: 18),
+              label: const AiTranslatedText('Gravar', style: TextStyle(color: Colors.white)),
+            ),
+            const SizedBox(width: 8),
+            Padding(
+              padding: const EdgeInsets.only(right: 8.0),
+              child: ElevatedButton.icon(
+                onPressed: () => _saveGame(true),
+                icon: const Icon(Icons.check_circle_outline, size: 18),
+                label: const AiTranslatedText('Finalizar'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF00D1FF),
+                  foregroundColor: const Color(0xFF0F172A),
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                ),
+              ),
+            ),
+          ],
         ],
       ),
       body: Column(
@@ -559,6 +662,11 @@ class _AiGameEditorScreenState extends State<AiGameEditorScreen> {
                                   size: 18, color: Colors.white54),
                               onPressed: () => _editQuestion(index),
                             ),
+                            IconButton(
+                              icon: Icon(Icons.delete_outline,
+                                  size: 18, color: Colors.redAccent.withValues(alpha: 0.5)),
+                              onPressed: () => _removeQuestion(index),
+                            ),
                           ],
                         ),
                         const SizedBox(height: 12),
@@ -612,6 +720,22 @@ class _AiGameEditorScreenState extends State<AiGameEditorScreen> {
                   ),
                 );
               },
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _addQuestion,
+                icon: const Icon(Icons.add),
+                label: const AiTranslatedText('Adicionar Pergunta'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF7B61FF),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                ),
+              ),
             ),
           ),
         ],

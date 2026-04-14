@@ -1,0 +1,31 @@
+
+--- Gemini Flash Latest Test ---
+Gemini Flash Latest Success: Content generated.
+
+--- TTS Test ---
+TTS Error: 403 - {
+  "error": {
+    "code": 403,
+    "message": "Requests to this API texttospeech.googleapis.com method google.cloud.texttospeech.v1.TextToSpeech.SynthesizeSpeech are blocked.",
+    "status": "PERMISSION_DENIED",
+    "details": [
+      {
+        "@type": "type.googleapis.com/google.rpc.ErrorInfo",
+        "reason": "API_KEY_SERVICE_BLOCKED",
+        "domain": "googleapis.com",
+        "metadata": {
+          "service": "texttospeech.googleapis.com",
+          "apiName": "texttospeech.googleapis.com",
+          "methodName": "google.cloud.texttospeech.v1.TextToSpeech.SynthesizeSpeech",
+          "consumer": "projects/875175193296"
+        }
+      },
+      {
+        "@type": "type.googleapis.com/google.rpc.LocalizedMessage",
+        "locale": "en-US",
+        "message": "Requests to this API texttospeech.googleapis.com method google.cloud.texttospeech.v1.TextToSpeech.SynthesizeSpeech are blocked."
+      }
+    ]
+  }
+}
+

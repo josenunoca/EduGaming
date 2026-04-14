@@ -15,6 +15,8 @@ import 'gamification/ai_game_ranking_screen.dart';
 import 'gamification/grades_management_screen.dart';
 import 'syllabus_management_screen.dart';
 import 'gamification/exam_monitor_screen.dart';
+import 'subject_statistics_screen.dart';
+import 'attendance_matrix_screen.dart';
 
 class SubjectDetailsScreen extends StatefulWidget {
   final Subject subject;
@@ -45,46 +47,74 @@ class _SubjectDetailsScreenState extends State<SubjectDetailsScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: AiTranslatedText(_currentSubject.name),
-        bottom: TabBar(
-          controller: _tabController,
-          isScrollable: true,
-          tabs: const [
-            Tab(
-                icon: Icon(Icons.assessment_outlined),
-                child: AiTranslatedText('Componentes')),
-            Tab(
-                icon: Icon(Icons.library_books_outlined),
-                child: AiTranslatedText('Conteúdos')),
-            Tab(
-                icon: Icon(Icons.auto_awesome),
-                child: AiTranslatedText('IA Gamer')),
-            Tab(
-                icon: Icon(Icons.videogame_asset_outlined),
-                child: AiTranslatedText('Avaliação/Ranking')),
-            Tab(
-                icon: Icon(Icons.people_outline),
-                child: AiTranslatedText('Alunos')),
-            Tab(
-                icon: Icon(Icons.assignment_turned_in_outlined),
-                child: AiTranslatedText('Notas e Pautas')),
-            Tab(
-                icon: Icon(Icons.menu_book_outlined),
-                child: AiTranslatedText('Programa e Sumários')),
-          ],
-        ),
-      ),
-      body: StreamBuilder<Subject?>(
-        stream:
-            context.read<FirebaseService>().getSubjectStream(widget.subject.id),
-        initialData: widget.subject,
-        builder: (context, snapshot) {
-          if (snapshot.hasData && snapshot.data != null) {
-            _currentSubject = snapshot.data!;
-          }
-          return Container(
+    final service = context.read<FirebaseService>();
+    
+    return StreamBuilder<Subject?>(
+      stream: service.getSubjectStream(widget.subject.id),
+      initialData: widget.subject,
+      builder: (context, snapshot) {
+        if (snapshot.hasData && snapshot.data != null) {
+          _currentSubject = snapshot.data!;
+        }
+
+        return Scaffold(
+          appBar: AppBar(
+            title: AiTranslatedText(_currentSubject.name),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.bar_chart),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => SubjectStatisticsScreen(subject: _currentSubject),
+                    ),
+                  );
+                },
+                tooltip: 'Análise Estatística',
+              ),
+              IconButton(
+                icon: const Icon(Icons.grid_on),
+                onPressed: () {
+                   Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => AttendanceMatrixScreen(subject: _currentSubject),
+                    ),
+                  );
+                },
+                tooltip: 'Matriz de Presenças',
+              ),
+            ],
+            bottom: TabBar(
+              controller: _tabController,
+              isScrollable: true,
+              tabs: const [
+                Tab(
+                    icon: Icon(Icons.assessment_outlined),
+                    child: AiTranslatedText('Componentes')),
+                Tab(
+                    icon: Icon(Icons.library_books_outlined),
+                    child: AiTranslatedText('Conteúdos')),
+                Tab(
+                    icon: Icon(Icons.auto_awesome),
+                    child: AiTranslatedText('IA Gamer')),
+                Tab(
+                    icon: Icon(Icons.videogame_asset_outlined),
+                    child: AiTranslatedText('Avaliação/Ranking')),
+                Tab(
+                    icon: Icon(Icons.people_outline),
+                    child: AiTranslatedText('Alunos')),
+                Tab(
+                    icon: Icon(Icons.assignment_turned_in_outlined),
+                    child: AiTranslatedText('Notas e Pautas')),
+                Tab(
+                    icon: Icon(Icons.menu_book_outlined),
+                    child: AiTranslatedText('Programa e Sumários')),
+              ],
+            ),
+          ),
+          body: Container(
             decoration: const BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
@@ -104,9 +134,9 @@ class _SubjectDetailsScreenState extends State<SubjectDetailsScreen>
                 _buildSyllabusTab(),
               ],
             ),
-          );
-        },
-      ),
+          ),
+        );
+      },
     );
   }
 
@@ -258,6 +288,57 @@ class _SubjectDetailsScreenState extends State<SubjectDetailsScreen>
                     },
                   ),
           ),
+          const SizedBox(height: 16),
+          _buildWeightValidatorFooter(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWeightValidatorFooter() {
+    final totalWeight = _currentSubject.evaluationComponents
+            .fold<double>(0, (sum, item) => sum + item.weight) *
+        100;
+    final isComplete = totalWeight >= 99.9; // Handling double precision
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isComplete
+            ? Colors.green.withValues(alpha: 0.1)
+            : Colors.red.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isComplete
+              ? Colors.green.withValues(alpha: 0.3)
+              : Colors.red.withValues(alpha: 0.3),
+        ),
+      ),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const AiTranslatedText('TOTAL PONDERAÇÃO',
+                  style: TextStyle(
+                      fontWeight: FontWeight.bold, color: Colors.white)),
+              Text(
+                '${totalWeight.toStringAsFixed(0)}%',
+                style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: isComplete ? Colors.greenAccent : Colors.redAccent),
+              ),
+            ],
+          ),
+          if (!isComplete) ...[
+            const SizedBox(height: 8),
+            const AiTranslatedText(
+              'Não está criada a totalidade das componentes de avaliação, por favor criar em "componentes".',
+              style: TextStyle(color: Colors.redAccent, fontSize: 12),
+              textAlign: TextAlign.center,
+            ),
+          ],
         ],
       ),
     );
@@ -399,6 +480,7 @@ class _SubjectDetailsScreenState extends State<SubjectDetailsScreen>
                       return InkWell(
                         key: ValueKey(content.id),
                         onTap: () async {
+                          final messenger = ScaffoldMessenger.of(context);
                           final uri = Uri.tryParse(content.url);
                           if (uri != null) {
                             if (await canLaunchUrl(uri)) {
@@ -406,7 +488,7 @@ class _SubjectDetailsScreenState extends State<SubjectDetailsScreen>
                                   mode: LaunchMode.externalApplication);
                             } else {
                               if (mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
+                                messenger.showSnackBar(
                                   const SnackBar(
                                       content: Text(
                                           'Não foi possível abrir o conteúdo.')),
@@ -472,7 +554,7 @@ class _SubjectDetailsScreenState extends State<SubjectDetailsScreen>
                                               color: Colors.white38,
                                               fontSize: 11)),
                                       const SizedBox(width: 8),
-                                      _buildCategoryBadge(content.category),
+                                      _buildCategoryBadge(content.category, isEvaluation: isEvaluation),
                                     ],
                                   ),
                                 ],
@@ -653,16 +735,24 @@ class _SubjectDetailsScreenState extends State<SubjectDetailsScreen>
     );
   }
 
-  Widget _buildCategoryBadge(String category) {
+  Widget _buildCategoryBadge(String type, {bool isEvaluation = false}) {
     Color color = Colors.blue;
-    String label = 'Apoio';
-    if (category == 'exam') {
+    String label = 'Treino';
+    
+    if (isEvaluation) {
+      color = Colors.redAccent;
+      label = 'Avaliação';
+    } else if (type == 'exam') {
       color = Colors.redAccent;
       label = 'Exame';
-    } else if (category == 'game') {
+    } else if (type == 'game' || type == 'ai_game') {
       color = Colors.orange;
-      label = 'Jogo';
+      label = 'Treino';
+    } else if (type == 'support') {
+      color = Colors.blue;
+      label = 'Apoio';
     }
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
@@ -686,26 +776,46 @@ class _SubjectDetailsScreenState extends State<SubjectDetailsScreen>
             .toList();
 
         final allEvalItems = [
-          ...evalContents.map((c) => {
-                'name': c.name,
-                'weight': c.weight,
-                'type': c.category,
-                'id': c.id
-              }),
-          ..._currentSubject.games.map((g) =>
-              {'name': g.name, 'weight': g.weight, 'type': 'game', 'id': g.id}),
-          ...aiGames.map((g) => {
-                'name': g.title,
-                'weight': 1.0,
-                'type': 'ai_game',
-                'id': g.id
-              }), // Default weight 1.0 for AiGames
+          ...evalContents.map((c) {
+            final evalComp = _currentSubject.evaluationComponents.cast<EvaluationComponent?>().firstWhere(
+              (comp) => comp?.contentIds.contains(c.id) ?? false, 
+              orElse: () => null
+            );
+            return {
+              'name': c.name,
+              'weight': evalComp != null ? '${(evalComp.weight * 100).toInt()}%' : '0.0',
+              'type': c.category,
+              'id': c.id,
+              'isEvaluation': evalComp != null
+            };
+          }),
+          ..._currentSubject.games.map((g) {
+            final evalComp = _currentSubject.evaluationComponents.cast<EvaluationComponent?>().firstWhere(
+              (comp) => comp?.contentIds.contains(g.id) ?? false, 
+              orElse: () => null
+            );
+            return {
+              'name': g.name, 
+              'weight': evalComp != null ? '${(evalComp.weight * 100).toInt()}%' : '0.0', 
+              'type': 'game', 
+              'id': g.id,
+              'isEvaluation': evalComp != null
+            };
+          }),
+          ...aiGames.map((g) {
+            final evalComp = _currentSubject.evaluationComponents.cast<EvaluationComponent?>().firstWhere(
+              (comp) => comp?.contentIds.contains(g.id) ?? false, 
+              orElse: () => null
+            );
+            return {
+              'name': g.title,
+              'weight': evalComp != null ? '${(evalComp.weight * 100).toInt()}%' : '0.0',
+              'type': 'ai_game',
+              'id': g.id,
+              'isEvaluation': evalComp != null
+            };
+          }),
         ];
-
-        double totalWeight = 0;
-        for (var item in allEvalItems) {
-          totalWeight += (item['weight'] as double);
-        }
 
         return Padding(
           padding: const EdgeInsets.all(16.0),
@@ -736,115 +846,135 @@ class _SubjectDetailsScreenState extends State<SubjectDetailsScreen>
                         child: AiTranslatedText(
                             'Nenhum exame ou jogo configurado.',
                             style: TextStyle(color: Colors.white38)))
-                    : ListView.builder(
-                        itemCount: allEvalItems.length,
-                        itemBuilder: (context, index) {
-                          final item = allEvalItems[index];
-                          final bool isAiGame = item['type'] == 'ai_game';
+                    : FutureBuilder<List<AiGameResult>>(
+                        future: service.getAllSubjectGameResults(_currentSubject.id),
+                        builder: (context, resSnapshot) {
+                          final allResults = resSnapshot.data ?? [];
+                          
+                          // Map results by gameId
+                          Map<String, List<AiGameResult>> resultsMap = {};
+                          for (var r in allResults) {
+                            resultsMap.putIfAbsent(r.gameId, () => []).add(r);
+                          }
 
-                          return Card(
-                            color: Colors.white.withValues(alpha: 0.05),
-                            margin: const EdgeInsets.only(bottom: 8),
-                            child: ListTile(
-                              leading:
-                                  _buildCategoryBadge(item['type'] as String),
-                              title: AiTranslatedText(item['name'] as String,
-                                  style: const TextStyle(color: Colors.white)),
-                              subtitle: Text(
-                                'Peso: ${item['weight']}',
-                                style: const TextStyle(
-                                    color: Color(0xFF00D1FF), fontSize: 11),
-                              ),
-                              trailing: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  if (isAiGame)
-                                    IconButton(
-                                      icon: const Icon(Icons.analytics,
-                                          color: Color(0xFF00D1FF)),
-                                      onPressed: () {
-                                        final gameObj = aiGames.firstWhere(
-                                            (g) => g.id == item['id']);
-                                        Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                              builder: (_) =>
-                                                  AiGameRankingScreen(
-                                                      game: gameObj)),
-                                        );
-                                      },
-                                      tooltip: 'Estatísticas Detalhadas',
-                                    ),
-                                  IconButton(
-                                    icon: const Icon(Icons.delete_outline,
-                                        color: Colors.white24, size: 20),
-                                    onPressed: () async {
-                                      final service =
-                                          context.read<FirebaseService>();
-                                      final hasResults =
-                                          await service.hasEvaluationResults(
-                                        _currentSubject.id,
-                                        gameId: item['id'] as String,
-                                      );
+                          return ListView.builder(
+                            itemCount: allEvalItems.length,
+                            itemBuilder: (context, index) {
+                              final item = allEvalItems[index];
+                              final bool isAiGame = item['type'] == 'ai_game';
+                              final itemId = item['id'] as String;
+                              final itemResults = resultsMap[itemId] ?? [];
+                              
+                              final int totalParticipants = itemResults.map((r) => r.studentId).toSet().length;
+                              final double averageScore = itemResults.isEmpty 
+                                ? 0 
+                                : itemResults.map((r) => r.score).reduce((a, b) => a + b) / itemResults.length;
 
-                                      if (hasResults) {
-                                        if (mounted) _showLockedItemDialog();
-                                        return;
-                                      }
-
-                                      final confirmed = await _confirmDeletetion(
-                                          'Eliminar Jogo/Exame',
-                                          'Tem a certeza que quer eliminar este item de avaliação?');
-
-                                      if (confirmed == true && mounted) {
-                                        if (item['type'] == 'ai_game') {
-                                          await service.deleteAiGame(
-                                              item['id'] as String);
-                                        } else {
-                                          await service.deleteSubjectContent(
-                                              _currentSubject.id,
-                                              item['id'] as String);
-                                        }
-                                        setState(() {
-                                          _currentSubject.contents.removeWhere(
-                                              (c) => c.id == item['id']);
-                                          _currentSubject.games.removeWhere(
-                                              (g) => g.id == item['id']);
-                                        });
-                                      }
-                                    },
+                              return Card(
+                                color: Colors.white.withValues(alpha: 0.05),
+                                margin: const EdgeInsets.only(bottom: 8),
+                                child: ListTile(
+                                  leading: _buildCategoryBadge(item['type'] as String, isEvaluation: item['isEvaluation'] as bool? ?? false),
+                                  title: AiTranslatedText(item['name'] as String,
+                                      style: const TextStyle(color: Colors.white)),
+                                  subtitle: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        item['isEvaluation'] == true 
+                                          ? 'Peso: ${item['weight']}'
+                                          : 'Peso: NA',
+                                        style: const TextStyle(
+                                            color: Color(0xFF00D1FF), fontSize: 11),
+                                      ),
+                                      if (resSnapshot.connectionState == ConnectionState.waiting)
+                                        const SizedBox(height: 4, child: LinearProgressIndicator(minHeight: 1))
+                                      else
+                                        Padding(
+                                          padding: const EdgeInsets.only(top: 4.0),
+                                          child: Row(
+                                            children: [
+                                              Icon(Icons.people, size: 12, color: Colors.white.withValues(alpha: 0.5)),
+                                              const SizedBox(width: 4),
+                                              Text('$totalParticipants', style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 10)),
+                                              const SizedBox(width: 12),
+                                              Icon(Icons.analytics, size: 12, color: Colors.white.withValues(alpha: 0.5)),
+                                              const SizedBox(width: 4),
+                                              Text('${averageScore.toStringAsFixed(1)} pts (média)', style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 10)),
+                                            ],
+                                          ),
+                                        ),
+                                    ],
                                   ),
-                                ],
-                              ),
-                            ),
+                                  trailing: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      if (isAiGame)
+                                        IconButton(
+                                          icon: const Icon(Icons.analytics,
+                                              color: Color(0xFF00D1FF)),
+                                          onPressed: () {
+                                            final gameObj = aiGames.firstWhere(
+                                                (g) => g.id == item['id']);
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                  builder: (_) =>
+                                                      AiGameRankingScreen(
+                                                          game: gameObj)),
+                                            );
+                                          },
+                                          tooltip: 'Estatísticas Detalhadas',
+                                        ),
+                                      IconButton(
+                                        icon: const Icon(Icons.delete_outline,
+                                            color: Colors.white24, size: 20),
+                                        onPressed: () async {
+                                          final service =
+                                              context.read<FirebaseService>();
+                                          final hasResults =
+                                              await service.hasEvaluationResults(
+                                            _currentSubject.id,
+                                            gameId: item['id'] as String,
+                                          );
+
+                                          if (hasResults) {
+                                            if (mounted) _showLockedItemDialog();
+                                            return;
+                                          }
+
+                                          final confirmed = await _confirmDeletetion(
+                                              'Eliminar Jogo/Exame',
+                                              'Tem a certeza que quer eliminar este item de avaliação?');
+
+                                          if (confirmed == true && mounted) {
+                                            if (item['type'] == 'ai_game') {
+                                              await service.deleteAiGame(
+                                                  item['id'] as String);
+                                            } else {
+                                              await service.deleteSubjectContent(
+                                                  _currentSubject.id,
+                                                  item['id'] as String);
+                                            }
+                                            setState(() {
+                                              _currentSubject.contents.removeWhere(
+                                                  (c) => c.id == item['id']);
+                                              _currentSubject.games.removeWhere(
+                                                  (g) => g.id == item['id']);
+                                            });
+                                          }
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
                           );
                         },
                       ),
               ),
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.05),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                      color: const Color(0xFF7B61FF).withValues(alpha: 0.3)),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const AiTranslatedText('TOTAL PONDERAÇÃO',
-                        style: TextStyle(
-                            fontWeight: FontWeight.bold, color: Colors.white)),
-                    Text(
-                      totalWeight.toStringAsFixed(1),
-                      style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF00D1FF)),
-                    ),
-                  ],
-                ),
-              ),
+              _buildWeightValidatorFooter(),
             ],
           ),
         );

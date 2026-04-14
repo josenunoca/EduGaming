@@ -15,6 +15,8 @@ class StudentSyllabusScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final userId = FirebaseAuth.instance.currentUser?.uid;
+
     return StreamBuilder<Subject?>(
       stream: context.read<FirebaseService>().getSubjectStream(subject.id),
       builder: (context, snapshot) {
@@ -22,98 +24,174 @@ class StudentSyllabusScreen extends StatelessWidget {
         final sessions = List<SyllabusSession>.from(currentSubject.sessions);
         sessions.sort((a, b) => a.sessionNumber.compareTo(b.sessionNumber));
 
-        final userId = FirebaseAuth.instance.currentUser?.uid;
+        return StreamBuilder<List<Attendance>>(
+          stream: context.read<FirebaseService>().getAttendanceStreamForSubject(currentSubject.id),
+          builder: (context, attendanceSnapshot) {
+            final attendances = attendanceSnapshot.data ?? [];
+            final studentAttendances = attendances.where((a) => a.userId == userId).toList();
+            final finalizedSessions = sessions.where((s) => s.isFinalized).toList();
+            
+            double attendancePercentage = 100.0;
+            if (finalizedSessions.isNotEmpty) {
+              int presentCount = 0;
+              for (var s in finalizedSessions) {
+                if (studentAttendances.any((a) => a.sessionId == s.id)) {
+                  presentCount++;
+                }
+              }
+              attendancePercentage = (presentCount / finalizedSessions.length) * 100;
+            }
 
-        return Column(
-          children: [
-            Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF7B61FF),
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF7B61FF).withValues(alpha: 0.3),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    _buildDownloadButton(
-                      icon: Icons.assignment_outlined,
-                      label: 'Download Programa',
-                      onTap: () =>
-                          PdfService.generateProgramPDF(currentSubject),
-                    ),
-                    Container(width: 1, height: 24, color: Colors.white24),
-                    _buildDownloadButton(
-                      icon: Icons.summarize_outlined,
-                      label: 'Download Sumários',
-                      onTap: () async {
-                        final service = context.read<FirebaseService>();
-                        final attendances =
-                            await service.getAttendanceForSubject(currentSubject.id);
-                        await PdfService.generateSummariesPDF(
-                            currentSubject, attendances);
-                      },
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            if (currentSubject.programDescription != null &&
-                currentSubject.programDescription!.isNotEmpty)
-              Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-                child: GlassCard(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const AiTranslatedText(
-                        'Programa da Disciplina',
-                        style: TextStyle(
-                            color: Color(0xFF00D1FF),
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold),
+            return Column(
+              children: [
+                // Header with Attendance Summary and Download Buttons
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF7B61FF), Color(0xFF00D1FF)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
                       ),
-                      const SizedBox(height: 8),
-                      Text(
-                        currentSubject.programDescription!,
-                        style: const TextStyle(
-                            color: Colors.white70, fontSize: 13, height: 1.5),
-                      ),
-                    ],
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF7B61FF).withOpacity(0.3),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const AiTranslatedText(
+                                  'A Tua Assiduidade',
+                                  style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
+                                ),
+                                Text(
+                                  '${attendancePercentage.toStringAsFixed(1)}%',
+                                  style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+                                ),
+                              ],
+                            ),
+                            if (currentSubject.attendanceControlEnabled)
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Text(
+                                  'Mínimo: ${currentSubject.requiredAttendancePercentage}%',
+                                  style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        const Divider(color: Colors.white24, height: 1),
+                        const SizedBox(height: 12),
+                        SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceAround,
+                            children: [
+                              _buildDownloadButton(
+                                icon: Icons.assignment_outlined,
+                                label: 'Programa',
+                                onTap: () => PdfService.generateProgramPDF(currentSubject),
+                              ),
+                              const SizedBox(width: 16),
+                              _buildDownloadButton(
+                                icon: Icons.summarize_outlined,
+                                label: 'Sumários',
+                                onTap: () async {
+                                  await PdfService.generateSummariesPDF(currentSubject, attendances, includeAttendance: false);
+                                },
+                              ),
+                              const SizedBox(width: 16),
+                              _buildDownloadButton(
+                                icon: Icons.playlist_add_check,
+                                label: 'Minhas Presenças',
+                                onTap: () async {
+                                  final service = context.read<FirebaseService>();
+                                  final user = await service.getUserData(userId ?? '');
+                                  final institution = await service.getInstitution(currentSubject.institutionId);
+                                  await PdfService.generateStudentAttendancePDF(
+                                    subject: currentSubject,
+                                    attendances: studentAttendances,
+                                    finalizedSessions: finalizedSessions,
+                                    studentName: user?.name ?? 'Estudante',
+                                    studentId: userId ?? '',
+                                    institution: institution,
+                                  );
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-            Expanded(
-              child: sessions.isEmpty
-                  ? const Center(
-                      child: AiTranslatedText(
-                        'Ainda não existem sessões definidas.',
-                        style: TextStyle(color: Colors.white54),
-                      ),
-                    )
-                  : ListView.builder(
+
+                // Program Description
+                if (currentSubject.programDescription != null && currentSubject.programDescription!.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                    child: GlassCard(
                       padding: const EdgeInsets.all(16),
-                      itemCount: sessions.length,
-                      itemBuilder: (context, index) {
-                        final s = sessions[index];
-                        return _buildSessionCard(
-                            context, s, userId, currentSubject);
-                      },
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const AiTranslatedText(
+                            'Programa da Disciplina',
+                            style: TextStyle(
+                                color: Color(0xFF00D1FF),
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            currentSubject.programDescription!,
+                            style: const TextStyle(
+                                color: Colors.white70, fontSize: 13, height: 1.5),
+                          ),
+                        ],
+                      ),
                     ),
-            ),
-          ],
+                  ),
+
+                // Session List
+                Expanded(
+                  child: sessions.isEmpty
+                      ? const Center(
+                          child: AiTranslatedText(
+                            'Ainda não existem sessões definidas.',
+                            style: TextStyle(color: Colors.white54),
+                          ),
+                        )
+                      : ListView.builder(
+                          padding: const EdgeInsets.all(16),
+                          itemCount: sessions.length,
+                          itemBuilder: (context, index) {
+                            final s = sessions[index];
+                            return _buildSessionCard(
+                                context, s, currentSubject, studentAttendances);
+                          },
+                        ),
+                ),
+              ],
+            );
+          },
         );
       },
     );
@@ -125,15 +203,15 @@ class StudentSyllabusScreen extends StatelessWidget {
       required VoidCallback onTap}) {
     return InkWell(
       onTap: onTap,
-      child: Row(
+      child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, color: Colors.white, size: 20),
-          const SizedBox(width: 8),
+          const SizedBox(height: 4),
           AiTranslatedText(
             label,
             style: const TextStyle(
-                color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11),
           ),
         ],
       ),
@@ -141,7 +219,9 @@ class StudentSyllabusScreen extends StatelessWidget {
   }
 
   Widget _buildSessionCard(BuildContext context, SyllabusSession s,
-      String? userId, Subject currentSubject) {
+      Subject currentSubject, List<Attendance> studentAttendances) {
+    final isPresent = studentAttendances.any((a) => a.sessionId == s.id);
+    
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: GlassCard(
@@ -151,14 +231,32 @@ class StudentSyllabusScreen extends StatelessWidget {
           children: [
             Row(
               children: [
-                CircleAvatar(
-                  radius: 14,
-                  backgroundColor: const Color(0xFF00D1FF).withValues(alpha: 0.1),
-                  child: Text(s.sessionNumber.toString(),
-                      style: const TextStyle(
-                          fontSize: 12,
-                          color: Color(0xFF00D1FF),
-                          fontWeight: FontWeight.bold)),
+                Stack(
+                  children: [
+                    CircleAvatar(
+                      radius: 14,
+                      backgroundColor: const Color(0xFF00D1FF).withOpacity(0.1),
+                      child: Text(s.sessionNumber.toString(),
+                          style: const TextStyle(
+                              fontSize: 12,
+                              color: Color(0xFF00D1FF),
+                              fontWeight: FontWeight.bold)),
+                    ),
+                    if (s.isFinalized)
+                      Positioned(
+                        right: 0,
+                        bottom: 0,
+                        child: Container(
+                          width: 10,
+                          height: 10,
+                          decoration: BoxDecoration(
+                            color: isPresent ? Colors.green : Colors.red,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 1.5),
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -174,20 +272,20 @@ class StudentSyllabusScreen extends StatelessWidget {
                       Row(
                         children: [
                           Icon(Icons.calendar_today,
-                              size: 12, color: Colors.white.withValues(alpha: 0.5)),
+                              size: 12, color: Colors.white.withOpacity(0.5)),
                           const SizedBox(width: 4),
                           Text(DateFormat('dd/MM/yyyy').format(s.date),
                               style: TextStyle(
-                                  color: Colors.white.withValues(alpha: 0.5),
+                                  color: Colors.white.withOpacity(0.5),
                                   fontSize: 12)),
                           if (s.startTime != null) ...[
                             const SizedBox(width: 8),
                             Icon(Icons.access_time,
-                                size: 12, color: Colors.white.withValues(alpha: 0.5)),
+                                size: 12, color: Colors.white.withOpacity(0.5)),
                             const SizedBox(width: 4),
                             Text('${s.startTime} - ${s.endTime ?? ""}',
                                 style: TextStyle(
-                                    color: Colors.white.withValues(alpha: 0.5),
+                                    color: Colors.white.withOpacity(0.5),
                                     fontSize: 12)),
                           ],
                         ],
@@ -195,62 +293,21 @@ class StudentSyllabusScreen extends StatelessWidget {
                     ],
                   ),
                 ),
-                if (userId != null)
-                  FutureBuilder<bool>(
-                    future: context
-                        .read<FirebaseService>()
-                        .hasAlreadyRecordedAttendance(userId, s.id),
-                    builder: (context, snapshot) {
-                      final present = snapshot.data ?? false;
-
-                      bool hasPassed = false;
-                      if (s.endTime != null) {
-                        try {
-                          final parts = s.endTime!.split(':');
-                          final endDateTime = DateTime(
-                            s.date.year,
-                            s.date.month,
-                            s.date.day,
-                            int.parse(parts[0]),
-                            int.parse(parts[1]),
-                          );
-                          hasPassed = DateTime.now().isAfter(endDateTime);
-                        } catch (_) {
-                          hasPassed = DateTime.now().isAfter(DateTime(
-                              s.date.year, s.date.month, s.date.day, 23, 59));
-                        }
-                      } else {
-                        hasPassed = DateTime.now().isAfter(DateTime(
-                            s.date.year, s.date.month, s.date.day, 23, 59));
-                      }
-
-                      if (present) {
-                        return Container(
-                          width: 12,
-                          height: 12,
-                          decoration: const BoxDecoration(
-                              color: Colors.greenAccent,
-                              shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(
-                                    color: Colors.greenAccent, blurRadius: 4)
-                              ]),
-                        );
-                      } else if (hasPassed) {
-                        return Container(
-                          width: 12,
-                          height: 12,
-                          decoration: const BoxDecoration(
-                              color: Colors.redAccent,
-                              shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(
-                                    color: Colors.redAccent, blurRadius: 4)
-                              ]),
-                        );
-                      }
-                      return const SizedBox();
-                    },
+                if (s.isFinalized)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: (isPresent ? Colors.green : Colors.red).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      isPresent ? 'Presente' : 'Falta',
+                      style: TextStyle(
+                        color: isPresent ? Colors.green : Colors.red,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
               ],
             ),

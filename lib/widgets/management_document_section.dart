@@ -240,7 +240,7 @@ class _ManagementDocumentSectionState extends State<ManagementDocumentSection> {
                 ),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
-                  initialValue: category,
+                  value: category,
                   dropdownColor: const Color(0xFF1E1E2E),
                   style: const TextStyle(color: Colors.white),
                   decoration: const InputDecoration(

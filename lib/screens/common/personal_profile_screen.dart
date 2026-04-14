@@ -59,6 +59,7 @@ class _PersonalProfileScreenState extends State<PersonalProfileScreen> {
   Future<void> _loadInstitution() async {
     final service = context.read<FirebaseService>();
     final inst = await service.getInstitution(widget.user.institutionId!);
+    if (!mounted) return;
     if (inst != null) {
       setState(() {
         _institution = inst;
@@ -80,6 +81,7 @@ class _PersonalProfileScreenState extends State<PersonalProfileScreen> {
       try {
         final bytes = await image.readAsBytes();
         final url = await service.uploadSignature(widget.user.id, bytes);
+        if (!mounted) return;
         setState(() {
           _signatureUrl = url;
           _isUploading = false;

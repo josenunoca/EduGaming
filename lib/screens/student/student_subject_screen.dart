@@ -2,12 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../../../models/subject_model.dart';
-import '../../../models/live_session_model.dart';
-import '../../../services/firebase_service.dart';
-import '../../../widgets/glass_card.dart';
-import '../../../widgets/ai_translated_text.dart';
-import '../../../widgets/ai_chat_dialog.dart';
+import '../../models/subject_model.dart';
+import '../../models/live_session_model.dart';
+import '../../services/firebase_service.dart';
+import '../../services/pdf_service.dart';
+import '../../widgets/glass_card.dart';
+import '../../widgets/ai_translated_text.dart';
+import '../../widgets/ai_chat_dialog.dart';
 import 'ai_game_player_screen.dart';
 import 'student_syllabus_screen.dart';
 import 'virtual_classroom_student_screen.dart';
@@ -97,10 +98,10 @@ class _StudentSubjectScreenState extends State<StudentSubjectScreen>
   Widget build(BuildContext context) {
     final service = context.watch<FirebaseService>();
 
-    return FutureBuilder<Subject?>(
-      future: service.getSubject(widget.subjectId),
+    return StreamBuilder<Subject?>(
+      stream: service.getSubjectStream(widget.subjectId),
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
+        if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
           return const Scaffold(
               backgroundColor: Color(0xFF0F172A),
               body: Center(child: CircularProgressIndicator()));
@@ -316,7 +317,7 @@ class _StudentSubjectScreenState extends State<StudentSubjectScreen>
   Widget _buildGamesTab(Subject subject) {
     final service = context.watch<FirebaseService>();
     return StreamBuilder<List<AiGame>>(
-      stream: service.getAiGamesBySubject(subject.id),
+      stream: service.getAiGamesBySubject(subject.id, publishedOnly: true),
       builder: (context, snapshot) {
         if (!snapshot.hasData) {
           return const Center(child: CircularProgressIndicator());
@@ -402,8 +403,7 @@ class _StudentSubjectScreenState extends State<StudentSubjectScreen>
                         return Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(
-                                0.05), // Changed withValues to withOpacity
+                            color: Colors.white.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Row(
@@ -417,10 +417,18 @@ class _StudentSubjectScreenState extends State<StudentSubjectScreen>
                                       : Colors.redAccent),
                               _buildStatItem('Vezes',
                                   stats.playCount.toString(), Colors.white),
-                              _buildStatItem(
-                                  'Máx',
-                                  '${stats.maxScore.toStringAsFixed(0)} pts',
-                                  const Color(0xFF00D1FF)),
+                                  _buildStatItem(
+                                      'Máx',
+                                      '${stats.maxScore.toStringAsFixed(0)} pts',
+                                      const Color(0xFF00D1FF)),
+                              if (stats.playCount > 0)
+                                IconButton(
+                                  icon: const Icon(Icons.picture_as_pdf,
+                                      color: Color(0xFF00D1FF)),
+                                  tooltip: 'Descarregar Relatório',
+                                  onPressed: () =>
+                                      _downloadReport(subject, game),
+                                ),
                             ],
                           ),
                         );
@@ -480,7 +488,7 @@ class _StudentSubjectScreenState extends State<StudentSubjectScreen>
     }
 
     return StreamBuilder<List<AiGame>>(
-      stream: service.getAiGamesBySubject(subject.id),
+      stream: service.getAiGamesBySubject(subject.id, publishedOnly: true),
       builder: (context, gameSnapshot) {
         final games = (gameSnapshot.data ?? [])
             .where((g) => g.isAssessment || evaluationContentIds.contains(g.id))
@@ -623,8 +631,8 @@ class _StudentSubjectScreenState extends State<StudentSubjectScreen>
                                   ],
                                 ),
                               );
-                            },
-                          ),
+                          },
+                        ),
                           const SizedBox(height: 20),
                           Builder(builder: (context) {
                             return StreamBuilder<AiGameStats?>(
@@ -754,7 +762,7 @@ class _StudentSubjectScreenState extends State<StudentSubjectScreen>
 
             // Fetch games map for calculations
             return FutureBuilder<List<AiGame>>(
-              future: service.getAiGamesBySubject(subject.id).first,
+              future: service.getAiGamesBySubject(subject.id, publishedOnly: true).first,
               builder: (context, gamesSnapshot) {
                 if (!gamesSnapshot.hasData) {
                   return const Center(child: CircularProgressIndicator());
@@ -1036,11 +1044,11 @@ class _StudentSubjectScreenState extends State<StudentSubjectScreen>
     );
   }
 
-  void _checkAccessAndLaunch({
+  Future<void> _checkAccessAndLaunch({
     required Subject subject,
     required String itemId,
     required VoidCallback onGranted,
-  }) {
+  }) async {
     // Check if the item is part of an evaluation component
     EvaluationComponent? evalComp;
     try {
@@ -1058,6 +1066,50 @@ class _StudentSubjectScreenState extends State<StudentSubjectScreen>
     }
 
     final now = DateTime.now();
+
+    // --- NEW: Attendance Check ---
+    if (subject.attendanceControlEnabled) {
+      final service = context.read<FirebaseService>();
+      final userId = widget.studentId ?? FirebaseAuth.instance.currentUser?.uid;
+      if (userId != null) {
+        final attendances = await service.getAttendanceForSubject(subject.id);
+        final studentAttendances = attendances.where((a) => a.userId == userId).toList();
+        final finalizedSessions = subject.sessions.where((s) => s.isFinalized).toList();
+
+        if (finalizedSessions.isNotEmpty) {
+          int presentCount = 0;
+          for (var session in finalizedSessions) {
+            if (studentAttendances.any((a) => a.sessionId == session.id)) {
+              presentCount++;
+            }
+          }
+          final percentage = (presentCount / finalizedSessions.length) * 100;
+          if (percentage < subject.requiredAttendancePercentage) {
+            if (mounted) {
+              showDialog(
+                context: context,
+                builder: (context) => AlertDialog(
+                  backgroundColor: const Color(0xFF1E293B),
+                  title: const AiTranslatedText('Acesso Bloqueado', style: TextStyle(color: Colors.redAccent)),
+                  content: AiTranslatedText(
+                    'Não cumpre os critérios de assiduidade para avaliação contínua (${percentage.toStringAsFixed(0)}% de ${subject.requiredAttendancePercentage.toStringAsFixed(0)}% exigidos).',
+                    style: const TextStyle(color: Colors.white70),
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const AiTranslatedText('Percebido'),
+                    ),
+                  ],
+                ),
+              );
+            }
+            return;
+          }
+        }
+      }
+    }
+    // --- End Attendance Check ---
 
     // Check time limits
     if (evalComp.startTime != null && now.isBefore(evalComp.startTime!)) {
@@ -1136,6 +1188,69 @@ class _StudentSubjectScreenState extends State<StudentSubjectScreen>
     } else {
       // No PIN required, launch normally
       onGranted();
+    }
+  }
+
+  Future<void> _downloadReport(Subject subject, AiGame game) async {
+    final service = context.read<FirebaseService>();
+    final userId = widget.studentId ?? FirebaseAuth.instance.currentUser?.uid;
+    if (userId == null) return;
+
+    // Show loading
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      final results = await service.getGameResults(game.id);
+      final studentResults =
+          results.where((r) => r.studentId == userId).toList();
+
+      if (studentResults.isEmpty) {
+        if (mounted) Navigator.pop(context);
+        return;
+      }
+
+      // Find best result (Best Score, then Min Time)
+      studentResults.sort((a, b) {
+        int scoreComp = b.score.compareTo(a.score);
+        if (scoreComp != 0) return scoreComp;
+        double aTime = a.timeTakenSeconds ?? double.infinity;
+        double bTime = b.timeTakenSeconds ?? double.infinity;
+        return aTime.compareTo(bTime);
+      });
+      final bestResult = studentResults.first;
+
+      final academicYear = bestResult.academicYear ?? subject.academicYear;
+      final ranking =
+          await service.getStudentGameRanking(userId, game.id, academicYear);
+      final average = await service.getGameAverageScore(game.id);
+
+      final user = await service.getUserData(userId);
+      final institution = user?.institutionId != null
+          ? await service.getInstitution(user!.institutionId!)
+          : null;
+
+      if (mounted) {
+        await PdfService.generateStudentGameReportPDF(
+          subject: subject,
+          game: game,
+          result: bestResult,
+          averageScore: average,
+          ranking: ranking,
+          institution: institution,
+        );
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erro ao gerar relatório: $e')),
+        );
+      }
     }
   }
 }

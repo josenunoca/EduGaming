@@ -207,6 +207,7 @@ class GameQuestion {
   final String? mediaUrl;
   final String? mediaType; // 'image', 'audio', 'video'
   final bool isDictation;
+  final String? studyReference; // e.g. "Capítulo 1, Pág 12"
 
   GameQuestion({
     required this.id,
@@ -220,6 +221,7 @@ class GameQuestion {
     this.mediaUrl,
     this.mediaType,
     this.isDictation = false,
+    this.studyReference,
   });
 
   Map<String, dynamic> toMap() {
@@ -235,6 +237,7 @@ class GameQuestion {
       if (mediaUrl != null) 'mediaUrl': mediaUrl,
       if (mediaType != null) 'mediaType': mediaType,
       'isDictation': isDictation,
+      if (studyReference != null) 'studyReference': studyReference,
     };
   }
 
@@ -252,6 +255,7 @@ class GameQuestion {
       mediaUrl: map['mediaUrl'],
       mediaType: map['mediaType'],
       isDictation: map['isDictation'] ?? false,
+      studyReference: map['studyReference'],
     );
   }
 }
@@ -267,6 +271,7 @@ class AiGame {
   final String? imageUrl;
   final Map<String, dynamic>? settings;
   final String? pin;
+  final bool isPublished;
 
   AiGame({
     required this.id,
@@ -279,6 +284,7 @@ class AiGame {
     this.imageUrl,
     this.settings,
     this.pin,
+    this.isPublished = false,
   });
 
   Map<String, dynamic> toMap() {
@@ -293,6 +299,7 @@ class AiGame {
       if (imageUrl != null) 'imageUrl': imageUrl,
       if (settings != null) 'settings': settings,
       if (pin != null) 'pin': pin,
+      'isPublished': isPublished,
     };
   }
 
@@ -312,6 +319,7 @@ class AiGame {
           ? Map<String, dynamic>.from(map['settings'])
           : null,
       pin: map['pin'],
+      isPublished: map['isPublished'] ?? false,
     );
   }
 }
@@ -440,6 +448,8 @@ class Subject {
   final String academicYear; // e.g., "2023/2024"
   final String teacherId;
   final String institutionId;
+  final String courseId;
+  final int cycleYear; // New: 1, 2, 3...
   final List<String> allowedStudentEmails;
   final List<SubjectContent> contents;
   final List<GameContent> games;
@@ -473,14 +483,18 @@ class Subject {
   final double price;
   final String currency;
   final bool isMarketplaceEnabled;
+  final bool attendanceControlEnabled;
+  final double requiredAttendancePercentage;
 
-  Subject({
+    Subject({
     required this.id,
     required this.name,
     required this.level,
     required this.academicYear,
     required this.teacherId,
     required this.institutionId,
+    required this.courseId,
+    this.cycleYear = 1,
     required this.allowedStudentEmails,
     required this.contents,
     required this.games,
@@ -508,7 +522,95 @@ class Subject {
     this.pedagogicalApprovedBy,
     this.pedagogicalSignatures = const [],
     this.syllabusFileUrl,
+    this.attendanceControlEnabled = false,
+    this.requiredAttendancePercentage = 0.0,
   });
+
+  Subject copyWith({
+    String? id,
+    String? name,
+    String? level,
+    String? academicYear,
+    String? teacherId,
+    String? institutionId,
+    String? courseId,
+    int? cycleYear,
+    List<String>? allowedStudentEmails,
+    List<SubjectContent>? contents,
+    List<GameContent>? games,
+    List<EvaluationComponent>? evaluationComponents,
+    String? scientificArea,
+    String? programDescription,
+    PautaStatus? pautaStatus,
+    double? teachingHours,
+    double? nonTeachingHours,
+    DateTime? sealedAt,
+    String? sealedBy,
+    List<SyllabusSession>? sessions,
+    double? price,
+    String? currency,
+    bool? isMarketplaceEnabled,
+    double? theoreticalHours,
+    double? theoreticalPracticalHours,
+    double? practicalHours,
+    double? otherHours,
+    double? ects,
+    SyllabusStatus? syllabusStatus,
+    DateTime? scientificApprovalDate,
+    String? scientificApprovedBy,
+    DateTime? pedagogicalApprovalDate,
+    String? pedagogicalApprovedBy,
+    List<String>? pedagogicalSignatures,
+    String? syllabusFileUrl,
+    bool? attendanceControlEnabled,
+    double? requiredAttendancePercentage,
+  }) {
+    return Subject(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      level: level ?? this.level,
+      academicYear: academicYear ?? this.academicYear,
+      teacherId: teacherId ?? this.teacherId,
+      institutionId: institutionId ?? this.institutionId,
+      courseId: courseId ?? this.courseId,
+      cycleYear: cycleYear ?? this.cycleYear,
+      allowedStudentEmails: allowedStudentEmails ?? this.allowedStudentEmails,
+      contents: contents ?? this.contents,
+      games: games ?? this.games,
+      evaluationComponents: evaluationComponents ?? this.evaluationComponents,
+      scientificArea: scientificArea ?? this.scientificArea,
+      programDescription: programDescription ?? this.programDescription,
+      pautaStatus: pautaStatus ?? this.pautaStatus,
+      teachingHours: teachingHours ?? this.teachingHours,
+      nonTeachingHours: nonTeachingHours ?? this.nonTeachingHours,
+      sealedAt: sealedAt ?? this.sealedAt,
+      sealedBy: sealedBy ?? this.sealedBy,
+      sessions: sessions ?? this.sessions,
+      price: price ?? this.price,
+      currency: currency ?? this.currency,
+      isMarketplaceEnabled: isMarketplaceEnabled ?? this.isMarketplaceEnabled,
+      theoreticalHours: theoreticalHours ?? this.theoreticalHours,
+      theoreticalPracticalHours:
+          theoreticalPracticalHours ?? this.theoreticalPracticalHours,
+      practicalHours: practicalHours ?? this.practicalHours,
+      otherHours: otherHours ?? this.otherHours,
+      ects: ects ?? this.ects,
+      syllabusStatus: syllabusStatus ?? this.syllabusStatus,
+      scientificApprovalDate:
+          scientificApprovalDate ?? this.scientificApprovalDate,
+      scientificApprovedBy: scientificApprovedBy ?? this.scientificApprovedBy,
+      pedagogicalApprovalDate:
+          pedagogicalApprovalDate ?? this.pedagogicalApprovalDate,
+      pedagogicalApprovedBy: pedagogicalApprovedBy ?? this.pedagogicalApprovedBy,
+      pedagogicalSignatures:
+          pedagogicalSignatures ?? this.pedagogicalSignatures,
+      syllabusFileUrl: syllabusFileUrl ?? this.syllabusFileUrl,
+      attendanceControlEnabled:
+          attendanceControlEnabled ?? this.attendanceControlEnabled,
+      requiredAttendancePercentage:
+          requiredAttendancePercentage ?? this.requiredAttendancePercentage,
+    );
+  }
 
   Map<String, dynamic> toMap() {
     return {
@@ -518,6 +620,8 @@ class Subject {
       'academicYear': academicYear,
       'teacherId': teacherId,
       'institutionId': institutionId,
+      'courseId': courseId,
+      'cycleYear': cycleYear,
       'allowedStudentEmails': allowedStudentEmails,
       'contents': contents.map((e) => e.toMap()).toList(),
       'games': games.map((e) => e.toMap()).toList(),
@@ -550,6 +654,8 @@ class Subject {
         'pedagogicalApprovedBy': pedagogicalApprovedBy,
       'pedagogicalSignatures': pedagogicalSignatures,
       if (syllabusFileUrl != null) 'syllabusFileUrl': syllabusFileUrl,
+      'attendanceControlEnabled': attendanceControlEnabled,
+      'requiredAttendancePercentage': requiredAttendancePercentage,
     };
   }
 
@@ -561,6 +667,8 @@ class Subject {
       academicYear: map['academicYear'] ?? '2023/2024',
       teacherId: map['teacherId'] ?? '',
       institutionId: map['institutionId'] ?? '',
+      courseId: map['courseId'] ?? '',
+      cycleYear: map['cycleYear'] ?? 1,
       allowedStudentEmails:
           List<String>.from(map['allowedStudentEmails'] ?? []),
       contents: (map['contents'] as List? ?? [])
@@ -599,6 +707,9 @@ class Subject {
         (e) => e.name == (map['syllabusStatus'] ?? 'provisional'),
         orElse: () => SyllabusStatus.provisional,
       ),
+      attendanceControlEnabled: map['attendanceControlEnabled'] ?? false,
+      requiredAttendancePercentage:
+          (map['requiredAttendancePercentage'] as num? ?? 0.0).toDouble(),
       scientificApprovalDate: map['scientificApprovalDate'] != null
           ? DateTime.parse(map['scientificApprovalDate'])
           : null,
@@ -631,7 +742,9 @@ class AiGameResult {
       aiGradingDetails; // questionIndex -> { 'suggestedScore': 8.5, 'reasoning': '...' }
   final Map<int, double> teacherAdjustments; // questionIndex -> score
   final DateTime playedAt;
-  final bool isEvaluation; // New field to distinguish mode
+  final bool isEvaluation;
+  final String? academicYear;
+  final double? timeTakenSeconds;
 
   AiGameResult({
     required this.id,
@@ -650,6 +763,8 @@ class AiGameResult {
     this.teacherAdjustments = const {}, // questionIndex -> score
     required this.playedAt,
     this.isEvaluation = false,
+    this.academicYear,
+    this.timeTakenSeconds,
   });
 
   Map<String, dynamic> toMap() {
@@ -672,6 +787,8 @@ class AiGameResult {
           teacherAdjustments.map((k, v) => MapEntry(k.toString(), v)),
       'playedAt': playedAt.toIso8601String(),
       'isEvaluation': isEvaluation,
+      if (academicYear != null) 'academicYear': academicYear,
+      if (timeTakenSeconds != null) 'timeTakenSeconds': timeTakenSeconds,
     };
   }
 
@@ -705,6 +822,8 @@ class AiGameResult {
           ? DateTime.parse(map['playedAt'])
           : DateTime.now(),
       isEvaluation: map['isEvaluation'] ?? false,
+      academicYear: map['academicYear'],
+      timeTakenSeconds: (map['timeTakenSeconds'] as num?)?.toDouble(),
     );
   }
 }
@@ -952,6 +1071,8 @@ class Attendance {
   final String subjectId;
   final String sessionId;
   final DateTime timestamp;
+  final String? registeredByUserId;
+  final bool isManualEntry;
 
   Attendance({
     required this.id,
@@ -960,6 +1081,8 @@ class Attendance {
     required this.subjectId,
     required this.sessionId,
     required this.timestamp,
+    this.registeredByUserId,
+    this.isManualEntry = false,
   });
 
   Map<String, dynamic> toMap() {
@@ -970,6 +1093,8 @@ class Attendance {
       'subjectId': subjectId,
       'sessionId': sessionId,
       'timestamp': timestamp.toIso8601String(),
+      if (registeredByUserId != null) 'registeredByUserId': registeredByUserId,
+      'isManualEntry': isManualEntry,
     };
   }
 
@@ -982,6 +1107,8 @@ class Attendance {
       sessionId: map['sessionId'] ?? '',
       timestamp:
           DateTime.parse(map['timestamp'] ?? DateTime.now().toIso8601String()),
+      registeredByUserId: map['registeredByUserId'],
+      isManualEntry: map['isManualEntry'] ?? false,
     );
   }
 }
