@@ -36,7 +36,8 @@ class _SignatureDialogState extends State<SignatureDialog> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('Documento: ${widget.docTitle}',
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                style: const TextStyle(
+                    color: Colors.white, fontWeight: FontWeight.bold)),
             const SizedBox(height: 16),
             const Text('Selecione o método de assinatura:',
                 style: TextStyle(color: Colors.white70, fontSize: 14)),
@@ -98,7 +99,8 @@ class _SignatureDialogState extends State<SignatureDialog> {
     );
   }
 
-  Widget _buildSignOption(String value, String title, String subtitle, IconData icon) {
+  Widget _buildSignOption(
+      String value, String title, String subtitle, IconData icon) {
     final isSelected = _signatureType == value;
     return GestureDetector(
       onTap: () => setState(() => _signatureType = value),
@@ -106,7 +108,9 @@ class _SignatureDialogState extends State<SignatureDialog> {
         margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF7B61FF).withValues(alpha: 0.1) : Colors.transparent,
+          color: isSelected
+              ? const Color(0xFF7B61FF).withValues(alpha: 0.1)
+              : Colors.transparent,
           border: Border.all(
             color: isSelected ? const Color(0xFF7B61FF) : Colors.white10,
             width: 1,
@@ -115,7 +119,8 @@ class _SignatureDialogState extends State<SignatureDialog> {
         ),
         child: Row(
           children: [
-            Icon(icon, color: isSelected ? const Color(0xFF7B61FF) : Colors.white38),
+            Icon(icon,
+                color: isSelected ? const Color(0xFF7B61FF) : Colors.white38),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -124,13 +129,18 @@ class _SignatureDialogState extends State<SignatureDialog> {
                   Text(title,
                       style: TextStyle(
                           color: isSelected ? Colors.white : Colors.white70,
-                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
-                  Text(subtitle, style: const TextStyle(color: Colors.white38, fontSize: 11)),
+                          fontWeight: isSelected
+                              ? FontWeight.bold
+                              : FontWeight.normal)),
+                  Text(subtitle,
+                      style:
+                          const TextStyle(color: Colors.white38, fontSize: 11)),
                 ],
               ),
             ),
             if (isSelected)
-              const Icon(Icons.check_circle, color: Color(0xFF7B61FF), size: 20),
+              const Icon(Icons.check_circle,
+                  color: Color(0xFF7B61FF), size: 20),
           ],
         ),
       ),
@@ -139,10 +149,10 @@ class _SignatureDialogState extends State<SignatureDialog> {
 
   void _handleSign() async {
     setState(() => _isSigning = true);
-    
+
     // Simulate complex signing process
     await Future.delayed(const Duration(seconds: 2));
-    
+
     if (mounted) {
       Navigator.pop(context, _signatureType);
     }

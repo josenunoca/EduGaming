@@ -38,13 +38,18 @@ class _OrganManagementScreenState extends State<OrganManagementScreen> {
               child: StreamBuilder<List<InstitutionalOrgan>>(
                 stream: service.getOrgans(widget.institution.id),
                 builder: (context, snapshot) {
-                  if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+                  if (!snapshot.hasData)
+                    return const Center(child: CircularProgressIndicator());
                   final organs = snapshot.data!;
-                  if (organs.isEmpty) return const Center(child: AiTranslatedText('Nenhum órgão criado.', style: TextStyle(color: Colors.white54)));
+                  if (organs.isEmpty)
+                    return const Center(
+                        child: AiTranslatedText('Nenhum órgão criado.',
+                            style: TextStyle(color: Colors.white54)));
 
                   return ListView.builder(
                     itemCount: organs.length,
-                    itemBuilder: (context, index) => _OrganCard(organ: organs[index]),
+                    itemBuilder: (context, index) =>
+                        _OrganCard(organ: organs[index]),
                   );
                 },
               ),
@@ -61,7 +66,8 @@ class _OrganManagementScreenState extends State<OrganManagementScreen> {
       children: [
         const AiTranslatedText(
           'Órgãos Sociais',
-          style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+          style: TextStyle(
+              color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
         ),
         CustomButton(
           onPressed: onAdd,
@@ -80,26 +86,33 @@ class _OrganManagementScreenState extends State<OrganManagementScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1E293B),
-        title: const AiTranslatedText('Criar Órgão Institucional', style: TextStyle(color: Colors.white)),
+        title: const AiTranslatedText('Criar Órgão Institucional',
+            style: TextStyle(color: Colors.white)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
               controller: nameController,
               style: const TextStyle(color: Colors.white),
-              decoration: const InputDecoration(labelText: 'Nome (ex: Conselho Pedagógico)', labelStyle: TextStyle(color: Colors.white70)),
+              decoration: const InputDecoration(
+                  labelText: 'Nome (ex: Conselho Pedagógico)',
+                  labelStyle: TextStyle(color: Colors.white70)),
             ),
             const SizedBox(height: 16),
             TextField(
               controller: descController,
               maxLines: 2,
               style: const TextStyle(color: Colors.white),
-              decoration: const InputDecoration(labelText: 'Descrição', labelStyle: TextStyle(color: Colors.white70)),
+              decoration: const InputDecoration(
+                  labelText: 'Descrição',
+                  labelStyle: TextStyle(color: Colors.white70)),
             ),
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const AiTranslatedText('Cancelar')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const AiTranslatedText('Cancelar')),
           CustomButton(
             onPressed: () async {
               if (nameController.text.isEmpty) return;
@@ -132,8 +145,11 @@ class _OrganCard extends StatelessWidget {
         child: ExpansionTile(
           collapsedIconColor: Colors.white,
           iconColor: const Color(0xFF7B61FF),
-          title: Text(organ.name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-          subtitle: Text(organ.description, style: const TextStyle(color: Colors.white54, fontSize: 12)),
+          title: Text(organ.name,
+              style: const TextStyle(
+                  color: Colors.white, fontWeight: FontWeight.bold)),
+          subtitle: Text(organ.description,
+              style: const TextStyle(color: Colors.white54, fontSize: 12)),
           children: [
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -143,7 +159,8 @@ class _OrganCard extends StatelessWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      AiTranslatedText('${organ.members.length} Membros', style: const TextStyle(color: Colors.white70)),
+                      AiTranslatedText('${organ.members.length} Membros',
+                          style: const TextStyle(color: Colors.white70)),
                       TextButton.icon(
                         onPressed: () => _showAddMemberDialog(context),
                         icon: const Icon(Icons.person_add, size: 18),
@@ -153,13 +170,17 @@ class _OrganCard extends StatelessWidget {
                   ),
                   const Divider(color: Colors.white10),
                   ...organ.members.map((m) => ListTile(
-                    dense: true,
-                    leading: const CircleAvatar(backgroundColor: Color(0xFF1E293B), child: Icon(Icons.person, size: 16, color: Colors.white54)),
-                    title: Text(m.name, style: const TextStyle(color: Colors.white)),
-                    subtitle: Text(
-                        '${m.function ?? "Membro"} • ${m.email}',
-                        style: const TextStyle(color: Colors.white38, fontSize: 10)),
-                  )),
+                        dense: true,
+                        leading: const CircleAvatar(
+                            backgroundColor: Color(0xFF1E293B),
+                            child: Icon(Icons.person,
+                                size: 16, color: Colors.white54)),
+                        title: Text(m.name,
+                            style: const TextStyle(color: Colors.white)),
+                        subtitle: Text('${m.function ?? "Membro"} • ${m.email}',
+                            style: const TextStyle(
+                                color: Colors.white38, fontSize: 10)),
+                      )),
                   const SizedBox(height: 8),
                   SizedBox(
                     width: double.infinity,
@@ -227,7 +248,8 @@ class _OrganCard extends StatelessWidget {
                           child: AiTranslatedText(f),
                         ))
                     .toList(),
-                onChanged: (val) => setModalState(() => selectedFunction = val!),
+                onChanged: (val) =>
+                    setModalState(() => selectedFunction = val!),
               ),
               const SizedBox(height: 16),
               InstitutionMemberSelector(
@@ -235,7 +257,7 @@ class _OrganCard extends StatelessWidget {
                 onSelectionChanged: (users) => selectedMembers = users,
               ),
               const SizedBox(height: 24),
-               CustomButton(
+              CustomButton(
                 onPressed: () async {
                   final service = context.read<FirebaseService>();
                   for (var user in selectedMembers) {
@@ -308,14 +330,15 @@ class _OrganCard extends StatelessWidget {
                         setModalState(() => isGenerating = true);
                         try {
                           final service = context.read<FirebaseService>();
-                          final minuteText = await service.generateAiMinute(
-                              transcriptionController.text);
+                          final minuteText = await service
+                              .generateAiMinute(transcriptionController.text);
 
                           // Save the minute document
                           final minute = MeetingMinute(
                             id: const Uuid().v4(),
                             organId: organ.id,
-                            title: 'Ata - ${DateTime.now().toIso8601String().substring(0, 10)}',
+                            title:
+                                'Ata - ${DateTime.now().toIso8601String().substring(0, 10)}',
                             generatedText: minuteText,
                             rawTranscription: transcriptionController.text,
                             date: DateTime.now(),
@@ -326,11 +349,12 @@ class _OrganCard extends StatelessWidget {
                             Navigator.pop(context);
                             ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
-                                    content:
-                                        AiTranslatedText('Ata gerada e guardada com sucesso!')));
+                                    content: AiTranslatedText(
+                                        'Ata gerada e guardada com sucesso!')));
                           }
                         } finally {
-                          if (context.mounted) setModalState(() => isGenerating = false);
+                          if (context.mounted)
+                            setModalState(() => isGenerating = false);
                         }
                       },
                       icon: Icons.auto_awesome,

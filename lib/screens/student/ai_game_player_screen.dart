@@ -381,7 +381,8 @@ class _AiGamePlayerScreenState extends State<AiGamePlayerScreen> {
         throw Exception('Ficheiro vazio ou não encontrado.');
       }
 
-      final storageFileName = '${DateTime.now().millisecondsSinceEpoch}_$fileName';
+      final storageFileName =
+          '${DateTime.now().millisecondsSinceEpoch}_$fileName';
       final ref = FirebaseStorage.instance
           .ref()
           .child('evaluations/$folder/$storageFileName');
@@ -390,7 +391,7 @@ class _AiGamePlayerScreenState extends State<AiGamePlayerScreen> {
       final metadata = SettableMetadata(
         contentType: folder == 'audio' ? 'audio/mp4' : 'image/jpeg',
       );
-      
+
       await ref.putData(fileBytes, metadata);
       return await ref.getDownloadURL();
     } catch (e) {
@@ -635,8 +636,8 @@ class _AiGamePlayerScreenState extends State<AiGamePlayerScreen> {
     }
 
     final q = widget.game.questions[_currentQuestionIndex];
-    final progress = widget.game.questions.isEmpty 
-        ? 0.0 
+    final progress = widget.game.questions.isEmpty
+        ? 0.0
         : (_currentQuestionIndex + 1) / widget.game.questions.length;
 
     return PopScope(
@@ -815,7 +816,8 @@ class _AiGamePlayerScreenState extends State<AiGamePlayerScreen> {
                                     borderRadius: BorderRadius.circular(16),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: Colors.black.withValues(alpha: 0.3),
+                                        color:
+                                            Colors.black.withValues(alpha: 0.3),
                                         blurRadius: 10,
                                       )
                                     ],
@@ -874,13 +876,15 @@ class _AiGamePlayerScreenState extends State<AiGamePlayerScreen> {
                                   child: ElevatedButton.icon(
                                     onPressed: () =>
                                         _evaluateMultimodalResponse(
-                                          answer: _textResponseController.text,
-                                          q: q,
-                                        ),
+                                      answer: _textResponseController.text,
+                                      q: q,
+                                    ),
                                     icon: const Icon(Icons.auto_awesome),
-                                    label: const AiTranslatedText('Verificar com IA'),
+                                    label: const AiTranslatedText(
+                                        'Verificar com IA'),
                                     style: ElevatedButton.styleFrom(
-                                        backgroundColor: const Color(0xFF7B61FF)),
+                                        backgroundColor:
+                                            const Color(0xFF7B61FF)),
                                   ),
                                 ),
                             ],
@@ -1158,7 +1162,8 @@ class _AiGamePlayerScreenState extends State<AiGamePlayerScreen> {
                     FutureBuilder<Map<String, dynamic>>(
                       future: _getStats(),
                       builder: (context, snapshot) {
-                        if (snapshot.connectionState == ConnectionState.waiting) {
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
                           return const CircularProgressIndicator();
                         }
                         final avg = snapshot.data?['average'] ?? 0.0;
@@ -1214,7 +1219,8 @@ class _AiGamePlayerScreenState extends State<AiGamePlayerScreen> {
                           children: [
                             Icon(
                               isCorrect ? Icons.check_circle : Icons.cancel,
-                              color: isCorrect ? Colors.green : Colors.redAccent,
+                              color:
+                                  isCorrect ? Colors.green : Colors.redAccent,
                               size: 20,
                             ),
                             const SizedBox(width: 8),
@@ -1274,7 +1280,8 @@ class _AiGamePlayerScreenState extends State<AiGamePlayerScreen> {
                       ),
                       child: const AiTranslatedText('Concluir',
                           style: TextStyle(
-                              color: Colors.white, fontWeight: FontWeight.bold)),
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold)),
                     ),
                   ],
                 );
@@ -1468,7 +1475,8 @@ class _AiGamePlayerScreenState extends State<AiGamePlayerScreen> {
               final service = context.read<FirebaseService>();
               final nav = Navigator.of(context);
               if (_currentSession != null) {
-                await service.setExamSessionStatus(_currentSession!.id, 'abandoned');
+                await service.setExamSessionStatus(
+                    _currentSession!.id, 'abandoned');
               }
               if (mounted) {
                 nav.pop(); // Close dialog
@@ -1486,7 +1494,7 @@ class _AiGamePlayerScreenState extends State<AiGamePlayerScreen> {
   Future<Map<String, dynamic>> _getStats() async {
     final service = context.read<FirebaseService>();
     final avg = await service.getGameAverageScore(widget.game.id);
-    
+
     String year = '2023/2024'; // Default
     try {
       final subject = await service.getSubject(widget.game.subjectId);
@@ -1496,7 +1504,8 @@ class _AiGamePlayerScreenState extends State<AiGamePlayerScreen> {
     final user = FirebaseAuth.instance.currentUser;
     int rank = 1;
     if (user != null) {
-      rank = await service.getStudentGameRanking(user.uid, widget.game.id, year);
+      rank =
+          await service.getStudentGameRanking(user.uid, widget.game.id, year);
     }
 
     return {'average': avg, 'ranking': rank, 'academicYear': year};
@@ -1506,7 +1515,7 @@ class _AiGamePlayerScreenState extends State<AiGamePlayerScreen> {
     final stats = await _getStats();
     final service = context.read<FirebaseService>();
     final subject = await service.getSubject(widget.game.subjectId);
-    
+
     if (subject == null) return;
 
     final user = FirebaseAuth.instance.currentUser;

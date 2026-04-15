@@ -1,4 +1,3 @@
-
 enum QuestionType { text, selection, audio, video }
 
 class Question {
@@ -27,7 +26,8 @@ class Question {
     return Question(
       id: map['id'] ?? '',
       text: map['text'] ?? '',
-      type: QuestionType.values.firstWhere((e) => e.name == map['type'], orElse: () => QuestionType.text),
+      type: QuestionType.values.firstWhere((e) => e.name == map['type'],
+          orElse: () => QuestionType.text),
       options: List<String>.from(map['options'] ?? []),
     );
   }
@@ -112,9 +112,10 @@ class Questionnaire {
       id: map['id'] ?? '',
       title: map['title'] ?? '',
       description: map['description'] ?? '',
-      questions:
-          (map['questions'] as List?)?.map((q) => Question.fromMap(q)).toList() ??
-              [],
+      questions: (map['questions'] as List?)
+              ?.map((q) => Question.fromMap(q))
+              .toList() ??
+          [],
       institutionId: map['institutionId'] ?? '',
       targetRoles: List<String>.from(map['targetRoles'] ?? []),
       individualTargetIds: List<String>.from(map['individualTargetIds'] ?? []),

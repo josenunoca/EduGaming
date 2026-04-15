@@ -12,7 +12,12 @@ import 'erp/erp_dashboard.dart';
 
 class InstitutionalManagementScreen extends StatelessWidget {
   final InstitutionModel institution;
-  const InstitutionalManagementScreen({super.key, required this.institution});
+  final int? initialTab;
+  const InstitutionalManagementScreen({
+    super.key,
+    required this.institution,
+    this.initialTab,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -41,11 +46,13 @@ class InstitutionalManagementScreen extends StatelessWidget {
             ),
             const SizedBox(height: 32),
             Expanded(
-              child: GridView.count(
-                crossAxisCount: 3,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
-                childAspectRatio: 1.1,
+              child: GridView(
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 3,
+                  crossAxisSpacing: 12,
+                  mainAxisSpacing: 12,
+                  mainAxisExtent: 160,
+                ),
                 children: [
                   _ManagementCard(
                     title: 'Gestão Académica',
@@ -55,7 +62,8 @@ class InstitutionalManagementScreen extends StatelessWidget {
                     onTap: () => Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => AcademicManagementScreen(institution: institution),
+                        builder: (_) =>
+                            AcademicManagementScreen(institution: institution),
                       ),
                     ),
                   ),
@@ -67,7 +75,8 @@ class InstitutionalManagementScreen extends StatelessWidget {
                     onTap: () => Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => const InstitutionalOrgansScreen(),
+                        builder: (_) =>
+                            InstitutionalOrgansScreen(institution: institution),
                       ),
                     ),
                   ),
@@ -79,7 +88,8 @@ class InstitutionalManagementScreen extends StatelessWidget {
                     onTap: () => Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => FacilityManagementScreen(institution: institution),
+                        builder: (_) =>
+                            FacilityManagementScreen(institution: institution),
                       ),
                     ),
                   ),
@@ -91,7 +101,8 @@ class InstitutionalManagementScreen extends StatelessWidget {
                     onTap: () => Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => DocumentRepositoryScreen(institution: institution),
+                        builder: (_) =>
+                            DocumentRepositoryScreen(institution: institution),
                       ),
                     ),
                   ),
@@ -103,7 +114,8 @@ class InstitutionalManagementScreen extends StatelessWidget {
                     onTap: () => Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => ActivityManagementScreen(institution: institution),
+                        builder: (_) =>
+                            ActivityManagementScreen(institution: institution),
                       ),
                     ),
                   ),
@@ -155,33 +167,38 @@ class _ManagementCard extends StatelessWidget {
         highlightColor: color.withValues(alpha: 0.05),
         child: GlassCard(
           child: Padding(
-            padding: const EdgeInsets.all(10.0),
+            padding: const EdgeInsets.all(4.0),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
-                  padding: const EdgeInsets.all(8),
+                  padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
                     color: color.withValues(alpha: 0.1),
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(icon, size: 28, color: color),
-                ),
-                const SizedBox(height: 8),
-                AiTranslatedText(
-                  title,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                  ),
+                  child: Icon(icon, size: 24, color: color),
                 ),
                 const SizedBox(height: 4),
-                AiTranslatedText(
-                  subtitle,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(color: Colors.white54, fontSize: 12),
+                Flexible(
+                  child: AiTranslatedText(
+                    title,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Flexible(
+                  child: AiTranslatedText(
+                    subtitle,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: Colors.white54, fontSize: 11),
+                  ),
                 ),
               ],
             ),

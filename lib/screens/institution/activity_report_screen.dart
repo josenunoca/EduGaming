@@ -34,7 +34,10 @@ class ActivityReportScreen extends StatelessWidget {
                 padding: const EdgeInsets.all(20),
                 child: SelectableText(
                   report,
-                  style: const TextStyle(color: Colors.white, fontFamily: 'monospace', fontSize: 13),
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontFamily: 'monospace',
+                      fontSize: 13),
                 ),
               ),
             ),
@@ -47,8 +50,10 @@ class ActivityReportScreen extends StatelessWidget {
               label: const AiTranslatedText('Exportar como PDF Profissional'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF7B61FF),
-                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
               ),
             ),
           ],

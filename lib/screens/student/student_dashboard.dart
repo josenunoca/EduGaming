@@ -10,6 +10,7 @@ import '../../models/subject_model.dart';
 import '../../widgets/glass_card.dart';
 import 'subject_selection_screen.dart';
 import '../common/personal_profile_screen.dart';
+import '../common/timetable_user_screen.dart';
 import '../../widgets/ai_translated_text.dart';
 import '../common/communication_center_screen.dart';
 import '../../widgets/messaging_badge.dart';
@@ -129,6 +130,16 @@ class StudentDashboard extends StatelessWidget {
                                   PersonalProfileScreen(user: student))),
                       tooltip: 'Ver e editar os seus dados pessoais',
                     ),
+                    IconButton(
+                      icon: const Icon(Icons.calendar_month),
+                      onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => TimetableUserScreen(user: student),
+                        ),
+                      ),
+                      tooltip: 'Ver o meu horário escolar',
+                    ),
                     Tooltip(
                       message: 'Abrir centro de mensagens e correspondência',
                       child: MessagingBadge(
@@ -175,7 +186,8 @@ class StudentDashboard extends StatelessWidget {
                             color: Colors.white)),
                     const SizedBox(height: 12),
                     Tooltip(
-                      message: 'Clique para navegar e inscrever-se em novas disciplinas disponíveis',
+                      message:
+                          'Clique para navegar e inscrever-se em novas disciplinas disponíveis',
                       child: ElevatedButton.icon(
                         onPressed: () => Navigator.push(
                           context,
@@ -184,8 +196,8 @@ class StudentDashboard extends StatelessWidget {
                                   SubjectSelectionScreen(student: student)),
                         ),
                         icon: const Icon(Icons.search),
-                        label:
-                            const AiTranslatedText('Procurar Novas Disciplinas'),
+                        label: const AiTranslatedText(
+                            'Procurar Novas Disciplinas'),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF7B61FF),
                           minimumSize: const Size(double.infinity, 36),
@@ -225,10 +237,11 @@ class StudentDashboard extends StatelessWidget {
                               return Padding(
                                 padding: const EdgeInsets.only(bottom: 12),
                                 child: GlassCard(
-                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 12, vertical: 4),
                                   child: StreamBuilder<Subject?>(
-                                      stream: service
-                                          .getSubjectStream(enrollment.subjectId),
+                                      stream: service.getSubjectStream(
+                                          enrollment.subjectId),
                                       builder: (context, subjectSnapshot) {
                                         final subjectName = subjectSnapshot
                                                 .data?.name ??

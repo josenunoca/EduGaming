@@ -29,7 +29,8 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
             icon: const Icon(Icons.mail),
             onPressed: () => Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => const CommunicationCenterScreen()),
+              MaterialPageRoute(
+                  builder: (_) => const CommunicationCenterScreen()),
             ),
           ),
           IconButton(
@@ -118,15 +119,20 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF1E1E2E),
-        title: const AiTranslatedText('Nomear Delegado de Turma', style: TextStyle(color: Colors.white)),
+        title: const AiTranslatedText('Nomear Delegado de Turma',
+            style: TextStyle(color: Colors.white)),
         content: SizedBox(
           width: double.maxFinite,
           child: StreamBuilder<List<Course>>(
             stream: service.getCoordinatorCourses(user.uid),
             builder: (context, courseSnapshot) {
-              if (!courseSnapshot.hasData) return const Center(child: CircularProgressIndicator());
+              if (!courseSnapshot.hasData)
+                return const Center(child: CircularProgressIndicator());
               final courses = courseSnapshot.data!;
-              if (courses.isEmpty) return const AiTranslatedText('Não está associado a nenhum curso como coordenador.', style: TextStyle(color: Colors.white54));
+              if (courses.isEmpty)
+                return const AiTranslatedText(
+                    'Não está associado a nenhum curso como coordenador.',
+                    style: TextStyle(color: Colors.white54));
 
               return ListView.builder(
                 shrinkWrap: true,
@@ -134,23 +140,37 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
                 itemBuilder: (context, idx) {
                   final course = courses[idx];
                   return ExpansionTile(
-                    title: Text(course.name, style: const TextStyle(color: Colors.white)),
+                    title: Text(course.name,
+                        style: const TextStyle(color: Colors.white)),
                     children: [
                       StreamBuilder<List<UserModel>>(
                         stream: service.getEligibleDelegates(course.id),
                         builder: (context, studentSnapshot) {
-                          if (!studentSnapshot.hasData) return const Center(child: CircularProgressIndicator());
+                          if (!studentSnapshot.hasData)
+                            return const Center(
+                                child: CircularProgressIndicator());
                           final students = studentSnapshot.data!;
                           return Column(
-                            children: students.map((s) => ListTile(
-                              title: Text(s.name, style: const TextStyle(color: Colors.white70)),
-                              trailing: course.delegateId == s.id ? const Icon(Icons.star, color: Colors.amber) : null,
-                              onTap: () async {
-                                await service.assignClassDelegate(course.id, s.id);
-                                Navigator.pop(context);
-                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Delegado nomeado para ${course.name}!')));
-                              },
-                            )).toList(),
+                            children: students
+                                .map((s) => ListTile(
+                                      title: Text(s.name,
+                                          style: const TextStyle(
+                                              color: Colors.white70)),
+                                      trailing: course.delegateId == s.id
+                                          ? const Icon(Icons.star,
+                                              color: Colors.amber)
+                                          : null,
+                                      onTap: () async {
+                                        await service.assignClassDelegate(
+                                            course.id, s.id);
+                                        Navigator.pop(context);
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(SnackBar(
+                                                content: Text(
+                                                    'Delegado nomeado para ${course.name}!')));
+                                      },
+                                    ))
+                                .toList(),
                           );
                         },
                       ),
@@ -174,13 +194,15 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF1E1E2E),
-        title: const AiTranslatedText('Resumo de Alterações Académicas', style: TextStyle(color: Colors.white)),
+        title: const AiTranslatedText('Resumo de Alterações Académicas',
+            style: TextStyle(color: Colors.white)),
         content: SizedBox(
           width: double.maxFinite,
           child: StreamBuilder<List<Course>>(
             stream: service.getCoordinatorCourses(user.uid),
             builder: (context, courseSnapshot) {
-              if (!courseSnapshot.hasData) return const Center(child: CircularProgressIndicator());
+              if (!courseSnapshot.hasData)
+                return const Center(child: CircularProgressIndicator());
               final courses = courseSnapshot.data!;
               return ListView.builder(
                 shrinkWrap: true,
@@ -196,31 +218,56 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
                         children: [
                           Padding(
                             padding: const EdgeInsets.symmetric(vertical: 8.0),
-                            child: Text(course.name, style: const TextStyle(color: Colors.amber, fontWeight: FontWeight.bold)),
+                            child: Text(course.name,
+                                style: const TextStyle(
+                                    color: Colors.amber,
+                                    fontWeight: FontWeight.bold)),
                           ),
                           ...subjects.map((s) => ExpansionTile(
-                            title: Text(s.name, style: const TextStyle(color: Colors.white70)),
-                            children: [
-                              StreamBuilder<List<SyllabusSession>>(
-                                stream: service.getSessionsStream(s.id),
-                                  builder: (context, sessionSnap) {
-                                    final sessions = sessionSnap.data ?? [];
-                                    final logs = sessions.expand((sess) => sess.modificationLog).toList();
-                                    logs.sort((a, b) => b.timestamp.compareTo(a.timestamp));
-                                  
-                                  if (logs.isEmpty) return const Padding(padding: EdgeInsets.all(8.0), child: Text('Sem alterações registadas.', style: TextStyle(color: Colors.white24, fontSize: 12)));
-                                  
-                                  return Column(
-                                    children: logs.map((log) => ListTile(
-                                      title: Text(log.action, style: const TextStyle(color: Colors.white, fontSize: 12)),
-                                      subtitle: Text('Por: ${log.userName} em ${DateFormat('dd/MM HH:mm').format(log.timestamp)}', style: const TextStyle(color: Colors.white54, fontSize: 10)),
-                                      dense: true,
-                                    )).toList(),
-                                  );
-                                },
-                              ),
-                            ],
-                          )),
+                                title: Text(s.name,
+                                    style:
+                                        const TextStyle(color: Colors.white70)),
+                                children: [
+                                  StreamBuilder<List<SyllabusSession>>(
+                                    stream: service.getSessionsStream(s.id),
+                                    builder: (context, sessionSnap) {
+                                      final sessions = sessionSnap.data ?? [];
+                                      final logs = sessions
+                                          .expand(
+                                              (sess) => sess.modificationLog)
+                                          .toList();
+                                      logs.sort((a, b) =>
+                                          b.timestamp.compareTo(a.timestamp));
+
+                                      if (logs.isEmpty)
+                                        return const Padding(
+                                            padding: EdgeInsets.all(8.0),
+                                            child: Text(
+                                                'Sem alterações registadas.',
+                                                style: TextStyle(
+                                                    color: Colors.white24,
+                                                    fontSize: 12)));
+
+                                      return Column(
+                                        children: logs
+                                            .map((log) => ListTile(
+                                                  title: Text(log.action,
+                                                      style: const TextStyle(
+                                                          color: Colors.white,
+                                                          fontSize: 12)),
+                                                  subtitle: Text(
+                                                      'Por: ${log.userName} em ${DateFormat('dd/MM HH:mm').format(log.timestamp)}',
+                                                      style: const TextStyle(
+                                                          color: Colors.white54,
+                                                          fontSize: 10)),
+                                                  dense: true,
+                                                ))
+                                            .toList(),
+                                      );
+                                    },
+                                  ),
+                                ],
+                              )),
                         ],
                       );
                     },

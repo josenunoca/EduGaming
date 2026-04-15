@@ -14,6 +14,7 @@ import '../models/live_session_model.dart';
 import '../models/credit_pricing_model.dart';
 import '../models/course_model.dart';
 import '../models/institutional_organ_model.dart';
+import '../models/institution_organ_model.dart';
 import '../models/facility_model.dart';
 import '../models/document_model.dart';
 import '../models/activity_model.dart';
@@ -149,12 +150,13 @@ class FirebaseService {
   }
 
   // --- Institution Management ---
-  Future<void> saveInstitution(InstitutionModel institution, {String? creatorUid}) async {
+  Future<void> saveInstitution(InstitutionModel institution,
+      {String? creatorUid}) async {
     await _db
         .collection('institutions')
         .doc(institution.id)
         .set(institution.toMap());
-    
+
     if (creatorUid != null) {
       await _db.collection('users').doc(creatorUid).update({
         'institutionId': institution.id,
@@ -304,11 +306,15 @@ class FirebaseService {
     }
   }
 
-  Future<String> uploadInstitutionLogo(String institutionId, Uint8List fileBytes) async {
+  Future<String> uploadInstitutionLogo(
+      String institutionId, Uint8List fileBytes) async {
     final ref = _storage.ref().child('logos').child('$institutionId.png');
     await ref.putData(fileBytes);
     final url = await ref.getDownloadURL();
-    await _db.collection('institutions').doc(institutionId).update({'logoUrl': url});
+    await _db
+        .collection('institutions')
+        .doc(institutionId)
+        .update({'logoUrl': url});
     return url;
   }
 
@@ -340,8 +346,7 @@ class FirebaseService {
     }
   }
 
-  Future<String?> uploadMeetingAudio(
-      String meetingId, Uint8List bytes) async {
+  Future<String?> uploadMeetingAudio(String meetingId, Uint8List bytes) async {
     try {
       final fileName = 'meeting_$meetingId.m4a';
       final ref = _storage.ref().child('meetings/$meetingId/$fileName');
@@ -361,23 +366,50 @@ class FirebaseService {
         .where('institutionId', isEqualTo: institutionId)
         .snapshots()
         .map((snapshot) {
-          final users = snapshot.docs.map((doc) => UserModel.fromMap(doc.data())).toList();
-          return users.where((u) => u.role == UserRole.teacher || u.role == UserRole.courseCoordinator).toList();
-        });
+      final users =
+          snapshot.docs.map((doc) => UserModel.fromMap(doc.data())).toList();
+      return users
+          .where((u) =>
+              u.role == UserRole.teacher ||
+              u.role == UserRole.courseCoordinator)
+          .toList();
+    });
+  }
+
+  Stream<List<UserModel>> getCollaboratorsByInstitution(String institutionId) {
+    return _db
+        .collection('users')
+        .where('institutionId', isEqualTo: institutionId)
+        .snapshots()
+        .map((snapshot) {
+      final users = snapshot.docs.map((doc) => UserModel.fromMap(doc.data())).toList();
+      return users.where((u) => u.role != UserRole.student && u.role != UserRole.parent && u.role != UserRole.admin).toList();
+    });
+  }
+
+  Future<void> updateInstitutionDelegation(String institutionId, String moduleKey, List<String> userIds) async {
+    await _db.collection('institutions').doc(institutionId).update({
+      'delegatedRoles.$moduleKey': userIds,
+    });
   }
 
   // --- School Calendar ---
   Future<void> saveSchoolCalendar(SchoolCalendar calendar) async {
-    await _db.collection('school_calendars').doc(calendar.id).set(calendar.toMap());
+    await _db
+        .collection('school_calendars')
+        .doc(calendar.id)
+        .set(calendar.toMap());
   }
 
-  Future<SchoolCalendar?> getSchoolCalendar(String institutionId, String academicYear) async {
-    final snapshot = await _db.collection('school_calendars')
+  Future<SchoolCalendar?> getSchoolCalendar(
+      String institutionId, String academicYear) async {
+    final snapshot = await _db
+        .collection('school_calendars')
         .where('institutionId', isEqualTo: institutionId)
         .where('academicYear', isEqualTo: academicYear)
         .limit(1)
         .get();
-    
+
     if (snapshot.docs.isEmpty) return null;
     return SchoolCalendar.fromMap(snapshot.docs.first.data());
   }
@@ -970,15 +1002,18 @@ class FirebaseService {
     };
   }
 
-  Stream<List<AiGame>> getAiGamesBySubject(String subjectId, {bool publishedOnly = false}) {
-    Query query = _db.collection('ai_games').where('subjectId', isEqualTo: subjectId);
-    
+  Stream<List<AiGame>> getAiGamesBySubject(String subjectId,
+      {bool publishedOnly = false}) {
+    Query query =
+        _db.collection('ai_games').where('subjectId', isEqualTo: subjectId);
+
     if (publishedOnly) {
       query = query.where('isPublished', isEqualTo: true);
     }
 
-    return query.snapshots().map((snapshot) =>
-        snapshot.docs.map((doc) => AiGame.fromMap(doc.data() as Map<String, dynamic>)).toList());
+    return query.snapshots().map((snapshot) => snapshot.docs
+        .map((doc) => AiGame.fromMap(doc.data() as Map<String, dynamic>))
+        .toList());
   }
 
   // --- Exam Sessions (Security & Real-time Monitor) ---
@@ -1141,9 +1176,8 @@ class FirebaseService {
 
     if (snapshot.docs.isEmpty) return 1;
 
-    final results = snapshot.docs
-        .map((doc) => AiGameResult.fromMap(doc.data()))
-        .toList();
+    final results =
+        snapshot.docs.map((doc) => AiGameResult.fromMap(doc.data())).toList();
 
     // Group by student and find their best result (Best Score, then Min Time)
     final Map<String, AiGameResult> studentBestResults = {};
@@ -1157,7 +1191,8 @@ class FirebaseService {
         } else if (r.score == currentBest.score) {
           // Tie-break by time (faster is better)
           final rTime = r.timeTakenSeconds ?? double.infinity;
-          final currentBestTime = currentBest.timeTakenSeconds ?? double.infinity;
+          final currentBestTime =
+              currentBest.timeTakenSeconds ?? double.infinity;
           if (rTime < currentBestTime) {
             studentBestResults[r.studentId] = r;
           }
@@ -1165,16 +1200,17 @@ class FirebaseService {
       }
     }
 
-    final sortedBest = studentBestResults.values.toList()..sort((a, b) {
-      // Sort by score DESC
-      int scoreCompare = b.score.compareTo(a.score);
-      if (scoreCompare != 0) return scoreCompare;
-      
-      // Tie-break by timeTakenSeconds ASC (faster = lower time = better/first)
-      double aTime = a.timeTakenSeconds ?? double.infinity;
-      double bTime = b.timeTakenSeconds ?? double.infinity;
-      return aTime.compareTo(bTime);
-    });
+    final sortedBest = studentBestResults.values.toList()
+      ..sort((a, b) {
+        // Sort by score DESC
+        int scoreCompare = b.score.compareTo(a.score);
+        if (scoreCompare != 0) return scoreCompare;
+
+        // Tie-break by timeTakenSeconds ASC (faster = lower time = better/first)
+        double aTime = a.timeTakenSeconds ?? double.infinity;
+        double bTime = b.timeTakenSeconds ?? double.infinity;
+        return aTime.compareTo(bTime);
+      });
 
     int rank = sortedBest.indexWhere((r) => r.studentId == studentId) + 1;
     return rank > 0 ? rank : 1;
@@ -1321,22 +1357,22 @@ class FirebaseService {
         .collection('courses')
         .where('studyCycleId', isEqualTo: cycleId)
         .get();
-    
+
     final courseIds = coursesSnap.docs.map((d) => d.id).toList();
-    
+
     // 2. Check if any of these courses have subjects
     if (courseIds.isNotEmpty) {
       // Handle Firestore whereIn limit (30)
       for (var i = 0; i < courseIds.length; i += 30) {
         final end = (i + 30 < courseIds.length) ? i + 30 : courseIds.length;
         final chunk = courseIds.sublist(i, end);
-        
+
         final subjectsSnap = await _db
             .collection('subjects')
             .where('courseId', whereIn: chunk)
             .limit(1)
             .get();
-        
+
         if (subjectsSnap.docs.isNotEmpty) {
           throw Exception(
               'Não é possível anular o ciclo: existem disciplinas associadas aos seus cursos.');
@@ -1346,15 +1382,15 @@ class FirebaseService {
 
     // 3. No subjects found, proceed with batch deletion
     final batch = _db.batch();
-    
+
     // Delete associated courses
     for (var doc in coursesSnap.docs) {
       batch.delete(doc.reference);
     }
-    
+
     // Delete the study cycle itself
     batch.delete(_db.collection('study_cycles').doc(cycleId));
-    
+
     await batch.commit();
   }
 
@@ -1410,7 +1446,10 @@ class FirebaseService {
   // --- Institutional Organ Management ---
 
   Future<void> saveOrgan(InstitutionalOrgan organ) async {
-    await _db.collection('institutional_organs').doc(organ.id).set(organ.toMap());
+    await _db
+        .collection('institutional_organs')
+        .doc(organ.id)
+        .set(organ.toMap());
   }
 
   Stream<List<InstitutionalOrgan>> getOrgans(String institutionId) {
@@ -1432,9 +1471,12 @@ class FirebaseService {
       id: msgId,
       senderId: 'SYSTEM',
       senderName: 'EduGaming System',
-      recipientIds: [member.email], // In a real app, resolve email to UID if exists
+      recipientIds: [
+        member.email
+      ], // In a real app, resolve email to UID if exists
       subject: 'Convite para Órgão Institucional',
-      body: 'Foi convidado para fazer parte do órgão "${member.name}" na sua instituição.',
+      body:
+          'Foi convidado para fazer parte do órgão "${member.name}" na sua instituição.',
       timestamp: DateTime.now(),
     ));
   }
@@ -1464,10 +1506,10 @@ class FirebaseService {
         .doc(courseId)
         .snapshots()
         .map((doc) {
-          if (!doc.exists) return null;
-          final data = doc.data();
-          return data?['content'] as String?;
-        });
+      if (!doc.exists) return null;
+      final data = doc.data();
+      return data?['content'] as String?;
+    });
   }
 
   // --- Facility & Timetable Management ---
@@ -1475,7 +1517,6 @@ class FirebaseService {
   Future<void> saveClassroom(Classroom classroom) async {
     await _db.collection('classrooms').doc(classroom.id).set(classroom.toMap());
   }
-
   Stream<List<Classroom>> getClassrooms(String institutionId) {
     return _db
         .collection('classrooms')
@@ -1484,12 +1525,23 @@ class FirebaseService {
         .map((s) => s.docs.map((d) => Classroom.fromMap(d.data())).toList());
   }
 
-
+  Stream<List<InstitutionOrgan>> getInstitutionOrgans(String institutionId) {
+    return _db
+        .collection('organs')
+        .where('institutionId', isEqualTo: institutionId)
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => InstitutionOrgan.fromFirestore(doc))
+            .toList());
+  }
 
   // --- Document & AI Minute Management ---
 
   Future<void> saveDocument(InstitutionalDocument doc) async {
-    await _db.collection('institutional_documents').doc(doc.id).set(doc.toMap());
+    await _db
+        .collection('institutional_documents')
+        .doc(doc.id)
+        .set(doc.toMap());
   }
 
   Stream<List<InstitutionalDocument>> getDocuments(String institutionId) {
@@ -1497,7 +1549,9 @@ class FirebaseService {
         .collection('institutional_documents')
         .where('institutionId', isEqualTo: institutionId)
         .snapshots()
-        .map((s) => s.docs.map((d) => InstitutionalDocument.fromMap(d.data())).toList());
+        .map((s) => s.docs
+            .map((d) => InstitutionalDocument.fromMap(d.data()))
+            .toList());
   }
 
   Future<void> saveMinute(MeetingMinute minute) async {
@@ -1511,19 +1565,111 @@ class FirebaseService {
     return "Ata gerada automaticamente: A reunião focou na discussão de... \n\nDecisões tomadas: \n1. Aprovado o novo regulamento. \n2. Definidas as datas dos exames.";
   }
 
-  // --- Activity & Report Management ---
 
   Future<void> saveActivity(InstitutionalActivity activity) async {
     await _db.collection('activities').doc(activity.id).set(activity.toMap());
   }
 
-  Stream<List<InstitutionalActivity>> getActivities(String institutionId) {
-    return _db
+  Future<InstitutionalActivity?> getActivityById(String id) async {
+    final doc = await _db.collection('activities').doc(id).get();
+    if (doc.exists) {
+      final data = doc.data()!;
+      data['id'] = doc.id;
+      return InstitutionalActivity.fromMap(data);
+    }
+    return null;
+  }
+
+  Future<void> updateActivityStatus(String activityId, String status) async {
+    await _db.collection('activities').doc(activityId).update({'status': status});
+  }
+
+  Future<void> deleteActivity(String activityId) async {
+    await _db.collection('activities').doc(activityId).delete();
+  }
+
+  Future<void> deleteAllActivities(String institutionId) async {
+    final snapshot = await _db
         .collection('activities')
         .where('institutionId', isEqualTo: institutionId)
-        .snapshots()
-        .map((s) =>
-            s.docs.map((d) => InstitutionalActivity.fromMap(d.data())).toList());
+        .get();
+    final batch = _db.batch();
+    for (var doc in snapshot.docs) {
+      batch.delete(doc.reference);
+    }
+    await batch.commit();
+  }
+
+  Future<void> deleteAllActivitiesByGroup(String institutionId, String activityGroup) async {
+    final snapshot = await _db
+        .collection('activities')
+        .where('institutionId', isEqualTo: institutionId)
+        .where('activityGroup', isEqualTo: activityGroup)
+        .get();
+    final batch = _db.batch();
+    for (var doc in snapshot.docs) {
+      batch.delete(doc.reference);
+    }
+    await batch.commit();
+  }
+
+  Stream<List<InstitutionalActivity>> getActivities(String institutionId, {
+    String? responsibleUserId,
+    String? activityGroup,
+    String? academicYear,
+    String? status,
+  }) {
+    Query query = _db.collection('activities').where('institutionId', isEqualTo: institutionId);
+    
+    if (responsibleUserId != null) query = query.where('responsibleUserId', isEqualTo: responsibleUserId);
+    if (activityGroup != null) query = query.where('activityGroup', isEqualTo: activityGroup);
+    // status filter
+    if (status != null) query = query.where('status', isEqualTo: status);
+
+    return query.snapshots().map((snapshot) {
+      final list = snapshot.docs.map((doc) => InstitutionalActivity.fromMap(doc.data() as Map<String, dynamic>)).toList();
+      
+      // Client-side sorting: planned/in-progress first, then completed.
+      // Within status, by date ascending (closest first)
+      list.sort((a, b) {
+        // Status priority: anything not 'completed' comes first
+        final aIsCompleted = a.status == 'completed';
+        final bIsCompleted = b.status == 'completed';
+        
+        if (aIsCompleted != bIsCompleted) {
+          return aIsCompleted ? 1 : -1;
+        }
+        
+        // Within same status group, sort by startDate
+        return a.startDate.compareTo(b.startDate);
+      });
+      
+      return list;
+    });
+  }
+
+  Stream<List<InstitutionalActivity>> getActivitiesByResponsible(String userId, {String? academicYear}) {
+    var query = _db
+        .collection('activities')
+        .where('responsibleUserId', isEqualTo: userId);
+        
+    if (academicYear != null) {
+      query = query.where('academicYear', isEqualTo: academicYear);
+    }
+
+    return query.snapshots()
+        .map((snapshot) {
+          final list = snapshot.docs.map((doc) => InstitutionalActivity.fromMap(doc.data())).toList();
+          
+          list.sort((a, b) {
+            final aIsCompleted = a.status == 'completed';
+            final bIsCompleted = b.status == 'completed';
+            if (aIsCompleted != bIsCompleted) return aIsCompleted ? 1 : -1;
+            return a.startDate.compareTo(b.startDate);
+          });
+          
+          return list;
+        });
   }
 
   Future<void> updateActivityMedia(
@@ -1531,6 +1677,53 @@ class FirebaseService {
     await _db.collection('activities').doc(activityId).update({
       'media': FieldValue.arrayUnion([mediaItem.toMap()])
     });
+  }
+
+  Future<void> removeActivityMedia(
+      String activityId, ActivityMedia mediaItem) async {
+    await _db.collection('activities').doc(activityId).update({
+      'media': FieldValue.arrayRemove([mediaItem.toMap()])
+    });
+    // In a real app, delete from Storage too if needed
+  }
+
+  Future<void> bulkRemoveActivityMedia(
+      String activityId, List<ActivityMedia> mediaItems) async {
+    final mediaMaps = mediaItems.map((e) => e.toMap()).toList();
+    await _db.collection('activities').doc(activityId).update({
+      'media': FieldValue.arrayRemove(mediaMaps)
+    });
+  }
+
+  Future<void> duplicateActivity(
+      String sourceId, DateTime newStartDate, DateTime newEndDate) async {
+    final doc = await _db.collection('activities').doc(sourceId).get();
+    if (!doc.exists) return;
+
+    final source = InstitutionalActivity.fromMap(doc.data()!);
+    final newId = const Uuid().v4();
+
+    final duplicated = InstitutionalActivity(
+      id: newId,
+      title: '${source.title} (Cópia)',
+      description: source.description,
+      institutionId: source.institutionId,
+      startDate: newStartDate,
+      endDate: newEndDate,
+      startTime: source.startTime,
+      endTime: source.endTime,
+      activityGroup: source.activityGroup,
+      resources: source.resources,
+      goals: source.goals,
+      indicators: source.indicators,
+      // participants: [], // Exclude participants as per request
+      // media: [], // Exclude media as per request
+      participants: const [],
+      media: const [],
+      status: 'planned',
+    );
+
+    await saveActivity(duplicated);
   }
 
   Future<void> inviteGroupToActivity(String activityId, String groupType,
@@ -1546,9 +1739,10 @@ class FirebaseService {
             ).toMap())
         .toList();
 
-    await _db.collection('activities').doc(activityId).update({
-      'participants': FieldValue.arrayUnion(participants)
-    });
+    await _db
+        .collection('activities')
+        .doc(activityId)
+        .update({'participants': FieldValue.arrayUnion(participants)});
 
     // Notify all participants
     final emails = members.map((u) => u.email).toList();
@@ -1559,7 +1753,8 @@ class FirebaseService {
         senderName: 'EduGaming System',
         recipientIds: emails,
         subject: 'Novo Convite para Atividade',
-        body: 'Foi convidado para participar numa nova atividade institucional.',
+        body:
+            'Foi convidado para participar numa nova atividade institucional.',
         timestamp: DateTime.now(),
       ));
     }
@@ -1663,11 +1858,13 @@ class FirebaseService {
         .where('institutionId', isEqualTo: institutionId)
         .get();
 
-    final allUsers = users.docs.map((d) => UserModel.fromMap(d.data())).toList();
+    final allUsers =
+        users.docs.map((d) => UserModel.fromMap(d.data())).toList();
 
     // Teachers (including Coordinators)
     final teachers = allUsers
-        .where((u) => u.role == UserRole.teacher || u.role == UserRole.courseCoordinator)
+        .where((u) =>
+            u.role == UserRole.teacher || u.role == UserRole.courseCoordinator)
         .toList();
     teachers.sort(
         (a, b) => b.totalCreditsConsumed.compareTo(a.totalCreditsConsumed));
@@ -1687,7 +1884,8 @@ class FirebaseService {
 
   // --- Course Coordinator and Delegate Assignment ---
 
-  Future<void> assignCourseCoordinator(String courseId, String teacherId) async {
+  Future<void> assignCourseCoordinator(
+      String courseId, String teacherId) async {
     // 1. Update Course
     await _db.collection('courses').doc(courseId).update({
       'coordinatorId': teacherId,
@@ -1705,17 +1903,21 @@ class FirebaseService {
   }
 
   Stream<List<UserModel>> getEligibleDelegates(String courseId) {
-    return _db.collection('users')
+    return _db
+        .collection('users')
         .where('role', isEqualTo: UserRole.student.name)
         .snapshots()
-        .map((snapshot) => snapshot.docs.map((doc) => UserModel.fromMap(doc.data())).toList());
+        .map((snapshot) =>
+            snapshot.docs.map((doc) => UserModel.fromMap(doc.data())).toList());
   }
 
   Stream<List<Course>> getCoordinatorCourses(String coordinatorId) {
-    return _db.collection('courses')
+    return _db
+        .collection('courses')
         .where('coordinatorId', isEqualTo: coordinatorId)
         .snapshots()
-        .map((snapshot) => snapshot.docs.map((doc) => Course.fromMap(doc.data())).toList());
+        .map((snapshot) =>
+            snapshot.docs.map((doc) => Course.fromMap(doc.data())).toList());
   }
 
   Stream<List<SyllabusSession>> getSessionsStream(String subjectId) {
@@ -1723,14 +1925,16 @@ class FirebaseService {
       if (!doc.exists) return [];
       final data = doc.data()!;
       final sessionsData = data['sessions'] as List<dynamic>? ?? [];
-      return sessionsData.map((s) => SyllabusSession.fromMap(s as Map<String, dynamic>)).toList();
+      return sessionsData
+          .map((s) => SyllabusSession.fromMap(s as Map<String, dynamic>))
+          .toList();
     });
   }
 
   // --- Audit Login Updates ---
 
-  Future<void> updateSyllabusSessionWithAudit(
-      String subjectId, SyllabusSession session, ModificationEntry entry) async {
+  Future<void> updateSyllabusSessionWithAudit(String subjectId,
+      SyllabusSession session, ModificationEntry entry) async {
     final updatedSession = SyllabusSession(
       id: session.id,
       sessionNumber: session.sessionNumber,
@@ -1751,15 +1955,19 @@ class FirebaseService {
     if (!subjectDoc.exists) return;
 
     final subject = Subject.fromMap(subjectDoc.data()!);
-    final sessions = subject.sessions.map((s) => s.id == session.id ? updatedSession : s).toList();
+    final sessions = subject.sessions
+        .map((s) => s.id == session.id ? updatedSession : s)
+        .toList();
 
     await _db.collection('subjects').doc(subjectId).update({
       'sessions': sessions.map((s) => s.toMap()).toList(),
     });
   }
 
-  Stream<List<InternalMessage>> getMessagesByCategory(String userId, String category) {
-    return _db.collection('internal_messages')
+  Stream<List<InternalMessage>> getMessagesByCategory(
+      String userId, String category) {
+    return _db
+        .collection('internal_messages')
         .where('category', isEqualTo: category)
         .snapshots()
         .map((snapshot) => snapshot.docs
@@ -1799,10 +2007,14 @@ class FirebaseService {
       final start = int.parse(parts[0]) + 1;
       final end = int.parse(parts[1]) + 1;
       final yearString = "$start/$end";
-      
+
       if (!course.academicYears.contains(yearString)) {
-        final updatedYears = List<String>.from(course.academicYears)..add(yearString);
-        await _db.collection('courses').doc(courseId).update({'academicYears': updatedYears});
+        final updatedYears = List<String>.from(course.academicYears)
+          ..add(yearString);
+        await _db
+            .collection('courses')
+            .doc(courseId)
+            .update({'academicYears': updatedYears});
       }
     }
   }
@@ -1810,10 +2022,7 @@ class FirebaseService {
   // --- Timetable Management ---
 
   Future<void> saveTimetableEntry(TimetableEntry entry) async {
-    await _db
-        .collection('timetable_entries')
-        .doc(entry.id)
-        .set(entry.toMap());
+    await _db.collection('timetable_entries').doc(entry.id).set(entry.toMap());
   }
 
   Future<void> deleteTimetableEntry(String entryId) async {
@@ -1823,9 +2032,53 @@ class FirebaseService {
   Future<void> bulkSaveTimetableEntries(List<TimetableEntry> entries) async {
     final batch = _db.batch();
     for (var entry in entries) {
-      batch.set(_db.collection('timetable_entries').doc(entry.id), entry.toMap());
+      batch.set(
+          _db.collection('timetable_entries').doc(entry.id), entry.toMap());
     }
     await batch.commit();
+  }
+
+  Future<void> deleteTimetableEntriesBulk(
+    String institutionId, {
+    String? classroomId,
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    var query = _db
+        .collection('timetable_entries')
+        .where('institutionId', isEqualTo: institutionId);
+
+    if (classroomId != null) {
+      query = query.where('classroomId', isEqualTo: classroomId);
+    }
+
+    final snapshot = await query.get();
+    final batch = _db.batch();
+    int count = 0;
+
+    for (var doc in snapshot.docs) {
+      final entry = TimetableEntry.fromMap(doc.data());
+
+      bool shouldDelete = true;
+      if (startDate != null && endDate != null) {
+        if (entry.startDate != null && entry.endDate != null) {
+          // Check for overlap
+          if (entry.endDate!.isBefore(startDate) ||
+              entry.startDate!.isAfter(endDate)) {
+            shouldDelete = false;
+          }
+        }
+      }
+
+      if (shouldDelete) {
+        batch.delete(doc.reference);
+        count++;
+      }
+    }
+
+    if (count > 0) {
+      await batch.commit();
+    }
   }
 
   Stream<List<TimetableEntry>> getTimetableEntriesStream({
@@ -1836,29 +2089,44 @@ class FirebaseService {
     String? subjectId,
     int? weekday,
   }) {
-    Query query = _db.collection('timetable_entries').where('institutionId', isEqualTo: institutionId);
+    Query query = _db
+        .collection('timetable_entries')
+        .where('institutionId', isEqualTo: institutionId);
 
-    if (academicYear != null) query = query.where('academicYear', isEqualTo: academicYear);
-    if (teacherId != null) query = query.where('teacherId', isEqualTo: teacherId);
-    if (classroomId != null) query = query.where('classroomId', isEqualTo: classroomId);
-    if (subjectId != null) query = query.where('subjectId', isEqualTo: subjectId);
+    if (academicYear != null)
+      query = query.where('academicYear', isEqualTo: academicYear);
+    if (teacherId != null)
+      query = query.where('teacherId', isEqualTo: teacherId);
+    if (classroomId != null)
+      query = query.where('classroomId', isEqualTo: classroomId);
+    if (subjectId != null)
+      query = query.where('subjectId', isEqualTo: subjectId);
     if (weekday != null) query = query.where('weekday', isEqualTo: weekday);
 
-    return query.snapshots().map((snapshot) =>
-        snapshot.docs.map((doc) => TimetableEntry.fromMap(doc.data() as Map<String, dynamic>)).toList());
+    return query.snapshots().map((snapshot) => snapshot.docs
+        .map(
+            (doc) => TimetableEntry.fromMap(doc.data() as Map<String, dynamic>))
+        .toList());
   }
 
-  Stream<List<TimetableEntry>> getTimetableForUser(String userId, UserRole role) {
+  Stream<List<TimetableEntry>> getTimetableForUser(
+      String userId, UserRole role) {
     if (role == UserRole.teacher || role == UserRole.courseCoordinator) {
-      return getTimetableEntriesStream(institutionId: '', teacherId: userId); // institutionId is broad if empty or we can resolve it
+      return getTimetableEntriesStream(
+          institutionId: '',
+          teacherId:
+              userId); // institutionId is broad if empty or we can resolve it
     }
     // For students, we might need a more complex query (where subjectId in enrolledSubjects)
     // For now, return generic entries for their institution
     return _db.collection('timetable_entries').snapshots().map((snapshot) =>
-        snapshot.docs.map((doc) => TimetableEntry.fromMap(doc.data())).toList());
+        snapshot.docs
+            .map((doc) => TimetableEntry.fromMap(doc.data()))
+            .toList());
   }
 
-  Future<void> duplicateSyllabus(Subject sourceSubject, String targetYear) async {
+  Future<void> duplicateSyllabus(
+      Subject sourceSubject, String targetYear) async {
     final newId = const Uuid().v4();
     final newSubject = Subject(
       id: newId,
@@ -1880,14 +2148,16 @@ class FirebaseService {
       otherHours: sourceSubject.otherHours,
       ects: sourceSubject.ects,
       syllabusStatus: SyllabusStatus.provisional,
-      sessions: sourceSubject.sessions.map((s) => SyllabusSession(
-        id: const Uuid().v4(),
-        sessionNumber: s.sessionNumber,
-        topic: s.topic,
-        date: s.date.add(const Duration(days: 365)), // Approximate
-        materialIds: s.materialIds,
-        bibliography: s.bibliography,
-      )).toList(),
+      sessions: sourceSubject.sessions
+          .map((s) => SyllabusSession(
+                id: const Uuid().v4(),
+                sessionNumber: s.sessionNumber,
+                topic: s.topic,
+                date: s.date.add(const Duration(days: 365)), // Approximate
+                materialIds: s.materialIds,
+                bibliography: s.bibliography,
+              ))
+          .toList(),
       price: sourceSubject.price,
       currency: sourceSubject.currency,
       isMarketplaceEnabled: sourceSubject.isMarketplaceEnabled,
@@ -1901,21 +2171,26 @@ class FirebaseService {
     required String sourceCycleId,
     required String newName,
     required String targetAcademicYear,
-    required Map<String, String> subjectIdToTeacherId, // sourceSubjectId -> newTeacherId
+    required Map<String, String>
+        subjectIdToTeacherId, // sourceSubjectId -> newTeacherId
   }) async {
     final batch = _db.batch();
-    
+
     // 1. Clone StudyCycle
     final newCycleId = const Uuid().v4();
     final newCycle = StudyCycle(
       id: newCycleId,
       name: newName,
-      institutionId: (await _db.collection('study_cycles').doc(sourceCycleId).get()).data()?['institutionId'] ?? '',
+      institutionId:
+          (await _db.collection('study_cycles').doc(sourceCycleId).get())
+                  .data()?['institutionId'] ??
+              '',
     );
     batch.set(_db.collection('study_cycles').doc(newCycleId), newCycle.toMap());
 
     // 2. Clone Courses
-    final coursesSnap = await _db.collection('courses')
+    final coursesSnap = await _db
+        .collection('courses')
         .where('studyCycleId', isEqualTo: sourceCycleId)
         .get();
 
@@ -1925,7 +2200,8 @@ class FirebaseService {
       List<String> newSubjectIds = [];
 
       // 3. Clone Subjects for each Course
-      final subjectsSnap = await _db.collection('subjects')
+      final subjectsSnap = await _db
+          .collection('subjects')
           .where('courseId', isEqualTo: sourceCourse.id)
           .get();
 
@@ -1939,7 +2215,8 @@ class FirebaseService {
           name: sourceSubject.name,
           level: sourceSubject.level,
           academicYear: targetAcademicYear,
-          teacherId: subjectIdToTeacherId[sourceSubject.id] ?? sourceSubject.teacherId,
+          teacherId:
+              subjectIdToTeacherId[sourceSubject.id] ?? sourceSubject.teacherId,
           institutionId: sourceSubject.institutionId,
           courseId: newCourseId,
           allowedStudentEmails: [], // Reset for new year
@@ -1955,19 +2232,22 @@ class FirebaseService {
           otherHours: sourceSubject.otherHours,
           ects: sourceSubject.ects,
           syllabusStatus: SyllabusStatus.provisional,
-          sessions: sourceSubject.sessions.map((s) => SyllabusSession(
-            id: const Uuid().v4(),
-            sessionNumber: s.sessionNumber,
-            topic: s.topic,
-            date: s.date.add(const Duration(days: 365)),
-            materialIds: s.materialIds,
-            bibliography: s.bibliography,
-          )).toList(),
+          sessions: sourceSubject.sessions
+              .map((s) => SyllabusSession(
+                    id: const Uuid().v4(),
+                    sessionNumber: s.sessionNumber,
+                    topic: s.topic,
+                    date: s.date.add(const Duration(days: 365)),
+                    materialIds: s.materialIds,
+                    bibliography: s.bibliography,
+                  ))
+              .toList(),
           price: sourceSubject.price,
           currency: sourceSubject.currency,
           isMarketplaceEnabled: sourceSubject.isMarketplaceEnabled,
         );
-        batch.set(_db.collection('subjects').doc(newSubjectId), newSubject.toMap());
+        batch.set(
+            _db.collection('subjects').doc(newSubjectId), newSubject.toMap());
       }
 
       final newCourse = Course(
@@ -1987,13 +2267,15 @@ class FirebaseService {
     await batch.commit();
   }
 
-  Future<void> submitSyllabusToCouncil(String subjectId, SyllabusStatus nextStatus) async {
+  Future<void> submitSyllabusToCouncil(
+      String subjectId, SyllabusStatus nextStatus) async {
     await _db.collection('subjects').doc(subjectId).update({
       'syllabusStatus': nextStatus.name,
     });
   }
 
-  Future<void> approveSyllabus(String subjectId, SyllabusStatus finalStatus, String userId, String userName) async {
+  Future<void> approveSyllabus(String subjectId, SyllabusStatus finalStatus,
+      String userId, String userName) async {
     final now = DateTime.now();
     final Map<String, dynamic> data = {
       'syllabusStatus': finalStatus.name,
@@ -2011,7 +2293,6 @@ class FirebaseService {
     await _db.collection('subjects').doc(subjectId).update(data);
   }
 
-
   // --- Gestão de Conselhos e Pedidos ---
 
   Future<void> submitCouncilRequest(CouncilRequest request) async {
@@ -2027,7 +2308,8 @@ class FirebaseService {
         .where('organId', isEqualTo: organId)
         .where('status', isEqualTo: CouncilRequestStatus.pending.name)
         .snapshots()
-        .map((s) => s.docs.map((d) => CouncilRequest.fromMap(d.data())).toList());
+        .map((s) =>
+            s.docs.map((d) => CouncilRequest.fromMap(d.data())).toList());
   }
 
   Future<void> scheduleMeetingAndNotify(AcademicMeeting meeting) async {
@@ -2038,10 +2320,12 @@ class FirebaseService {
         .set(meeting.toMap());
 
     // 2. Notify Organ Members
-    final organDoc = await _db.collection('institutional_organs').doc(meeting.organId).get();
+    final organDoc =
+        await _db.collection('institutional_organs').doc(meeting.organId).get();
     if (organDoc.exists) {
       final organ = InstitutionalOrgan.fromMap(organDoc.data()!);
-      final memberIds = organ.members.map((m) => m.userId).whereType<String>().toList();
+      final memberIds =
+          organ.members.map((m) => m.userId).whereType<String>().toList();
 
       if (memberIds.isNotEmpty) {
         final notification = InternalMessage(
@@ -2050,7 +2334,8 @@ class FirebaseService {
           senderName: 'Gestão Académica',
           recipientIds: memberIds,
           subject: 'Nova Reunião Agendada: ${meeting.title}',
-          body: 'Convocatória para reunião do órgão ${organ.name}.\nData: ${meeting.date}\nLocal: ${meeting.location ?? "Por definir"}',
+          body:
+              'Convocatória para reunião do órgão ${organ.name}.\nData: ${meeting.date}\nLocal: ${meeting.location ?? "Por definir"}',
           timestamp: DateTime.now(),
         );
         await sendInternalMessage(notification);
@@ -2064,7 +2349,8 @@ class FirebaseService {
         'meetingId': meeting.id,
       });
 
-      final reqDoc = await _db.collection('council_requests').doc(requestId).get();
+      final reqDoc =
+          await _db.collection('council_requests').doc(requestId).get();
       if (reqDoc.exists) {
         final request = CouncilRequest.fromMap(reqDoc.data()!);
         final notification = InternalMessage(
@@ -2073,7 +2359,8 @@ class FirebaseService {
           senderName: 'Gestão Académica',
           recipientIds: [request.requesterId],
           subject: 'Tema incluído na Ordem de Trabalhos',
-          body: 'O seu pedido "${request.title}" foi incluído na reunião: ${meeting.title}.\nData: ${meeting.date}',
+          body:
+              'O seu pedido "${request.title}" foi incluído na reunião: ${meeting.title}.\nData: ${meeting.date}',
           timestamp: DateTime.now(),
         );
         await sendInternalMessage(notification);
@@ -2081,12 +2368,14 @@ class FirebaseService {
     }
   }
 
-  Stream<List<InstitutionalOrgan>> getInstitutionalOrgans(String institutionId) {
+  Stream<List<InstitutionalOrgan>> getInstitutionalOrgans(
+      String institutionId) {
     return _db
         .collection('institutional_organs')
         .where('institutionId', isEqualTo: institutionId)
         .snapshots()
-        .map((s) => s.docs.map((d) => InstitutionalOrgan.fromMap(d.data())).toList());
+        .map((s) =>
+            s.docs.map((d) => InstitutionalOrgan.fromMap(d.data())).toList());
   }
 
   Stream<List<AcademicMeeting>> getAcademicMeetings(String institutionId) {
@@ -2116,10 +2405,7 @@ class FirebaseService {
     await _db.collection('invitations').doc(invite.id).set(invite.toMap());
 
     // Mock Email Sending
-
   }
-
-
 
   Future<void> completeExternalInvite(String inviteId, String userId) async {
     final inviteDoc = await _db.collection('invitations').doc(inviteId).get();
@@ -2132,7 +2418,8 @@ class FirebaseService {
     await _db.collection('invitations').doc(inviteId).update({'isUsed': true});
 
     // 2. Add user to organ members
-    final organDoc = await _db.collection('institutional_organs').doc(invite.organId).get();
+    final organDoc =
+        await _db.collection('institutional_organs').doc(invite.organId).get();
     if (organDoc.exists) {
       final organ = InstitutionalOrgan.fromMap(organDoc.data()!);
       final userDoc = await _db.collection('users').doc(userId).get();
@@ -2143,8 +2430,11 @@ class FirebaseService {
           name: user.name,
           userId: userId,
         );
-        
-        await _db.collection('institutional_organs').doc(invite.organId).update({
+
+        await _db
+            .collection('institutional_organs')
+            .doc(invite.organId)
+            .update({
           'members': FieldValue.arrayUnion([newMember.toMap()])
         });
       }
@@ -2168,7 +2458,8 @@ class FirebaseService {
           .collection('organ_documents')
           .where('organId', isEqualTo: organId)
           .snapshots()
-          .map((s) => s.docs.map((d) => OrganDocument.fromMap(d.data())).toList());
+          .map((s) =>
+              s.docs.map((d) => OrganDocument.fromMap(d.data())).toList());
     } else {
       // Members see only what is visible to all
       return _db
@@ -2176,16 +2467,17 @@ class FirebaseService {
           .where('organId', isEqualTo: organId)
           .where('isVisibleToAllMembers', isEqualTo: true)
           .snapshots()
-          .map((s) => s.docs.map((d) => OrganDocument.fromMap(d.data())).toList());
+          .map((s) =>
+              s.docs.map((d) => OrganDocument.fromMap(d.data())).toList());
     }
   }
 
   Future<String> generateConvocationWithAi(AcademicMeeting meeting) async {
     // Mock AI call
-    final agenda = meeting.customAgendaPoints.isNotEmpty 
-      ? meeting.customAgendaPoints.join('\n- ')
-      : 'Análise de temas pendentes';
-      
+    final agenda = meeting.customAgendaPoints.isNotEmpty
+        ? meeting.customAgendaPoints.join('\n- ')
+        : 'Análise de temas pendentes';
+
     return '''
 CONVOCATÓRIA DE REUNIÃO
 
@@ -2202,10 +2494,12 @@ Este documento foi gerado com assistência de IA.
   }
 
   Stream<List<Subject>> getSubjectsStreamByCourse(String courseId) {
-    return _db.collection('subjects')
+    return _db
+        .collection('subjects')
         .where('courseId', isEqualTo: courseId)
         .snapshots()
-        .map((snapshot) => snapshot.docs.map((doc) => Subject.fromMap(doc.data())).toList());
+        .map((snapshot) =>
+            snapshot.docs.map((doc) => Subject.fromMap(doc.data())).toList());
   }
 
   Future<void> deleteSubject(String subjectId) async {
@@ -2215,54 +2509,75 @@ Este documento foi gerado com assistência de IA.
   // --- Questionnaire System ---
 
   Future<void> saveQuestionnaire(Questionnaire questionnaire) async {
-    await _db.collection('questionnaires').doc(questionnaire.id).set(questionnaire.toMap());
-    
+    await _db
+        .collection('questionnaires')
+        .doc(questionnaire.id)
+        .set(questionnaire.toMap());
+
     // In a real app, logic to send push notifications to targetRoles would go here.
     // We'll simulate by adding to a 'notifications' collection if needed.
   }
 
   Stream<List<Questionnaire>> getQuestionnaires(String institutionId) {
-    return _db.collection('questionnaires')
+    return _db
+        .collection('questionnaires')
         .where('institutionId', isEqualTo: institutionId)
         .snapshots()
-        .map((snapshot) => snapshot.docs.map((doc) => Questionnaire.fromMap(doc.data())).toList());
+        .map((snapshot) => snapshot.docs
+            .map((doc) => Questionnaire.fromMap(doc.data()))
+            .toList());
   }
 
-  Stream<List<Questionnaire>> getAvailableQuestionnaires(String userId, String userRole) {
+  Stream<List<Questionnaire>> getAvailableQuestionnaires(
+      String userId, String userRole) {
     // This is a simplified filter. In production, we'd use complex queries or composite indexes.
-    return _db.collection('questionnaires')
+    return _db
+        .collection('questionnaires')
         .where('isActive', isEqualTo: true)
         .snapshots()
         .map((snapshot) {
-          return snapshot.docs.map((doc) => Questionnaire.fromMap(doc.data())).where((q) {
-            final now = DateTime.now();
-            final isWithinDate = now.isAfter(q.startDate) && now.isBefore(q.endDate);
-            final isTargetRole = q.targetRoles.contains(userRole);
-            final isIndividualTarget = q.individualTargetIds.contains(userId);
-            return isWithinDate && (isTargetRole || isIndividualTarget);
-          }).toList();
-        });
+      return snapshot.docs
+          .map((doc) => Questionnaire.fromMap(doc.data()))
+          .where((q) {
+        final now = DateTime.now();
+        final isWithinDate =
+            now.isAfter(q.startDate) && now.isBefore(q.endDate);
+        final isTargetRole = q.targetRoles.contains(userRole);
+        final isIndividualTarget = q.individualTargetIds.contains(userId);
+        return isWithinDate && (isTargetRole || isIndividualTarget);
+      }).toList();
+    });
   }
 
-  Future<void> submitQuestionnaireResponse(QuestionnaireResponse response) async {
-    await _db.collection('questionnaire_responses').doc(response.id).set(response.toMap());
+  Future<void> submitQuestionnaireResponse(
+      QuestionnaireResponse response) async {
+    await _db
+        .collection('questionnaire_responses')
+        .doc(response.id)
+        .set(response.toMap());
   }
 
-  Stream<List<QuestionnaireResponse>> getQuestionnaireResponses(String questionnaireId) {
-    return _db.collection('questionnaire_responses')
+  Stream<List<QuestionnaireResponse>> getQuestionnaireResponses(
+      String questionnaireId) {
+    return _db
+        .collection('questionnaire_responses')
         .where('questionnaireId', isEqualTo: questionnaireId)
         .snapshots()
-        .map((snapshot) => snapshot.docs.map((doc) => QuestionnaireResponse.fromMap(doc.data())).toList());
+        .map((snapshot) => snapshot.docs
+            .map((doc) => QuestionnaireResponse.fromMap(doc.data()))
+            .toList());
   }
 
-  Future<void> reopenQuestionnaire(String questionnaireId, DateTime newEnd, String reason) async {
+  Future<void> reopenQuestionnaire(
+      String questionnaireId, DateTime newEnd, String reason) async {
     final docRef = _db.collection('questionnaires').doc(questionnaireId);
     final doc = await docRef.get();
     if (doc.exists) {
       final q = Questionnaire.fromMap(doc.data()!);
       final newHistory = List<ReopenLog>.from(q.reopenHistory);
-      newHistory.add(ReopenLog(startDate: DateTime.now(), endDate: newEnd, reason: reason));
-      
+      newHistory.add(ReopenLog(
+          startDate: DateTime.now(), endDate: newEnd, reason: reason));
+
       await docRef.update({
         'endDate': newEnd.toIso8601String(),
         'isActive': true,
@@ -2301,10 +2616,7 @@ Este documento foi gerado com assistência de IA.
   // --- Gestão Documental Universal (ManagementDocument) ---
 
   Future<void> saveManagementDocument(ManagementDocument doc) async {
-    await _db
-        .collection('management_documents')
-        .doc(doc.id)
-        .set(doc.toMap());
+    await _db.collection('management_documents').doc(doc.id).set(doc.toMap());
   }
 
   Stream<List<ManagementDocument>> getManagementDocuments(
@@ -2326,16 +2638,16 @@ Este documento foi gerado com assistência de IA.
   Future<void> signDocument(String docId, SignatureEntry signature) async {
     final docRef = _db.collection('management_documents').doc(docId);
     final docSnap = await docRef.get();
-    
+
     if (docSnap.exists) {
       final doc = ManagementDocument.fromMap(docSnap.data()!);
       final updatedSignatures = List<SignatureEntry>.from(doc.signatures);
-      
+
       // Prevent double signing
       if (updatedSignatures.any((s) => s.userId == signature.userId)) return;
-      
+
       updatedSignatures.add(signature);
-      
+
       ManagementDocumentStatus newStatus = doc.status;
       if (updatedSignatures.length >= doc.requiredSignerIds.length) {
         newStatus = ManagementDocumentStatus.completed;
@@ -2357,7 +2669,8 @@ Este documento foi gerado com assistência de IA.
           senderName: 'Gestão de Documentos',
           recipientIds: [nextSignerId],
           subject: 'Documento Aguardando Assinatura: ${doc.title}',
-          body: 'O documento "${doc.title}" foi assinado por ${signature.userName} e aguarda agora a sua assinatura digital.',
+          body:
+              'O documento "${doc.title}" foi assinado por ${signature.userName} e aguarda agora a sua assinatura digital.',
           timestamp: DateTime.now(),
         );
         await sendInternalMessage(notification);
@@ -2369,7 +2682,8 @@ Este documento foi gerado com assistência de IA.
           senderName: 'Gestão de Documentos',
           recipientIds: [doc.createdBy],
           subject: 'Documento Totalmente Assinado: ${doc.title}',
-          body: 'O processo de assinatura do documento "${doc.title}" foi concluído com sucesso.',
+          body:
+              'O processo de assinatura do documento "${doc.title}" foi concluído com sucesso.',
           timestamp: DateTime.now(),
         );
         await sendInternalMessage(notification);
@@ -2377,11 +2691,12 @@ Este documento foi gerado com assistência de IA.
     }
   }
 
-  Stream<List<ManagementDocument>> getManagementDocumentsForUser(String userId) {
+  Stream<List<ManagementDocument>> getManagementDocumentsForUser(
+      String userId) {
     // Returns documents where user is a required signer or owner (if it's a teacher doc)
-    // Firestore doesn't support 'OR' queries well across different fields without composite indexes, 
+    // Firestore doesn't support 'OR' queries well across different fields without composite indexes,
     // so we'll fetch based on requiredSignerIds and ownerId separately or use a combined stream.
-    
+
     // For simplicity in this MVP, we fetch for requiredSignerIds
     return _db
         .collection('management_documents')
@@ -2398,8 +2713,11 @@ Este documento foi gerado com assistência de IA.
     await _db.collection('erp_records').doc(record.id).set(record.toMap());
   }
 
-  Stream<List<ErpRecord>> getErpRecords(String institutionId, {ErpModule? module}) {
-    var query = _db.collection('erp_records').where('institutionId', isEqualTo: institutionId);
+  Stream<List<ErpRecord>> getErpRecords(String institutionId,
+      {ErpModule? module}) {
+    var query = _db
+        .collection('erp_records')
+        .where('institutionId', isEqualTo: institutionId);
     if (module != null) {
       query = query.where('module', isEqualTo: module.name);
     }
@@ -2407,7 +2725,8 @@ Este documento foi gerado com assistência de IA.
         snapshot.docs.map((doc) => ErpRecord.fromMap(doc.data())).toList());
   }
 
-  Future<void> updateErpRecord(String recordId, Map<String, dynamic> data) async {
+  Future<void> updateErpRecord(
+      String recordId, Map<String, dynamic> data) async {
     await _db.collection('erp_records').doc(recordId).update({
       ...data,
       'updatedAt': Timestamp.now(),
@@ -2420,10 +2739,14 @@ Este documento foi gerado com assistência de IA.
 
   // --- Attendance Management ---
   Future<void> saveAttendance(Attendance attendance) async {
-    await _db.collection('attendance').doc(attendance.id).set(attendance.toMap());
+    await _db
+        .collection('attendance')
+        .doc(attendance.id)
+        .set(attendance.toMap());
   }
 
-  Future<void> deleteAttendanceBySession(String userId, String sessionId) async {
+  Future<void> deleteAttendanceBySession(
+      String userId, String sessionId) async {
     final query = await _db
         .collection('attendance')
         .where('userId', isEqualTo: userId)
@@ -2434,13 +2757,31 @@ Este documento foi gerado com assistência de IA.
     }
   }
 
-  Stream<List<Enrollment>> getEnrollmentsForSubjectByUser(String subjectId, String userId) {
+  Stream<List<Enrollment>> getEnrollmentsForSubjectByUser(
+      String subjectId, String userId) {
     return _db
         .collection('enrollments')
         .where('subjectId', isEqualTo: subjectId)
         .where('userId', isEqualTo: userId)
         .snapshots()
-        .map((snapshot) =>
-            snapshot.docs.map((doc) => Enrollment.fromMap(doc.data())).toList());
+        .map((snapshot) => snapshot.docs
+            .map((doc) => Enrollment.fromMap(doc.data()))
+            .toList());
   }
+
+  // --- Timetable ---
+  Stream<List<TimetableEntry>> getTimetableEntries(String institutionId,
+      {String? academicYear}) {
+    Query query = _db
+        .collection('timetable')
+        .where('institutionId', isEqualTo: institutionId);
+    if (academicYear != null) {
+      query = query.where('academicYear', isEqualTo: academicYear);
+    }
+    return query.snapshots().map((snapshot) => snapshot.docs
+        .map(
+            (doc) => TimetableEntry.fromMap(doc.data() as Map<String, dynamic>))
+        .toList());
+  }
+
 }

@@ -5,6 +5,7 @@ import '../../services/firebase_service.dart';
 import '../../models/user_model.dart';
 import '../../models/internal_message.dart';
 import '../../widgets/ai_translated_text.dart';
+import '../../widgets/ai_text_field.dart';
 
 class ComposeMessageScreen extends StatefulWidget {
   final List<String>? initialRecipientIds;
@@ -150,26 +151,15 @@ class _ComposeMessageScreenState extends State<ComposeMessageScreen> {
               else
                 _buildRecipientField('Cc:', _selectedCcIds, isCc: true),
               const SizedBox(height: 24),
-              TextField(
+              AiTextField(
                 controller: _subjectController,
-                style: const TextStyle(color: Colors.white),
-                decoration: const InputDecoration(
-                  labelText: 'Assunto',
-                  border: OutlineInputBorder(),
-                  labelStyle: TextStyle(color: Colors.white70),
-                ),
+                labelText: 'Assunto',
               ),
               const SizedBox(height: 16),
-              TextField(
+              AiTextField(
                 controller: _bodyController,
                 maxLines: 10,
-                style: const TextStyle(color: Colors.white),
-                decoration: const InputDecoration(
-                  labelText: 'Mensagem',
-                  border: OutlineInputBorder(),
-                  labelStyle: TextStyle(color: Colors.white70),
-                  alignLabelWithHint: true,
-                ),
+                labelText: 'Mensagem',
               ),
             ],
           ),
@@ -300,7 +290,8 @@ class _ComposeMessageScreenState extends State<ComposeMessageScreen> {
                                   prefixIcon: const Icon(Icons.search,
                                       color: Color(0xFF00D1FF)),
                                   filled: true,
-                                  fillColor: Colors.white.withValues(alpha: 0.05),
+                                  fillColor:
+                                      Colors.white.withValues(alpha: 0.05),
                                   border: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(12),
                                       borderSide: BorderSide.none),

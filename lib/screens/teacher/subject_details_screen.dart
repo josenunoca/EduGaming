@@ -48,7 +48,7 @@ class _SubjectDetailsScreenState extends State<SubjectDetailsScreen>
   @override
   Widget build(BuildContext context) {
     final service = context.read<FirebaseService>();
-    
+
     return StreamBuilder<Subject?>(
       stream: service.getSubjectStream(widget.subject.id),
       initialData: widget.subject,
@@ -67,7 +67,8 @@ class _SubjectDetailsScreenState extends State<SubjectDetailsScreen>
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => SubjectStatisticsScreen(subject: _currentSubject),
+                      builder: (context) =>
+                          SubjectStatisticsScreen(subject: _currentSubject),
                     ),
                   );
                 },
@@ -76,10 +77,11 @@ class _SubjectDetailsScreenState extends State<SubjectDetailsScreen>
               IconButton(
                 icon: const Icon(Icons.grid_on),
                 onPressed: () {
-                   Navigator.push(
+                  Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => AttendanceMatrixScreen(subject: _currentSubject),
+                      builder: (context) =>
+                          AttendanceMatrixScreen(subject: _currentSubject),
                     ),
                   );
                 },
@@ -554,7 +556,8 @@ class _SubjectDetailsScreenState extends State<SubjectDetailsScreen>
                                               color: Colors.white38,
                                               fontSize: 11)),
                                       const SizedBox(width: 8),
-                                      _buildCategoryBadge(content.category, isEvaluation: isEvaluation),
+                                      _buildCategoryBadge(content.category,
+                                          isEvaluation: isEvaluation),
                                     ],
                                   ),
                                 ],
@@ -738,7 +741,7 @@ class _SubjectDetailsScreenState extends State<SubjectDetailsScreen>
   Widget _buildCategoryBadge(String type, {bool isEvaluation = false}) {
     Color color = Colors.blue;
     String label = 'Treino';
-    
+
     if (isEvaluation) {
       color = Colors.redAccent;
       label = 'Avaliação';
@@ -777,39 +780,45 @@ class _SubjectDetailsScreenState extends State<SubjectDetailsScreen>
 
         final allEvalItems = [
           ...evalContents.map((c) {
-            final evalComp = _currentSubject.evaluationComponents.cast<EvaluationComponent?>().firstWhere(
-              (comp) => comp?.contentIds.contains(c.id) ?? false, 
-              orElse: () => null
-            );
+            final evalComp = _currentSubject.evaluationComponents
+                .cast<EvaluationComponent?>()
+                .firstWhere((comp) => comp?.contentIds.contains(c.id) ?? false,
+                    orElse: () => null);
             return {
               'name': c.name,
-              'weight': evalComp != null ? '${(evalComp.weight * 100).toInt()}%' : '0.0',
+              'weight': evalComp != null
+                  ? '${(evalComp.weight * 100).toInt()}%'
+                  : '0.0',
               'type': c.category,
               'id': c.id,
               'isEvaluation': evalComp != null
             };
           }),
           ..._currentSubject.games.map((g) {
-            final evalComp = _currentSubject.evaluationComponents.cast<EvaluationComponent?>().firstWhere(
-              (comp) => comp?.contentIds.contains(g.id) ?? false, 
-              orElse: () => null
-            );
+            final evalComp = _currentSubject.evaluationComponents
+                .cast<EvaluationComponent?>()
+                .firstWhere((comp) => comp?.contentIds.contains(g.id) ?? false,
+                    orElse: () => null);
             return {
-              'name': g.name, 
-              'weight': evalComp != null ? '${(evalComp.weight * 100).toInt()}%' : '0.0', 
-              'type': 'game', 
+              'name': g.name,
+              'weight': evalComp != null
+                  ? '${(evalComp.weight * 100).toInt()}%'
+                  : '0.0',
+              'type': 'game',
               'id': g.id,
               'isEvaluation': evalComp != null
             };
           }),
           ...aiGames.map((g) {
-            final evalComp = _currentSubject.evaluationComponents.cast<EvaluationComponent?>().firstWhere(
-              (comp) => comp?.contentIds.contains(g.id) ?? false, 
-              orElse: () => null
-            );
+            final evalComp = _currentSubject.evaluationComponents
+                .cast<EvaluationComponent?>()
+                .firstWhere((comp) => comp?.contentIds.contains(g.id) ?? false,
+                    orElse: () => null);
             return {
               'name': g.title,
-              'weight': evalComp != null ? '${(evalComp.weight * 100).toInt()}%' : '0.0',
+              'weight': evalComp != null
+                  ? '${(evalComp.weight * 100).toInt()}%'
+                  : '0.0',
               'type': 'ai_game',
               'id': g.id,
               'isEvaluation': evalComp != null
@@ -847,10 +856,11 @@ class _SubjectDetailsScreenState extends State<SubjectDetailsScreen>
                             'Nenhum exame ou jogo configurado.',
                             style: TextStyle(color: Colors.white38)))
                     : FutureBuilder<List<AiGameResult>>(
-                        future: service.getAllSubjectGameResults(_currentSubject.id),
+                        future: service
+                            .getAllSubjectGameResults(_currentSubject.id),
                         builder: (context, resSnapshot) {
                           final allResults = resSnapshot.data ?? [];
-                          
+
                           // Map results by gameId
                           Map<String, List<AiGameResult>> resultsMap = {};
                           for (var r in allResults) {
@@ -864,43 +874,79 @@ class _SubjectDetailsScreenState extends State<SubjectDetailsScreen>
                               final bool isAiGame = item['type'] == 'ai_game';
                               final itemId = item['id'] as String;
                               final itemResults = resultsMap[itemId] ?? [];
-                              
-                              final int totalParticipants = itemResults.map((r) => r.studentId).toSet().length;
-                              final double averageScore = itemResults.isEmpty 
-                                ? 0 
-                                : itemResults.map((r) => r.score).reduce((a, b) => a + b) / itemResults.length;
+
+                              final int totalParticipants = itemResults
+                                  .map((r) => r.studentId)
+                                  .toSet()
+                                  .length;
+                              final double averageScore = itemResults.isEmpty
+                                  ? 0
+                                  : itemResults
+                                          .map((r) => r.score)
+                                          .reduce((a, b) => a + b) /
+                                      itemResults.length;
 
                               return Card(
                                 color: Colors.white.withValues(alpha: 0.05),
                                 margin: const EdgeInsets.only(bottom: 8),
                                 child: ListTile(
-                                  leading: _buildCategoryBadge(item['type'] as String, isEvaluation: item['isEvaluation'] as bool? ?? false),
-                                  title: AiTranslatedText(item['name'] as String,
-                                      style: const TextStyle(color: Colors.white)),
+                                  leading: _buildCategoryBadge(
+                                      item['type'] as String,
+                                      isEvaluation:
+                                          item['isEvaluation'] as bool? ??
+                                              false),
+                                  title: AiTranslatedText(
+                                      item['name'] as String,
+                                      style:
+                                          const TextStyle(color: Colors.white)),
                                   subtitle: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
-                                        item['isEvaluation'] == true 
-                                          ? 'Peso: ${item['weight']}'
-                                          : 'Peso: NA',
+                                        item['isEvaluation'] == true
+                                            ? 'Peso: ${item['weight']}'
+                                            : 'Peso: NA',
                                         style: const TextStyle(
-                                            color: Color(0xFF00D1FF), fontSize: 11),
+                                            color: Color(0xFF00D1FF),
+                                            fontSize: 11),
                                       ),
-                                      if (resSnapshot.connectionState == ConnectionState.waiting)
-                                        const SizedBox(height: 4, child: LinearProgressIndicator(minHeight: 1))
+                                      if (resSnapshot.connectionState ==
+                                          ConnectionState.waiting)
+                                        const SizedBox(
+                                            height: 4,
+                                            child: LinearProgressIndicator(
+                                                minHeight: 1))
                                       else
                                         Padding(
-                                          padding: const EdgeInsets.only(top: 4.0),
+                                          padding:
+                                              const EdgeInsets.only(top: 4.0),
                                           child: Row(
                                             children: [
-                                              Icon(Icons.people, size: 12, color: Colors.white.withValues(alpha: 0.5)),
+                                              Icon(Icons.people,
+                                                  size: 12,
+                                                  color: Colors.white
+                                                      .withValues(alpha: 0.5)),
                                               const SizedBox(width: 4),
-                                              Text('$totalParticipants', style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 10)),
+                                              Text('$totalParticipants',
+                                                  style: TextStyle(
+                                                      color: Colors.white
+                                                          .withValues(
+                                                              alpha: 0.7),
+                                                      fontSize: 10)),
                                               const SizedBox(width: 12),
-                                              Icon(Icons.analytics, size: 12, color: Colors.white.withValues(alpha: 0.5)),
+                                              Icon(Icons.analytics,
+                                                  size: 12,
+                                                  color: Colors.white
+                                                      .withValues(alpha: 0.5)),
                                               const SizedBox(width: 4),
-                                              Text('${averageScore.toStringAsFixed(1)} pts (média)', style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 10)),
+                                              Text(
+                                                  '${averageScore.toStringAsFixed(1)} pts (média)',
+                                                  style: TextStyle(
+                                                      color: Colors.white
+                                                          .withValues(
+                                                              alpha: 0.7),
+                                                      fontSize: 10)),
                                             ],
                                           ),
                                         ),
@@ -932,33 +978,37 @@ class _SubjectDetailsScreenState extends State<SubjectDetailsScreen>
                                         onPressed: () async {
                                           final service =
                                               context.read<FirebaseService>();
-                                          final hasResults =
-                                              await service.hasEvaluationResults(
+                                          final hasResults = await service
+                                              .hasEvaluationResults(
                                             _currentSubject.id,
                                             gameId: item['id'] as String,
                                           );
 
                                           if (hasResults) {
-                                            if (mounted) _showLockedItemDialog();
+                                            if (mounted)
+                                              _showLockedItemDialog();
                                             return;
                                           }
 
-                                          final confirmed = await _confirmDeletetion(
-                                              'Eliminar Jogo/Exame',
-                                              'Tem a certeza que quer eliminar este item de avaliação?');
+                                          final confirmed =
+                                              await _confirmDeletetion(
+                                                  'Eliminar Jogo/Exame',
+                                                  'Tem a certeza que quer eliminar este item de avaliação?');
 
                                           if (confirmed == true && mounted) {
                                             if (item['type'] == 'ai_game') {
                                               await service.deleteAiGame(
                                                   item['id'] as String);
                                             } else {
-                                              await service.deleteSubjectContent(
-                                                  _currentSubject.id,
-                                                  item['id'] as String);
+                                              await service
+                                                  .deleteSubjectContent(
+                                                      _currentSubject.id,
+                                                      item['id'] as String);
                                             }
                                             setState(() {
-                                              _currentSubject.contents.removeWhere(
-                                                  (c) => c.id == item['id']);
+                                              _currentSubject.contents
+                                                  .removeWhere((c) =>
+                                                      c.id == item['id']);
                                               _currentSubject.games.removeWhere(
                                                   (g) => g.id == item['id']);
                                             });

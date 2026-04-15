@@ -25,8 +25,15 @@ class DocumentRepositoryScreen extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const AiTranslatedText('Regulamentos e Manuais', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
-                IconButton(onPressed: () {}, icon: const Icon(Icons.upload_file, color: Color(0xFF00FF85))),
+                const AiTranslatedText('Regulamentos e Manuais',
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold)),
+                IconButton(
+                    onPressed: () {},
+                    icon: const Icon(Icons.upload_file,
+                        color: Color(0xFF00FF85))),
               ],
             ),
             const SizedBox(height: 16),
@@ -34,13 +41,18 @@ class DocumentRepositoryScreen extends StatelessWidget {
               child: StreamBuilder<List<InstitutionalDocument>>(
                 stream: service.getDocuments(institution.id),
                 builder: (context, snapshot) {
-                  if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+                  if (!snapshot.hasData)
+                    return const Center(child: CircularProgressIndicator());
                   final docs = snapshot.data!;
-                  if (docs.isEmpty) return const Center(child: AiTranslatedText('Nenhum documento disponível.', style: TextStyle(color: Colors.white54)));
+                  if (docs.isEmpty)
+                    return const Center(
+                        child: AiTranslatedText('Nenhum documento disponível.',
+                            style: TextStyle(color: Colors.white54)));
 
                   return ListView.builder(
                     itemCount: docs.length,
-                    itemBuilder: (context, index) => _DocumentCard(doc: docs[index]),
+                    itemBuilder: (context, index) =>
+                        _DocumentCard(doc: docs[index]),
                   );
                 },
               ),
@@ -64,7 +76,9 @@ class _DocumentCard extends StatelessWidget {
       child: ListTile(
         leading: const Icon(Icons.picture_as_pdf, color: Colors.redAccent),
         title: Text(doc.title, style: const TextStyle(color: Colors.white)),
-        subtitle: AiTranslatedText('${doc.proposals.length} Propostas de Alteração', style: const TextStyle(color: Colors.white54, fontSize: 10)),
+        subtitle: AiTranslatedText(
+            '${doc.proposals.length} Propostas de Alteração',
+            style: const TextStyle(color: Colors.white54, fontSize: 10)),
         trailing: const Icon(Icons.download, color: Colors.white24),
         onTap: () {
           // Open document or proposals

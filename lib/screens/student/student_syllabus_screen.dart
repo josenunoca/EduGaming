@@ -25,12 +25,16 @@ class StudentSyllabusScreen extends StatelessWidget {
         sessions.sort((a, b) => a.sessionNumber.compareTo(b.sessionNumber));
 
         return StreamBuilder<List<Attendance>>(
-          stream: context.read<FirebaseService>().getAttendanceStreamForSubject(currentSubject.id),
+          stream: context
+              .read<FirebaseService>()
+              .getAttendanceStreamForSubject(currentSubject.id),
           builder: (context, attendanceSnapshot) {
             final attendances = attendanceSnapshot.data ?? [];
-            final studentAttendances = attendances.where((a) => a.userId == userId).toList();
-            final finalizedSessions = sessions.where((s) => s.isFinalized).toList();
-            
+            final studentAttendances =
+                attendances.where((a) => a.userId == userId).toList();
+            final finalizedSessions =
+                sessions.where((s) => s.isFinalized).toList();
+
             double attendancePercentage = 100.0;
             if (finalizedSessions.isNotEmpty) {
               int presentCount = 0;
@@ -39,14 +43,16 @@ class StudentSyllabusScreen extends StatelessWidget {
                   presentCount++;
                 }
               }
-              attendancePercentage = (presentCount / finalizedSessions.length) * 100;
+              attendancePercentage =
+                  (presentCount / finalizedSessions.length) * 100;
             }
 
             return Column(
               children: [
                 // Header with Attendance Summary and Download Buttons
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16.0, vertical: 8.0),
                   child: Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
@@ -74,24 +80,34 @@ class StudentSyllabusScreen extends StatelessWidget {
                               children: [
                                 const AiTranslatedText(
                                   'A Tua Assiduidade',
-                                  style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
+                                  style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold),
                                 ),
                                 Text(
                                   '${attendancePercentage.toStringAsFixed(1)}%',
-                                  style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+                                  style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 24,
+                                      fontWeight: FontWeight.bold),
                                 ),
                               ],
                             ),
                             if (currentSubject.attendanceControlEnabled)
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 6),
                                 decoration: BoxDecoration(
                                   color: Colors.black.withOpacity(0.2),
                                   borderRadius: BorderRadius.circular(20),
                                 ),
                                 child: Text(
                                   'Mínimo: ${currentSubject.requiredAttendancePercentage}%',
-                                  style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                                  style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold),
                                 ),
                               ),
                           ],
@@ -107,14 +123,17 @@ class StudentSyllabusScreen extends StatelessWidget {
                               _buildDownloadButton(
                                 icon: Icons.assignment_outlined,
                                 label: 'Programa',
-                                onTap: () => PdfService.generateProgramPDF(currentSubject),
+                                onTap: () => PdfService.generateProgramPDF(
+                                    currentSubject),
                               ),
                               const SizedBox(width: 16),
                               _buildDownloadButton(
                                 icon: Icons.summarize_outlined,
                                 label: 'Sumários',
                                 onTap: () async {
-                                  await PdfService.generateSummariesPDF(currentSubject, attendances, includeAttendance: false);
+                                  await PdfService.generateSummariesPDF(
+                                      currentSubject, attendances,
+                                      includeAttendance: false);
                                 },
                               ),
                               const SizedBox(width: 16),
@@ -122,9 +141,13 @@ class StudentSyllabusScreen extends StatelessWidget {
                                 icon: Icons.playlist_add_check,
                                 label: 'Minhas Presenças',
                                 onTap: () async {
-                                  final service = context.read<FirebaseService>();
-                                  final user = await service.getUserData(userId ?? '');
-                                  final institution = await service.getInstitution(currentSubject.institutionId);
+                                  final service =
+                                      context.read<FirebaseService>();
+                                  final user =
+                                      await service.getUserData(userId ?? '');
+                                  final institution =
+                                      await service.getInstitution(
+                                          currentSubject.institutionId);
                                   await PdfService.generateStudentAttendancePDF(
                                     subject: currentSubject,
                                     attendances: studentAttendances,
@@ -144,9 +167,11 @@ class StudentSyllabusScreen extends StatelessWidget {
                 ),
 
                 // Program Description
-                if (currentSubject.programDescription != null && currentSubject.programDescription!.isNotEmpty)
+                if (currentSubject.programDescription != null &&
+                    currentSubject.programDescription!.isNotEmpty)
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16.0, vertical: 8.0),
                     child: GlassCard(
                       padding: const EdgeInsets.all(16),
                       child: Column(
@@ -163,7 +188,9 @@ class StudentSyllabusScreen extends StatelessWidget {
                           Text(
                             currentSubject.programDescription!,
                             style: const TextStyle(
-                                color: Colors.white70, fontSize: 13, height: 1.5),
+                                color: Colors.white70,
+                                fontSize: 13,
+                                height: 1.5),
                           ),
                         ],
                       ),
@@ -221,7 +248,7 @@ class StudentSyllabusScreen extends StatelessWidget {
   Widget _buildSessionCard(BuildContext context, SyllabusSession s,
       Subject currentSubject, List<Attendance> studentAttendances) {
     final isPresent = studentAttendances.any((a) => a.sessionId == s.id);
-    
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: GlassCard(
@@ -295,9 +322,11 @@ class StudentSyllabusScreen extends StatelessWidget {
                 ),
                 if (s.isFinalized)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: (isPresent ? Colors.green : Colors.red).withOpacity(0.1),
+                      color: (isPresent ? Colors.green : Colors.red)
+                          .withOpacity(0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(

@@ -8,6 +8,7 @@ import 'signature_dialog.dart';
 import '../../models/subject_model.dart';
 import '../../models/user_model.dart';
 import 'package:uuid/uuid.dart';
+import 'ai_text_field.dart';
 
 class ManagementDocumentSection extends StatefulWidget {
   final String ownerId;
@@ -22,7 +23,8 @@ class ManagementDocumentSection extends StatefulWidget {
   });
 
   @override
-  State<ManagementDocumentSection> createState() => _ManagementDocumentSectionState();
+  State<ManagementDocumentSection> createState() =>
+      _ManagementDocumentSectionState();
 }
 
 class _ManagementDocumentSectionState extends State<ManagementDocumentSection> {
@@ -48,20 +50,25 @@ class _ManagementDocumentSectionState extends State<ManagementDocumentSection> {
               children: [
                 if (!_isSelectionMode)
                   IconButton(
-                    icon: const Icon(Icons.add_circle_outline, color: Color(0xFF7B61FF)),
+                    icon: const Icon(Icons.add_circle_outline,
+                        color: Color(0xFF7B61FF)),
                     onPressed: () => _showUploadDialog(context),
                     tooltip: 'Carregar Documento',
                   ),
                 IconButton(
-                  icon: Icon(_isSelectionMode ? Icons.close : Icons.chat_outlined,
-                      color: _isSelectionMode ? Colors.redAccent : Colors.white70),
+                  icon: Icon(
+                      _isSelectionMode ? Icons.close : Icons.chat_outlined,
+                      color:
+                          _isSelectionMode ? Colors.redAccent : Colors.white70),
                   onPressed: () {
                     setState(() {
                       _isSelectionMode = !_isSelectionMode;
                       if (!_isSelectionMode) _selectedDocIds.clear();
                     });
                   },
-                  tooltip: _isSelectionMode ? 'Cancelar Seleção' : 'DocTalk (Conversar com Docs)',
+                  tooltip: _isSelectionMode
+                      ? 'Cancelar Seleção'
+                      : 'DocTalk (Conversar com Docs)',
                 ),
               ],
             ),
@@ -73,22 +80,27 @@ class _ManagementDocumentSectionState extends State<ManagementDocumentSection> {
             child: Row(
               children: [
                 Text('${_selectedDocIds.length} selecionados',
-                    style: const TextStyle(color: Colors.white54, fontSize: 12)),
+                    style:
+                        const TextStyle(color: Colors.white54, fontSize: 12)),
                 const Spacer(),
                 ElevatedButton.icon(
-                  onPressed: _selectedDocIds.isEmpty ? null : () => _startDocTalk(context),
+                  onPressed: _selectedDocIds.isEmpty
+                      ? null
+                      : () => _startDocTalk(context),
                   icon: const Icon(Icons.smart_toy_outlined, size: 16),
                   label: const Text('Iniciar DocTalk'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF7B61FF),
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   ),
                 ),
               ],
             ),
           ),
         StreamBuilder<List<ManagementDocument>>(
-          stream: service.getManagementDocuments(widget.ownerId, widget.ownerType),
+          stream:
+              service.getManagementDocuments(widget.ownerId, widget.ownerType),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(child: CircularProgressIndicator());
@@ -113,19 +125,30 @@ class _ManagementDocumentSectionState extends State<ManagementDocumentSection> {
                 return ListTile(
                   contentPadding: EdgeInsets.zero,
                   leading: Icon(
-                    doc.fileType == 'pdf' ? Icons.picture_as_pdf : Icons.description,
-                    color: isSelected ? const Color(0xFF7B61FF) : _getStatusColor(doc.status),
+                    doc.fileType == 'pdf'
+                        ? Icons.picture_as_pdf
+                        : Icons.description,
+                    color: isSelected
+                        ? const Color(0xFF7B61FF)
+                        : _getStatusColor(doc.status),
                   ),
-                  title: Text(doc.title, style: const TextStyle(color: Colors.white, fontSize: 14)),
+                  title: Text(doc.title,
+                      style:
+                          const TextStyle(color: Colors.white, fontSize: 14)),
                   subtitle: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('${doc.category} • ${doc.createdAt.day}/${doc.createdAt.month}/${doc.createdAt.year}',
-                          style: const TextStyle(color: Colors.white38, fontSize: 12)),
+                      Text(
+                          '${doc.category} • ${doc.createdAt.day}/${doc.createdAt.month}/${doc.createdAt.year}',
+                          style: const TextStyle(
+                              color: Colors.white38, fontSize: 12)),
                       if (doc.requiredSignerIds.isNotEmpty)
-                        Text('Assinaturas: ${doc.signatures.length}/${doc.requiredSignerIds.length}',
+                        Text(
+                            'Assinaturas: ${doc.signatures.length}/${doc.requiredSignerIds.length}',
                             style: TextStyle(
-                                color: doc.isFullySigned ? Colors.greenAccent : Colors.amberAccent,
+                                color: doc.isFullySigned
+                                    ? Colors.greenAccent
+                                    : Colors.amberAccent,
                                 fontSize: 11)),
                     ],
                   ),
@@ -148,16 +171,20 @@ class _ManagementDocumentSectionState extends State<ManagementDocumentSection> {
                           children: [
                             if (_isUserRequiredSigner(doc))
                               IconButton(
-                                icon: const Icon(Icons.draw, color: Colors.amberAccent, size: 20),
-                                onPressed: () => _openSignatureDialog(context, doc),
+                                icon: const Icon(Icons.draw,
+                                    color: Colors.amberAccent, size: 20),
+                                onPressed: () =>
+                                    _openSignatureDialog(context, doc),
                                 tooltip: 'Assinar Documento',
                               ),
                             IconButton(
-                              icon: const Icon(Icons.download, color: Colors.white54, size: 20),
+                              icon: const Icon(Icons.download,
+                                  color: Colors.white54, size: 20),
                               onPressed: () => _downloadFile(doc.url),
                             ),
                             IconButton(
-                              icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 20),
+                              icon: const Icon(Icons.delete_outline,
+                                  color: Colors.redAccent, size: 20),
                               onPressed: () => _confirmDelete(context, doc),
                             ),
                           ],
@@ -173,18 +200,23 @@ class _ManagementDocumentSectionState extends State<ManagementDocumentSection> {
 
   Color _getStatusColor(ManagementDocumentStatus status) {
     switch (status) {
-      case ManagementDocumentStatus.completed: return Colors.greenAccent;
-      case ManagementDocumentStatus.signing: return Colors.amberAccent;
-      case ManagementDocumentStatus.rejected: return Colors.redAccent;
-      default: return Colors.white38;
+      case ManagementDocumentStatus.completed:
+        return Colors.greenAccent;
+      case ManagementDocumentStatus.signing:
+        return Colors.amberAccent;
+      case ManagementDocumentStatus.rejected:
+        return Colors.redAccent;
+      default:
+        return Colors.white38;
     }
   }
 
   bool _isUserRequiredSigner(ManagementDocument doc) {
     // Current logical condition: it's not fully signed AND current user is next in line
     if (doc.isFullySigned) return false;
-    const currentUserId = 'admin'; // Simulation: In real app, get from Auth service
-    
+    const currentUserId =
+        'admin'; // Simulation: In real app, get from Auth service
+
     // Check if user is in requiredSignerIds and hasn't signed yet
     final nextSignerIndex = doc.signatures.length;
     if (nextSignerIndex < doc.requiredSignerIds.length) {
@@ -193,7 +225,8 @@ class _ManagementDocumentSectionState extends State<ManagementDocumentSection> {
     return false;
   }
 
-  void _openSignatureDialog(BuildContext context, ManagementDocument doc) async {
+  void _openSignatureDialog(
+      BuildContext context, ManagementDocument doc) async {
     final result = await showDialog<String>(
       context: context,
       builder: (context) => SignatureDialog(
@@ -225,18 +258,15 @@ class _ManagementDocumentSectionState extends State<ManagementDocumentSection> {
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
           backgroundColor: const Color(0xFF1E1E2E),
-          title: const Text('Carregar Documento', style: TextStyle(color: Colors.white)),
+          title: const Text('Carregar Documento',
+              style: TextStyle(color: Colors.white)),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                TextField(
+                AiTextField(
                   controller: titleController,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: const InputDecoration(
-                    labelText: 'Título do Documento',
-                    labelStyle: TextStyle(color: Colors.white54),
-                  ),
+                  labelText: 'Título do Documento',
                 ),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
@@ -248,36 +278,48 @@ class _ManagementDocumentSectionState extends State<ManagementDocumentSection> {
                     labelStyle: TextStyle(color: Colors.white54),
                   ),
                   items: const [
-                    DropdownMenuItem(value: 'constitution', child: Text('Constituição/Empresa')),
-                    DropdownMenuItem(value: 'approval', child: Text('Aprovação Ciclo')),
+                    DropdownMenuItem(
+                        value: 'constitution',
+                        child: Text('Constituição/Empresa')),
+                    DropdownMenuItem(
+                        value: 'approval', child: Text('Aprovação Ciclo')),
                     DropdownMenuItem(value: 'minutes', child: Text('Atas')),
-                    DropdownMenuItem(value: 'contract', child: Text('Contrato Docente')),
+                    DropdownMenuItem(
+                        value: 'contract', child: Text('Contrato Docente')),
                     DropdownMenuItem(value: 'other', child: Text('Outro')),
                   ],
                   onChanged: (val) => setDialogState(() => category = val!),
                 ),
                 const SizedBox(height: 16),
-                const Text('Workflow de Assinatura (Opcional):', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                const Text('Workflow de Assinatura (Opcional):',
+                    style: TextStyle(color: Colors.white70, fontSize: 12)),
                 const SizedBox(height: 8),
                 StreamBuilder<List<UserModel>>(
-                  stream: Stream.fromFuture(context.read<FirebaseService>().getEligibleUsers()),
+                  stream: Stream.fromFuture(
+                      context.read<FirebaseService>().getEligibleUsers()),
                   builder: (context, usersSnap) {
                     final users = usersSnap.data ?? [];
                     return Column(
-                      children: users.map((u) => CheckboxListTile(
-                        title: Text(u.name, style: const TextStyle(color: Colors.white, fontSize: 12)),
-                        subtitle: Text(u.role.name, style: const TextStyle(color: Colors.white38, fontSize: 10)),
-                        value: selectedSignerIds.contains(u.id),
-                        onChanged: (val) {
-                          setDialogState(() {
-                            if (val == true) {
-                              selectedSignerIds.add(u.id);
-                            } else {
-                              selectedSignerIds.remove(u.id);
-                            }
-                          });
-                        },
-                      )).toList(),
+                      children: users
+                          .map((u) => CheckboxListTile(
+                                title: Text(u.name,
+                                    style: const TextStyle(
+                                        color: Colors.white, fontSize: 12)),
+                                subtitle: Text(u.role.name,
+                                    style: const TextStyle(
+                                        color: Colors.white38, fontSize: 10)),
+                                value: selectedSignerIds.contains(u.id),
+                                onChanged: (val) {
+                                  setDialogState(() {
+                                    if (val == true) {
+                                      selectedSignerIds.add(u.id);
+                                    } else {
+                                      selectedSignerIds.remove(u.id);
+                                    }
+                                  });
+                                },
+                              ))
+                          .toList(),
                     );
                   },
                 ),
@@ -300,10 +342,10 @@ class _ManagementDocumentSectionState extends State<ManagementDocumentSection> {
                   : () async {
                       if (titleController.text.isEmpty) return;
                       setDialogState(() => isUploading = true);
-                      
+
                       // Mocking file upload
                       await Future.delayed(const Duration(seconds: 1));
-                      
+
                       final newDoc = ManagementDocument(
                         id: const Uuid().v4(),
                         ownerId: widget.ownerId,
@@ -318,11 +360,14 @@ class _ManagementDocumentSectionState extends State<ManagementDocumentSection> {
                       );
 
                       if (context.mounted) {
-                        await context.read<FirebaseService>().saveManagementDocument(newDoc);
+                        await context
+                            .read<FirebaseService>()
+                            .saveManagementDocument(newDoc);
                         Navigator.pop(context);
                       }
                     },
-              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF7B61FF)),
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF7B61FF)),
               child: const Text('Carregar'),
             ),
           ],
@@ -343,7 +388,8 @@ class _ManagementDocumentSectionState extends State<ManagementDocumentSection> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF1E1E2E),
-        title: const Text('Eliminar Documento', style: TextStyle(color: Colors.white)),
+        title: const Text('Eliminar Documento',
+            style: TextStyle(color: Colors.white)),
         content: Text('Deseja eliminar o documento "${doc.title}"?',
             style: const TextStyle(color: Colors.white70)),
         actions: [
@@ -353,7 +399,9 @@ class _ManagementDocumentSectionState extends State<ManagementDocumentSection> {
           ),
           ElevatedButton(
             onPressed: () async {
-              await context.read<FirebaseService>().deleteManagementDocument(doc.id);
+              await context
+                  .read<FirebaseService>()
+                  .deleteManagementDocument(doc.id);
               if (context.mounted) Navigator.pop(context);
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
@@ -366,18 +414,23 @@ class _ManagementDocumentSectionState extends State<ManagementDocumentSection> {
 
   void _startDocTalk(BuildContext context) async {
     final service = context.read<FirebaseService>();
-    final allDocs = await service.getManagementDocuments(widget.ownerId, widget.ownerType).first;
-    final selectedDocs = allDocs.where((d) => _selectedDocIds.contains(d.id)).toList();
-    
+    final allDocs = await service
+        .getManagementDocuments(widget.ownerId, widget.ownerType)
+        .first;
+    final selectedDocs =
+        allDocs.where((d) => _selectedDocIds.contains(d.id)).toList();
+
     // Convert ManagementDocument to SubjectContent to satisfy the dialog
-    final mappedContents = selectedDocs.map((d) => SubjectContent(
-      id: d.id,
-      name: d.title,
-      url: d.url,
-      type: 'document',
-      category: 'support',
-      modificationLog: [],
-    )).toList();
+    final mappedContents = selectedDocs
+        .map((d) => SubjectContent(
+              id: d.id,
+              name: d.title,
+              url: d.url,
+              type: 'document',
+              category: 'support',
+              modificationLog: [],
+            ))
+        .toList();
 
     if (context.mounted) {
       showDialog(

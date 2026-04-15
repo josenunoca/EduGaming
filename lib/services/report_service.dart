@@ -2,11 +2,13 @@ import '../models/activity_model.dart';
 
 class ReportService {
   static String generateAnnualReport(List<InstitutionalActivity> activities) {
-    int totalParticipants = activities.fold(0, (sum, a) => sum + a.participants.length);
+    int totalParticipants =
+        activities.fold(0, (sum, a) => sum + a.participants.length);
     int totalMedia = activities.fold(0, (sum, a) => sum + a.media.length);
-    
+
     // Simple qualitative analysis
-    String qualitative = "Durante o ano letivo, foram realizadas ${activities.length} atividades de relevo, "
+    String qualitative =
+        "Durante o ano letivo, foram realizadas ${activities.length} atividades de relevo, "
         "envolvendo um total de $totalParticipants participantes. A dinâmica institucional foi enriquecida "
         "com a partilha de $totalMedia conteúdos multimédia.";
 

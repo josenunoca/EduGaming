@@ -1,4 +1,3 @@
-
 enum TransactionType { usage, recharge, limitAdjustment }
 
 class CreditTransaction {
@@ -39,7 +38,8 @@ class CreditTransaction {
       institutionId: map['institutionId'] ?? '',
       amount: map['amount'] ?? 0,
       description: map['description'] ?? '',
-      timestamp: DateTime.parse(map['timestamp'] ?? DateTime.now().toIso8601String()),
+      timestamp:
+          DateTime.parse(map['timestamp'] ?? DateTime.now().toIso8601String()),
       type: TransactionType.values.firstWhere(
         (e) => e.toString().split('.').last == map['type'],
         orElse: () => TransactionType.usage,

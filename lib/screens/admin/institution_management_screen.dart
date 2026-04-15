@@ -107,7 +107,8 @@ class _InstitutionManagementScreenState
                 );
                 final service = context.read<FirebaseService>();
                 final currentUser = service.currentUser;
-                await service.saveInstitution(institution, creatorUid: currentUser?.uid);
+                await service.saveInstitution(institution,
+                    creatorUid: currentUser?.uid);
                 if (mounted) {
                   Navigator.pop(context);
                   _clearControllers();

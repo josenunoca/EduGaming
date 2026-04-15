@@ -34,7 +34,8 @@ void main() async {
         ChangeNotifierProvider(create: (_) => LanguageProvider()),
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ProxyProvider<LanguageProvider, AiTranslationService>(
-          update: (_, language, __) => AiTranslationService(AppConfig.geminiApiKey),
+          update: (_, language, __) =>
+              AiTranslationService(AppConfig.geminiApiKey),
         ),
         Provider<AiChatService>(
           create: (_) => AiChatService(AppConfig.geminiApiKey),
@@ -59,7 +60,7 @@ class EduGamingApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final themeProvider = context.watch<ThemeProvider>();
-    
+
     return MaterialApp(
       navigatorKey: navigatorKey,
       title: 'EduGaming Platform',

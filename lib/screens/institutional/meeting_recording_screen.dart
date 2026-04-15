@@ -19,12 +19,14 @@ import '../../services/firebase_service.dart';
 import '../../services/ai_chat_service.dart';
 import '../../services/pdf_service.dart';
 import '../../widgets/ai_translated_text.dart';
+import '../../widgets/ai_text_field.dart';
 
 class MeetingRecordingScreen extends StatefulWidget {
   final Meeting meeting;
   final bool canManage;
 
-  const MeetingRecordingScreen({super.key, required this.meeting, this.canManage = false});
+  const MeetingRecordingScreen(
+      {super.key, required this.meeting, this.canManage = false});
 
   @override
   State<MeetingRecordingScreen> createState() => _MeetingRecordingScreenState();
@@ -59,10 +61,14 @@ class _MeetingRecordingScreenState extends State<MeetingRecordingScreen> {
     super.initState();
     _audioRecorder = AudioRecorder();
     _minutesController = TextEditingController(text: widget.meeting.minutes);
-    _transcriptController = TextEditingController(text: widget.meeting.transcript);
+    _transcriptController =
+        TextEditingController(text: widget.meeting.transcript);
     _agendaController = TextEditingController(text: widget.meeting.agenda);
-    _locationController = TextEditingController(text: widget.meeting.location ?? 'Rua da Empresa, 123, Sala de Reuniões');
-    _invitationController = TextEditingController(text: widget.meeting.invitationText);
+    _locationController = TextEditingController(
+        text:
+            widget.meeting.location ?? 'Rua da Empresa, 123, Sala de Reuniões');
+    _invitationController =
+        TextEditingController(text: widget.meeting.invitationText);
     _startDate = widget.meeting.date;
     if (widget.meeting.startTime != null) {
       _startTime = TimeOfDay.fromDateTime(widget.meeting.startTime!);
@@ -73,13 +79,14 @@ class _MeetingRecordingScreenState extends State<MeetingRecordingScreen> {
     _contextFileUrls = List.from(widget.meeting.contextFileUrls);
     _contextText = widget.meeting.contextText;
     _participants = List.from(widget.meeting.participants);
-    
+
     // Auto-mark presence if the current user is a participant
     _autoMarkPresence();
   }
 
   void _autoMarkPresence() {
-    final firebaseService = Provider.of<FirebaseService>(context, listen: false);
+    final firebaseService =
+        Provider.of<FirebaseService>(context, listen: false);
     final user = firebaseService.currentUser;
     if (user != null) {
       final index = _participants.indexWhere((p) => p.email == user.email);
@@ -90,7 +97,8 @@ class _MeetingRecordingScreenState extends State<MeetingRecordingScreen> {
   }
 
   Future<void> _updateParticipantStatus(String email, String status) async {
-    final instService = Provider.of<InstitutionalService>(context, listen: false);
+    final instService =
+        Provider.of<InstitutionalService>(context, listen: false);
     await instService.updateParticipantStatus(widget.meeting.id, email, status);
     setState(() {
       final index = _participants.indexWhere((p) => p.email == email);
@@ -110,7 +118,8 @@ class _MeetingRecordingScreenState extends State<MeetingRecordingScreen> {
     setState(() => _isGenerating = true);
     try {
       final aiChatService = Provider.of<AiChatService>(context, listen: false);
-      final improved = await aiChatService.refineMeetingAgenda(_agendaController.text);
+      final improved =
+          await aiChatService.refineMeetingAgenda(_agendaController.text);
       setState(() {
         _agendaController.text = improved;
         _isGenerating = false;
@@ -128,7 +137,7 @@ class _MeetingRecordingScreenState extends State<MeetingRecordingScreen> {
         setState(() => _isDictatingAgenda = false);
         return;
       }
-      
+
       setState(() {
         _isDictatingAgenda = false;
         _isGenerating = true;
@@ -143,9 +152,11 @@ class _MeetingRecordingScreenState extends State<MeetingRecordingScreen> {
           audioBytes = await io.File(path).readAsBytes();
         }
 
-        final aiChatService = Provider.of<AiChatService>(context, listen: false);
-        final result = await aiChatService.transcribeAndImproveAgenda(audioBytes);
-        
+        final aiChatService =
+            Provider.of<AiChatService>(context, listen: false);
+        final result =
+            await aiChatService.transcribeAndImproveAgenda(audioBytes);
+
         setState(() {
           _agendaController.text = result;
           _isGenerating = false;
@@ -162,15 +173,15 @@ class _MeetingRecordingScreenState extends State<MeetingRecordingScreen> {
     } else {
       if (await _audioRecorder.hasPermission()) {
         const config = RecordConfig();
-        
+
         final fileName = 'agenda_${DateTime.now().millisecondsSinceEpoch}.m4a';
         String? path;
-        
+
         if (!kIsWeb) {
           final directory = await getTemporaryDirectory();
           path = p.join(directory.path, fileName);
         }
-        
+
         await _audioRecorder.start(config, path: path ?? '');
         setState(() => _isDictatingAgenda = true);
       }
@@ -180,19 +191,22 @@ class _MeetingRecordingScreenState extends State<MeetingRecordingScreen> {
   Future<void> _finalizeMeetingNotice() async {
     if (_invitationController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: AiTranslatedText('Por favor, gere o texto da convocatória primeiro')),
+        const SnackBar(
+            content: AiTranslatedText(
+                'Por favor, gere o texto da convocatória primeiro')),
       );
       return;
     }
 
     setState(() => _isGenerating = true);
     try {
-      final instService = Provider.of<InstitutionalService>(context, listen: false);
-      
+      final instService =
+          Provider.of<InstitutionalService>(context, listen: false);
+
       // 1. Generate the formal PDF
       // We don't have a direct "generateAndGetUrl" but we can generate it
       // For now, let's just mark it as scheduled and finalized.
-      
+
       await instService.updateMeeting(widget.meeting.id, {
         'status': 'scheduled',
         'agenda': _agendaController.text,
@@ -203,7 +217,9 @@ class _MeetingRecordingScreenState extends State<MeetingRecordingScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: AiTranslatedText('Convocatória Finalizada! Agora está visível para todos os participantes.')),
+          const SnackBar(
+              content: AiTranslatedText(
+                  'Convocatória Finalizada! Agora está visível para todos os participantes.')),
         );
         setState(() => _isGenerating = false);
       }
@@ -218,7 +234,8 @@ class _MeetingRecordingScreenState extends State<MeetingRecordingScreen> {
   }
 
   Future<void> _saveMeetingDetails() async {
-    final instService = Provider.of<InstitutionalService>(context, listen: false);
+    final instService =
+        Provider.of<InstitutionalService>(context, listen: false);
     final startDateTime = DateTime(
       _startDate.year,
       _startDate.month,
@@ -247,7 +264,9 @@ class _MeetingRecordingScreenState extends State<MeetingRecordingScreen> {
   Future<void> _generateInvitation() async {
     if (_agendaController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: AiTranslatedText('Por favor, defina a ordem de trabalhos primeiro')),
+        const SnackBar(
+            content: AiTranslatedText(
+                'Por favor, defina a ordem de trabalhos primeiro')),
       );
       return;
     }
@@ -279,37 +298,47 @@ class _MeetingRecordingScreenState extends State<MeetingRecordingScreen> {
         final emailController = TextEditingController();
         return AlertDialog(
           backgroundColor: const Color(0xFF1E293B),
-          title: const AiTranslatedText('Adicionar Convidado Externo', style: TextStyle(color: Colors.white)),
+          title: const AiTranslatedText('Adicionar Convidado Externo',
+              style: TextStyle(color: Colors.white)),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
                 controller: nameController,
                 style: const TextStyle(color: Colors.white),
-                decoration: const InputDecoration(labelText: 'Nome', labelStyle: TextStyle(color: Colors.white70)),
+                decoration: const InputDecoration(
+                    labelText: 'Nome',
+                    labelStyle: TextStyle(color: Colors.white70)),
               ),
               TextField(
                 controller: emailController,
                 style: const TextStyle(color: Colors.white),
-                decoration: const InputDecoration(labelText: 'E-mail', labelStyle: TextStyle(color: Colors.white70)),
+                decoration: const InputDecoration(
+                    labelText: 'E-mail',
+                    labelStyle: TextStyle(color: Colors.white70)),
               ),
             ],
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const AiTranslatedText('Cancelar')),
+            TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const AiTranslatedText('Cancelar')),
             ElevatedButton(
               onPressed: () async {
-                if (nameController.text.isNotEmpty && emailController.text.isNotEmpty) {
+                if (nameController.text.isNotEmpty &&
+                    emailController.text.isNotEmpty) {
                   final newGuest = Participant(
                     name: nameController.text,
                     email: emailController.text,
                     status: 'invited',
                     isGuest: true,
                   );
-                  final instService = Provider.of<InstitutionalService>(context, listen: false);
+                  final instService =
+                      Provider.of<InstitutionalService>(context, listen: false);
                   final updatedParticipants = [..._participants, newGuest];
                   await instService.updateMeeting(widget.meeting.id, {
-                    'participants': updatedParticipants.map((p) => p.toMap()).toList(),
+                    'participants':
+                        updatedParticipants.map((p) => p.toMap()).toList(),
                   });
                   setState(() => _participants = updatedParticipants);
                   if (mounted) Navigator.pop(context);
@@ -344,7 +373,8 @@ class _MeetingRecordingScreenState extends State<MeetingRecordingScreen> {
         appBar: AppBar(
           backgroundColor: Colors.transparent,
           elevation: 0,
-          title: Text(widget.meeting.title, style: const TextStyle(color: Colors.white, fontSize: 16)),
+          title: Text(widget.meeting.title,
+              style: const TextStyle(color: Colors.white, fontSize: 16)),
           bottom: const TabBar(
             isScrollable: true,
             indicatorColor: Color(0xFF7B61FF),
@@ -390,44 +420,53 @@ class _MeetingRecordingScreenState extends State<MeetingRecordingScreen> {
             const SizedBox(height: 24),
           ],
           const AiTranslatedText('Ordem de Trabalhos (Tópicos)',
-              style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+              style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
-          TextField(
+          AiTextField(
             controller: _agendaController,
             maxLines: 5,
-            enabled: widget.canManage,
-            style: const TextStyle(color: Colors.white),
-            decoration: _inputDecoration('Ex: Aprovação de contas, Planeamento 2024...'),
+            hintText: 'Ex: Aprovação de contas, Planeamento 2024...',
             onChanged: (v) => _saveMeetingDetails(),
           ),
           const SizedBox(height: 16),
           if (widget.canManage)
             Row(
-            children: [
-              ElevatedButton.icon(
-                onPressed: _isGenerating ? null : _helpWithAgenda,
-                icon: const Icon(Icons.auto_awesome, size: 18),
-                label: const AiTranslatedText('Melhorar Agenda com IA'),
-                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF7B61FF).withValues(alpha: 0.8)),
-              ),
-              const SizedBox(width: 8),
-              ElevatedButton.icon(
-                onPressed: _isGenerating ? null : _toggleAgendaDictation,
-                icon: Icon(_isDictatingAgenda ? Icons.stop : Icons.mic, size: 18),
-                label: AiTranslatedText(_isDictatingAgenda ? 'Parar Ditado' : 'Ditar Agenda'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _isDictatingAgenda ? Colors.redAccent : Colors.white10,
-                  foregroundColor: Colors.white,
+              children: [
+                ElevatedButton.icon(
+                  onPressed: _isGenerating ? null : _helpWithAgenda,
+                  icon: const Icon(Icons.auto_awesome, size: 18),
+                  label: const AiTranslatedText('Melhorar Agenda com IA'),
+                  style: ElevatedButton.styleFrom(
+                      backgroundColor:
+                          const Color(0xFF7B61FF).withValues(alpha: 0.8)),
                 ),
-              ),
-            ],
-          ),
+                const SizedBox(width: 8),
+                ElevatedButton.icon(
+                  onPressed: _isGenerating ? null : _toggleAgendaDictation,
+                  icon: Icon(_isDictatingAgenda ? Icons.stop : Icons.mic,
+                      size: 18),
+                  label: AiTranslatedText(
+                      _isDictatingAgenda ? 'Parar Ditado' : 'Ditar Agenda'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor:
+                        _isDictatingAgenda ? Colors.redAccent : Colors.white10,
+                    foregroundColor: Colors.white,
+                  ),
+                ),
+              ],
+            ),
           const SizedBox(height: 24),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const AiTranslatedText('Texto da Convocatória (Editável)',
-                  style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold)),
               TextButton.icon(
                 onPressed: _isGeneratingInvitation ? null : _generateInvitation,
                 icon: const Icon(Icons.auto_awesome, size: 18),
@@ -436,12 +475,10 @@ class _MeetingRecordingScreenState extends State<MeetingRecordingScreen> {
             ],
           ),
           const SizedBox(height: 8),
-          TextField(
+          AiTextField(
             controller: _invitationController,
             maxLines: 8,
-            enabled: widget.canManage,
-            style: const TextStyle(color: Colors.white),
-            decoration: _inputDecoration('O texto formal da convocatória será gerado aqui...'),
+            hintText: 'O texto formal da convocatória será gerado aqui...',
             onChanged: (v) => _saveMeetingDetails(),
           ),
           const SizedBox(height: 16),
@@ -452,8 +489,11 @@ class _MeetingRecordingScreenState extends State<MeetingRecordingScreen> {
                 Expanded(
                   child: ElevatedButton.icon(
                     onPressed: _isGenerating ? null : _finalizeMeetingNotice,
-                    icon: Icon(_isGenerating ? Icons.hourglass_empty : Icons.check_circle),
-                    label: const AiTranslatedText('Finalizar e Notificar Participantes'),
+                    icon: Icon(_isGenerating
+                        ? Icons.hourglass_empty
+                        : Icons.check_circle),
+                    label: const AiTranslatedText(
+                        'Finalizar e Notificar Participantes'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.green,
                       padding: const EdgeInsets.symmetric(vertical: 16),
@@ -483,8 +523,11 @@ class _MeetingRecordingScreenState extends State<MeetingRecordingScreen> {
             OutlinedButton.icon(
               onPressed: _addGuest,
               icon: const Icon(Icons.person_add, color: Colors.white70),
-              label: const AiTranslatedText('Adicionar Novo Convidado (Fora do Órgão)', style: TextStyle(color: Colors.white70)),
-              style: OutlinedButton.styleFrom(side: BorderSide(color: Colors.white24)),
+              label: const AiTranslatedText(
+                  'Adicionar Novo Convidado (Fora do Órgão)',
+                  style: TextStyle(color: Colors.white70)),
+              style: OutlinedButton.styleFrom(
+                  side: BorderSide(color: Colors.white24)),
             ),
           const SizedBox(height: 32),
         ],
@@ -494,7 +537,8 @@ class _MeetingRecordingScreenState extends State<MeetingRecordingScreen> {
 
   Widget _buildSectionHeader(String title) {
     return AiTranslatedText(title,
-        style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold));
+        style: const TextStyle(
+            color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold));
   }
 
   Widget _buildMandatoryFields() {
@@ -513,7 +557,8 @@ class _MeetingRecordingScreenState extends State<MeetingRecordingScreen> {
                 child: _buildPickerTile(
                   icon: Icons.calendar_today,
                   label: 'Data',
-                  value: "${_startDate.day}/${_startDate.month}/${_startDate.year}",
+                  value:
+                      "${_startDate.day}/${_startDate.month}/${_startDate.year}",
                   onTap: _selectDate,
                 ),
               ),
@@ -538,25 +583,32 @@ class _MeetingRecordingScreenState extends State<MeetingRecordingScreen> {
             ],
           ),
           const SizedBox(height: 16),
-          TextField(
+          AiTextField(
             controller: _locationController,
-            style: const TextStyle(color: Colors.white, fontSize: 14),
+            labelText: 'Localização da Sessão',
+            onChanged: (v) => _saveMeetingDetails(),
             decoration: InputDecoration(
               prefixIcon: const Icon(Icons.location_on, color: Colors.white54, size: 20),
               labelText: 'Localização da Sessão',
               labelStyle: const TextStyle(color: Colors.white54),
               filled: true,
               fillColor: Colors.transparent,
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Colors.white24)),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: const BorderSide(color: Colors.white24),
+              ),
             ),
-            onChanged: (v) => _saveMeetingDetails(),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildPickerTile({required IconData icon, required String label, required String value, required VoidCallback onTap}) {
+  Widget _buildPickerTile(
+      {required IconData icon,
+      required String label,
+      required String value,
+      required VoidCallback onTap}) {
     return InkWell(
       onTap: onTap,
       child: Container(
@@ -572,24 +624,18 @@ class _MeetingRecordingScreenState extends State<MeetingRecordingScreen> {
               children: [
                 Icon(icon, size: 14, color: const Color(0xFF7B61FF)),
                 const SizedBox(width: 4),
-                AiTranslatedText(label, style: const TextStyle(color: Colors.white54, fontSize: 12)),
+                AiTranslatedText(label,
+                    style:
+                        const TextStyle(color: Colors.white54, fontSize: 12)),
               ],
             ),
             const SizedBox(height: 4),
-            Text(value, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            Text(value,
+                style: const TextStyle(
+                    color: Colors.white, fontWeight: FontWeight.bold)),
           ],
         ),
       ),
-    );
-  }
-
-  InputDecoration _inputDecoration(String hint) {
-    return InputDecoration(
-      hintText: hint,
-      hintStyle: const TextStyle(color: Colors.white24),
-      filled: true,
-      fillColor: Colors.white.withValues(alpha: 0.05),
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
     );
   }
 
@@ -613,7 +659,10 @@ class _MeetingRecordingScreenState extends State<MeetingRecordingScreen> {
     );
     if (picked != null) {
       setState(() {
-        if (isStart) _startTime = picked; else _endTime = picked;
+        if (isStart)
+          _startTime = picked;
+        else
+          _endTime = picked;
       });
       _saveMeetingDetails();
     }
@@ -621,30 +670,47 @@ class _MeetingRecordingScreenState extends State<MeetingRecordingScreen> {
 
   Widget _buildParticipantsHeader() {
     return const AiTranslatedText('Participantes Convocados',
-        style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold));
+        style: TextStyle(
+            color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold));
   }
 
   Widget _buildParticipantsList() {
     if (_participants.isEmpty) return const SizedBox();
     return Column(
-      children: _participants.map((p) => ListTile(
-        contentPadding: EdgeInsets.zero,
-        leading: CircleAvatar(
-          backgroundColor: p.isGuest ? Colors.orange.withValues(alpha: 0.2) : const Color(0xFF7B61FF).withValues(alpha: 0.2),
-          child: Text(p.name.substring(0, 1).toUpperCase(), style: TextStyle(color: p.isGuest ? Colors.orange : const Color(0xFF7B61FF))),
-        ),
-        title: Text(p.name, style: const TextStyle(color: Colors.white)),
-        subtitle: Text(p.email, style: const TextStyle(color: Colors.white54, fontSize: 12)),
-        trailing: p.isGuest ? IconButton(
-          icon: const Icon(Icons.remove_circle_outline, color: Colors.redAccent, size: 20),
-          onPressed: () => _removeParticipant(p.email),
-        ) : const Icon(Icons.check_circle, color: Colors.white24, size: 20),
-      )).toList(),
+      children: _participants
+          .map((p) => ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: CircleAvatar(
+                  backgroundColor: p.isGuest
+                      ? Colors.orange.withValues(alpha: 0.2)
+                      : const Color(0xFF7B61FF).withValues(alpha: 0.2),
+                  child: Text(p.name.substring(0, 1).toUpperCase(),
+                      style: TextStyle(
+                          color: p.isGuest
+                              ? Colors.orange
+                              : const Color(0xFF7B61FF))),
+                ),
+                title:
+                    Text(p.name, style: const TextStyle(color: Colors.white)),
+                subtitle: Text(p.email,
+                    style:
+                        const TextStyle(color: Colors.white54, fontSize: 12)),
+                trailing: p.isGuest
+                    ? IconButton(
+                        icon: const Icon(Icons.remove_circle_outline,
+                            color: Colors.redAccent, size: 20),
+                        onPressed: () => _removeParticipant(p.email),
+                      )
+                    : const Icon(Icons.check_circle,
+                        color: Colors.white24, size: 20),
+              ))
+          .toList(),
     );
   }
 
   void _removeParticipant(String email) async {
-    final instService = Provider.of<InstitutionalService>(context, listen: false);
+    final instService =
+        Provider.of<InstitutionalService>(context, listen: false);
     final updated = _participants.where((p) => p.email != email).toList();
     await instService.updateMeeting(widget.meeting.id, {
       'participants': updated.map((p) => p.toMap()).toList(),
@@ -655,36 +721,44 @@ class _MeetingRecordingScreenState extends State<MeetingRecordingScreen> {
   Future<void> _sendEmailInvitations() async {
     if (_invitationController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: AiTranslatedText('Por favor, gere o texto da convocatória primeiro')),
+        const SnackBar(
+            content: AiTranslatedText(
+                'Por favor, gere o texto da convocatória primeiro')),
       );
       return;
     }
 
     final emails = _participants.map((p) => p.email).join(',');
-    final subject = Uri.encodeComponent('Convocatória: ${widget.meeting.title}');
+    final subject =
+        Uri.encodeComponent('Convocatória: ${widget.meeting.title}');
     final body = Uri.encodeComponent(_invitationController.text);
-    
+
     final uri = Uri.parse('mailto:$emails?subject=$subject&body=$body');
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri);
-      
-      final instService = Provider.of<InstitutionalService>(context, listen: false);
+
+      final instService =
+          Provider.of<InstitutionalService>(context, listen: false);
       try {
-        await instService.updateMeeting(widget.meeting.id, {'status': 'scheduled'});
+        await instService
+            .updateMeeting(widget.meeting.id, {'status': 'scheduled'});
         await instService.markScheduledMeetingAsDelivered(widget.meeting.id);
       } catch (e) {
         debugPrint('Error updating meeting status: $e');
       }
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: AiTranslatedText('Convocatória preparada! Abra o seu cliente de e-mail para enviar.')),
+        const SnackBar(
+            content: AiTranslatedText(
+                'Convocatória preparada! Abra o seu cliente de e-mail para enviar.')),
       );
     }
   }
 
   Future<void> _exportConvocatoriaToPdf() async {
-    final instService = Provider.of<InstitutionalService>(context, listen: false);
-    final organs = await instService.getOrgans();
+    final instService =
+        Provider.of<InstitutionalService>(context, listen: false);
+    final organs = await instService.getOrgans(widget.meeting.institutionId);
     if (!mounted) return;
     final organ = organs.firstWhere((o) => o.id == widget.meeting.organId);
 
@@ -706,7 +780,10 @@ class _MeetingRecordingScreenState extends State<MeetingRecordingScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const AiTranslatedText('Lista de Presenças',
-                  style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold)),
               IconButton(
                 icon: const Icon(Icons.print, color: Colors.white70),
                 onPressed: () => _exportAttendanceSheet(),
@@ -721,11 +798,17 @@ class _MeetingRecordingScreenState extends State<MeetingRecordingScreen> {
               final p = _participants[index];
               return ListTile(
                 leading: CircleAvatar(
-                  backgroundColor: p.status.contains('attended') ? Colors.green : Colors.grey,
-                  child: Text(p.name.substring(0, 1).toUpperCase(), style: const TextStyle(color: Colors.white)),
+                  backgroundColor: p.status.contains('attended')
+                      ? Colors.green
+                      : Colors.grey,
+                  child: Text(p.name.substring(0, 1).toUpperCase(),
+                      style: const TextStyle(color: Colors.white)),
                 ),
-                title: Text(p.name, style: const TextStyle(color: Colors.white)),
-                subtitle: Text(p.email, style: const TextStyle(color: Colors.white38, fontSize: 12)),
+                title:
+                    Text(p.name, style: const TextStyle(color: Colors.white)),
+                subtitle: Text(p.email,
+                    style:
+                        const TextStyle(color: Colors.white38, fontSize: 12)),
                 trailing: _buildPresenceAction(p),
               );
             },
@@ -736,14 +819,16 @@ class _MeetingRecordingScreenState extends State<MeetingRecordingScreen> {
   }
 
   Future<void> _exportAttendanceSheet() async {
-    final instService = Provider.of<InstitutionalService>(context, listen: false);
-    final organs = await instService.getOrgans();
+    final instService =
+        Provider.of<InstitutionalService>(context, listen: false);
+    final organs = await instService.getOrgans(widget.meeting.institutionId);
     if (!mounted) return;
     final organ = organs.firstWhere((o) => o.id == widget.meeting.organId);
-    
+
     await PdfService.generateAttendanceSheetPDF(
       organ: organ,
-      meeting: widget.meeting.copyWith(participants: _participants, agenda: _agendaController.text),
+      meeting: widget.meeting.copyWith(
+          participants: _participants, agenda: _agendaController.text),
     );
   }
 
@@ -753,20 +838,28 @@ class _MeetingRecordingScreenState extends State<MeetingRecordingScreen> {
     }
     if (!widget.canManage) {
       return Icon(
-        p.status == 'attended_manual' ? Icons.check_circle : Icons.radio_button_unchecked,
+        p.status == 'attended_manual'
+            ? Icons.check_circle
+            : Icons.radio_button_unchecked,
         color: p.status == 'attended_manual' ? Colors.green : Colors.white24,
       );
     }
     return PopupMenuButton<String>(
       icon: Icon(
-        p.status == 'attended_manual' ? Icons.check_circle : Icons.radio_button_unchecked,
+        p.status == 'attended_manual'
+            ? Icons.check_circle
+            : Icons.radio_button_unchecked,
         color: p.status == 'attended_manual' ? Colors.green : Colors.white24,
       ),
       onSelected: (status) => _updateParticipantStatus(p.email, status),
       itemBuilder: (context) => [
-        const PopupMenuItem(value: 'attended_manual', child: AiTranslatedText('Presente (Manual)')),
-        const PopupMenuItem(value: 'absent', child: AiTranslatedText('Ausente')),
-        const PopupMenuItem(value: 'invited', child: AiTranslatedText('Convocado')),
+        const PopupMenuItem(
+            value: 'attended_manual',
+            child: AiTranslatedText('Presente (Manual)')),
+        const PopupMenuItem(
+            value: 'absent', child: AiTranslatedText('Ausente')),
+        const PopupMenuItem(
+            value: 'invited', child: AiTranslatedText('Convocado')),
       ],
     );
   }
@@ -806,8 +899,8 @@ class _MeetingRecordingScreenState extends State<MeetingRecordingScreen> {
       child: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: _isDragging 
-              ? const Color(0xFF7B61FF).withValues(alpha: 0.1) 
+          color: _isDragging
+              ? const Color(0xFF7B61FF).withValues(alpha: 0.1)
               : Colors.white.withValues(alpha: 0.05),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
@@ -822,18 +915,27 @@ class _MeetingRecordingScreenState extends State<MeetingRecordingScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const AiTranslatedText('Documentos de Apoio',
-                    style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold)),
                 if (_isUploadingDoc)
-                  const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF7B61FF)))
+                  const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: Color(0xFF7B61FF)))
                 else if (widget.canManage)
                   IconButton(
-                    icon: const Icon(Icons.add_circle, color: Color(0xFF7B61FF)),
+                    icon:
+                        const Icon(Icons.add_circle, color: Color(0xFF7B61FF)),
                     onPressed: _pickAndUploadDocument,
                   ),
               ],
             ),
             if (widget.canManage)
-              const AiTranslatedText('Arraste ou carregue ficheiros para dar contexto.',
+              const AiTranslatedText(
+                  'Arraste ou carregue ficheiros para dar contexto.',
                   style: TextStyle(color: Colors.white54, fontSize: 12)),
             const SizedBox(height: 12),
             if (_contextFileUrls.isEmpty && !_isDragging)
@@ -849,9 +951,11 @@ class _MeetingRecordingScreenState extends State<MeetingRecordingScreen> {
                     padding: EdgeInsets.all(20),
                     child: Column(
                       children: [
-                        Icon(Icons.file_upload, color: Color(0xFF7B61FF), size: 40),
+                        Icon(Icons.file_upload,
+                            color: Color(0xFF7B61FF), size: 40),
                         SizedBox(height: 8),
-                        AiTranslatedText('Largar ficheiros aqui', style: TextStyle(color: Color(0xFF7B61FF))),
+                        AiTranslatedText('Largar ficheiros aqui',
+                            style: TextStyle(color: Color(0xFF7B61FF))),
                       ],
                     ),
                   ),
@@ -869,10 +973,14 @@ class _MeetingRecordingScreenState extends State<MeetingRecordingScreen> {
     IconData icon = Icons.description;
     Color iconColor = Colors.white70;
 
-    if (fileName.contains('.jpg') || fileName.contains('.png') || fileName.contains('.jpeg')) {
+    if (fileName.contains('.jpg') ||
+        fileName.contains('.png') ||
+        fileName.contains('.jpeg')) {
       icon = Icons.image;
       iconColor = Colors.blueAccent;
-    } else if (fileName.contains('.mp3') || fileName.contains('.wav') || fileName.contains('.m4a')) {
+    } else if (fileName.contains('.mp3') ||
+        fileName.contains('.wav') ||
+        fileName.contains('.m4a')) {
       icon = Icons.audiotrack;
       iconColor = Colors.orangeAccent;
     } else if (fileName.contains('.pdf')) {
@@ -896,7 +1004,8 @@ class _MeetingRecordingScreenState extends State<MeetingRecordingScreen> {
         mainAxisSize: MainAxisSize.min,
         children: [
           IconButton(
-            icon: const Icon(Icons.open_in_new, color: Colors.white24, size: 18),
+            icon:
+                const Icon(Icons.open_in_new, color: Colors.white24, size: 18),
             onPressed: () => _launchURL(url),
           ),
           if (widget.canManage)
@@ -919,7 +1028,22 @@ class _MeetingRecordingScreenState extends State<MeetingRecordingScreen> {
   Future<void> _pickAndUploadDocument() async {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
-      allowedExtensions: ['pdf', 'txt', 'docx', 'doc', 'xls', 'xlsx', 'ppt', 'pptx', 'jpg', 'png', 'jpeg', 'mp3', 'wav', 'm4a'],
+      allowedExtensions: [
+        'pdf',
+        'txt',
+        'docx',
+        'doc',
+        'xls',
+        'xlsx',
+        'ppt',
+        'pptx',
+        'jpg',
+        'png',
+        'jpeg',
+        'mp3',
+        'wav',
+        'm4a'
+      ],
       withData: true,
     );
 
@@ -939,15 +1063,18 @@ class _MeetingRecordingScreenState extends State<MeetingRecordingScreen> {
   Future<void> _uploadBytes(Uint8List bytes, String fileName) async {
     setState(() => _isUploadingDoc = true);
     try {
-      final instService = Provider.of<InstitutionalService>(context, listen: false);
-      final url = await instService.uploadMeetingDocument(widget.meeting.id, bytes, fileName);
-      
+      final instService =
+          Provider.of<InstitutionalService>(context, listen: false);
+      final url = await instService.uploadMeetingDocument(
+          widget.meeting.id, bytes, fileName);
+
       String extracted = '';
       if (!kIsWeb && (fileName.endsWith('.pdf') || fileName.endsWith('.txt'))) {
         try {
           final extractor = TextExtractor();
           final tempDir = await getTemporaryDirectory();
-          final tempFile = await io.File(p.join(tempDir.path, fileName)).writeAsBytes(bytes);
+          final tempFile =
+              await io.File(p.join(tempDir.path, fileName)).writeAsBytes(bytes);
           final extractionResult = await extractor.extractText(tempFile.path);
           extracted = extractionResult.text;
         } catch (e) {
@@ -982,7 +1109,8 @@ class _MeetingRecordingScreenState extends State<MeetingRecordingScreen> {
 
   Future<void> _removeDocument(String url) async {
     setState(() => _contextFileUrls.remove(url));
-    final instService = Provider.of<InstitutionalService>(context, listen: false);
+    final instService =
+        Provider.of<InstitutionalService>(context, listen: false);
     await instService.updateMeeting(widget.meeting.id, {
       'contextFileUrls': _contextFileUrls,
     });
@@ -1012,9 +1140,13 @@ class _MeetingRecordingScreenState extends State<MeetingRecordingScreen> {
             child: Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: _isRecording ? Colors.red.withValues(alpha: 0.2) : const Color(0xFF7B61FF).withValues(alpha: 0.2),
+                color: _isRecording
+                    ? Colors.red.withValues(alpha: 0.2)
+                    : const Color(0xFF7B61FF).withValues(alpha: 0.2),
                 shape: BoxShape.circle,
-                border: Border.all(color: _isRecording ? Colors.red : const Color(0xFF7B61FF), width: 4),
+                border: Border.all(
+                    color: _isRecording ? Colors.red : const Color(0xFF7B61FF),
+                    width: 4),
               ),
               child: Icon(
                 _isRecording ? Icons.stop : Icons.mic,
@@ -1046,8 +1178,11 @@ class _MeetingRecordingScreenState extends State<MeetingRecordingScreen> {
           const CircularProgressIndicator(color: Color(0xFF7B61FF)),
           const SizedBox(height: 16),
           AiTranslatedText(
-            _isUploading ? 'A carregar áudio...' : 'Gerando transcrição e ata...',
-            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            _isUploading
+                ? 'A carregar áudio...'
+                : 'Gerando transcrição e ata...',
+            style: const TextStyle(
+                color: Colors.white, fontWeight: FontWeight.bold),
           ),
         ],
       ),
@@ -1063,7 +1198,10 @@ class _MeetingRecordingScreenState extends State<MeetingRecordingScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const AiTranslatedText('Proposta de Ata',
-            style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+            style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.bold)),
         const SizedBox(height: 12),
         TextField(
           controller: _minutesController,
@@ -1072,7 +1210,9 @@ class _MeetingRecordingScreenState extends State<MeetingRecordingScreen> {
           decoration: InputDecoration(
             filled: true,
             fillColor: Colors.white.withValues(alpha: 0.05),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+            border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none),
           ),
         ),
         const SizedBox(height: 24),
@@ -1085,7 +1225,8 @@ class _MeetingRecordingScreenState extends State<MeetingRecordingScreen> {
             label: const AiTranslatedText('Finalizar e Bloquear Ata'),
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF10B981),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
             ),
           ),
         ),
@@ -1094,13 +1235,14 @@ class _MeetingRecordingScreenState extends State<MeetingRecordingScreen> {
   }
 
   Future<void> _finalizeAndSave() async {
-    final instService = Provider.of<InstitutionalService>(context, listen: false);
+    final instService =
+        Provider.of<InstitutionalService>(context, listen: false);
     await instService.updateMeeting(widget.meeting.id, {
       'minutes': _minutesController.text,
       'status': 'finalized',
     });
     if (mounted) {
-       ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: AiTranslatedText('Ata finalizada!')),
       );
       Navigator.pop(context);
@@ -1108,10 +1250,11 @@ class _MeetingRecordingScreenState extends State<MeetingRecordingScreen> {
   }
 
   Future<void> _exportToPdf() async {
-    final instService = Provider.of<InstitutionalService>(context, listen: false);
-    final organs = await instService.getOrgans();
+    final instService =
+        Provider.of<InstitutionalService>(context, listen: false);
+    final organs = await instService.getOrgans(widget.meeting.institutionId);
     final organ = organs.firstWhere((o) => o.id == widget.meeting.organId);
-    
+
     await PdfService.generateMeetingMinutesPDF(
       organ: organ,
       meeting: widget.meeting,
@@ -1160,9 +1303,11 @@ class _MeetingRecordingScreenState extends State<MeetingRecordingScreen> {
   Future<void> _uploadAndGenerate() async {
     if (_recordingPath == null) return;
     setState(() => _isUploading = true);
-    final firebaseService = Provider.of<FirebaseService>(context, listen: false);
+    final firebaseService =
+        Provider.of<FirebaseService>(context, listen: false);
     final aiChatService = Provider.of<AiChatService>(context, listen: false);
-    final instService = Provider.of<InstitutionalService>(context, listen: false);
+    final instService =
+        Provider.of<InstitutionalService>(context, listen: false);
 
     try {
       Uint8List bytes;
@@ -1173,13 +1318,15 @@ class _MeetingRecordingScreenState extends State<MeetingRecordingScreen> {
         bytes = await _readFileBytes(_recordingPath!);
       }
 
-      final audioUrl = await firebaseService.uploadMeetingAudio(widget.meeting.id, bytes);
+      final audioUrl =
+          await firebaseService.uploadMeetingAudio(widget.meeting.id, bytes);
       if (audioUrl != null) {
         setState(() {
           _isUploading = false;
           _isGenerating = true;
         });
-        final result = await aiChatService.generateMeetingMinutes(audioUrl, context: _contextText);
+        final result = await aiChatService.generateMeetingMinutes(audioUrl,
+            context: _contextText);
         setState(() {
           _minutesController.text = result['minutes'] ?? '';
           _transcriptController.text = result['transcript'] ?? '';
@@ -1193,7 +1340,10 @@ class _MeetingRecordingScreenState extends State<MeetingRecordingScreen> {
         });
       }
     } catch (e) {
-      setState(() { _isUploading = false; _isGenerating = false; });
+      setState(() {
+        _isUploading = false;
+        _isGenerating = false;
+      });
     }
   }
 

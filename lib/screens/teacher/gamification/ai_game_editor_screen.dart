@@ -11,7 +11,6 @@ import '../../../widgets/glass_card.dart';
 import '../../../widgets/ai_translated_text.dart';
 import 'package:file_picker/file_picker.dart';
 
-
 class AiGameEditorScreen extends StatefulWidget {
   final Subject subject;
   final AiGame game;
@@ -103,7 +102,8 @@ class _AiGameEditorScreenState extends State<AiGameEditorScreen> {
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF1E293B),
         title: const AiTranslatedText('Eliminar Pergunta'),
-        content: const AiTranslatedText('Tem a certeza que deseja eliminar esta pergunta?'),
+        content: const AiTranslatedText(
+            'Tem a certeza que deseja eliminar esta pergunta?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -114,7 +114,8 @@ class _AiGameEditorScreenState extends State<AiGameEditorScreen> {
               setState(() => _questions.removeAt(index));
               Navigator.pop(context);
             },
-            child: const AiTranslatedText('Eliminar', style: TextStyle(color: Colors.redAccent)),
+            child: const AiTranslatedText('Eliminar',
+                style: TextStyle(color: Colors.redAccent)),
           ),
         ],
       ),
@@ -223,7 +224,6 @@ class _AiGameEditorScreenState extends State<AiGameEditorScreen> {
                           } else if (allowedTypes.length > 1) {
                             allowedTypes.remove('options');
                           }
-
                         });
                       },
                     ),
@@ -237,7 +237,6 @@ class _AiGameEditorScreenState extends State<AiGameEditorScreen> {
                           } else if (allowedTypes.length > 1) {
                             allowedTypes.remove('text');
                           }
-
                         });
                       },
                     ),
@@ -251,7 +250,6 @@ class _AiGameEditorScreenState extends State<AiGameEditorScreen> {
                           } else if (allowedTypes.length > 1) {
                             allowedTypes.remove('audio');
                           }
-
                         });
                       },
                     ),
@@ -265,7 +263,6 @@ class _AiGameEditorScreenState extends State<AiGameEditorScreen> {
                           } else if (allowedTypes.length > 1) {
                             allowedTypes.remove('image');
                           }
-
                         });
                       },
                     ),
@@ -380,17 +377,18 @@ class _AiGameEditorScreenState extends State<AiGameEditorScreen> {
                         avatar: const Icon(Icons.camera_alt, size: 16),
                         label: const AiTranslatedText('Foto'),
                         onPressed: () async {
-                          final result = await FilePicker.platform.pickFiles(
-                              type: FileType.image, withData: true);
-                          if (result != null && result.files.single.bytes != null) {
+                          final result = await FilePicker.platform
+                              .pickFiles(type: FileType.image, withData: true);
+                          if (result != null &&
+                              result.files.single.bytes != null) {
                             final bytes = result.files.single.bytes!;
                             setDialogState(() => isGenerating = true);
-                            
+
                             if (!context.mounted) return;
                             final url = await context
                                 .read<FirebaseService>()
-                                .uploadGameMedia(widget.game.id,
-                                    bytes, 'question_image.png');
+                                .uploadGameMedia(widget.game.id, bytes,
+                                    'question_image.png');
 
                             setDialogState(() {
                               mediaUrl = url;
@@ -404,17 +402,18 @@ class _AiGameEditorScreenState extends State<AiGameEditorScreen> {
                         avatar: const Icon(Icons.mic, size: 16),
                         label: const AiTranslatedText('Áudio'),
                         onPressed: () async {
-                          final result = await FilePicker.platform.pickFiles(
-                              type: FileType.audio, withData: true);
-                          if (result != null && result.files.single.bytes != null) {
+                          final result = await FilePicker.platform
+                              .pickFiles(type: FileType.audio, withData: true);
+                          if (result != null &&
+                              result.files.single.bytes != null) {
                             final bytes = result.files.single.bytes!;
                             setDialogState(() => isGenerating = true);
-                            
+
                             if (!context.mounted) return;
                             final url = await context
                                 .read<FirebaseService>()
-                                .uploadGameMedia(widget.game.id,
-                                    bytes, 'question_audio.mp3');
+                                .uploadGameMedia(widget.game.id, bytes,
+                                    'question_audio.mp3');
 
                             setDialogState(() {
                               mediaUrl = url;
@@ -438,7 +437,7 @@ class _AiGameEditorScreenState extends State<AiGameEditorScreen> {
                               final bytes = base64Decode(base64Image);
                               final url = await fs.uploadGameMedia(
                                   widget.game.id, bytes, 'ai_image.png');
-                              
+
                               if (url != null) {
                                 setDialogState(() {
                                   mediaUrl = url;
@@ -447,7 +446,9 @@ class _AiGameEditorScreenState extends State<AiGameEditorScreen> {
                               } else {
                                 if (mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(content: AiTranslatedText('Erro ao fazer upload da imagem gerada.')),
+                                    const SnackBar(
+                                        content: AiTranslatedText(
+                                            'Erro ao fazer upload da imagem gerada.')),
                                   );
                                 }
                               }
@@ -572,8 +573,10 @@ class _AiGameEditorScreenState extends State<AiGameEditorScreen> {
           else ...[
             TextButton.icon(
               onPressed: () => _saveGame(false),
-              icon: const Icon(Icons.save_outlined, color: Colors.white, size: 18),
-              label: const AiTranslatedText('Gravar', style: TextStyle(color: Colors.white)),
+              icon: const Icon(Icons.save_outlined,
+                  color: Colors.white, size: 18),
+              label: const AiTranslatedText('Gravar',
+                  style: TextStyle(color: Colors.white)),
             ),
             const SizedBox(width: 8),
             Padding(
@@ -650,7 +653,8 @@ class _AiGameEditorScreenState extends State<AiGameEditorScreen> {
                                                 size: 14, color: Colors.white54)
                                           else if (q.mediaType == 'video')
                                             const Icon(Icons.videocam,
-                                                size: 14, color: Colors.white54),
+                                                size: 14,
+                                                color: Colors.white54),
                                         ],
                                       ),
                                     ),
@@ -664,7 +668,9 @@ class _AiGameEditorScreenState extends State<AiGameEditorScreen> {
                             ),
                             IconButton(
                               icon: Icon(Icons.delete_outline,
-                                  size: 18, color: Colors.redAccent.withValues(alpha: 0.5)),
+                                  size: 18,
+                                  color:
+                                      Colors.redAccent.withValues(alpha: 0.5)),
                               onPressed: () => _removeQuestion(index),
                             ),
                           ],

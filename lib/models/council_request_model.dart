@@ -66,7 +66,8 @@ class CouncilRequest {
         orElse: () => CouncilRequestStatus.pending,
       ),
       meetingId: map['meetingId'],
-      createdAt: DateTime.parse(map['createdAt'] ?? DateTime.now().toIso8601String()),
+      createdAt:
+          DateTime.parse(map['createdAt'] ?? DateTime.now().toIso8601String()),
     );
   }
 }

@@ -1,18 +1,13 @@
 import 'package:uuid/uuid.dart';
 
-enum ManagementDocumentOwnerType { 
-  institution, 
-  studyCycle, 
+enum ManagementDocumentOwnerType {
+  institution,
+  studyCycle,
   organ,
   teacher // Added for individual teacher documents/contracts
 }
 
-enum ManagementDocumentStatus {
-  pending,
-  signing,
-  completed,
-  rejected
-}
+enum ManagementDocumentStatus { pending, signing, completed, rejected }
 
 class SignatureEntry {
   final String userId;
@@ -43,8 +38,8 @@ class SignatureEntry {
     return SignatureEntry(
       userId: map['userId'] ?? '',
       userName: map['userName'] ?? '',
-      timestamp: DateTime.parse(
-          map['timestamp'] ?? DateTime.now().toIso8601String()),
+      timestamp:
+          DateTime.parse(map['timestamp'] ?? DateTime.now().toIso8601String()),
       signatureType: map['signatureType'] ?? 'electronic',
       ipAddress: map['ipAddress'],
     );
@@ -58,7 +53,8 @@ class ManagementDocument {
   final String title;
   final String url;
   final String fileType; // 'pdf', 'doc', 'image', etc.
-  final String category; // 'constitution', 'approval', 'minutes', 'contract', 'other'
+  final String
+      category; // 'constitution', 'approval', 'minutes', 'contract', 'other'
   final String createdBy;
   final DateTime createdAt;
   final List<String> requiredSignerIds;
@@ -80,7 +76,9 @@ class ManagementDocument {
     this.status = ManagementDocumentStatus.pending,
   });
 
-  bool get isFullySigned => signatures.length >= requiredSignerIds.length && requiredSignerIds.isNotEmpty;
+  bool get isFullySigned =>
+      signatures.length >= requiredSignerIds.length &&
+      requiredSignerIds.isNotEmpty;
 
   Map<String, dynamic> toMap() {
     return {
@@ -112,8 +110,8 @@ class ManagementDocument {
       fileType: map['fileType'] ?? 'pdf',
       category: map['category'] ?? 'other',
       createdBy: map['createdBy'] ?? '',
-      createdAt: DateTime.parse(
-          map['createdAt'] ?? DateTime.now().toIso8601String()),
+      createdAt:
+          DateTime.parse(map['createdAt'] ?? DateTime.now().toIso8601String()),
       requiredSignerIds: List<String>.from(map['requiredSignerIds'] ?? []),
       signatures: (map['signatures'] as List? ?? [])
           .map((s) => SignatureEntry.fromMap(s))

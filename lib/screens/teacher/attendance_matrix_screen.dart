@@ -35,7 +35,8 @@ class _AttendanceMatrixScreenState extends State<AttendanceMatrixScreen> {
     final service = context.read<FirebaseService>();
     try {
       final user = await service.getUserModel(service.currentUser!.uid);
-      final institution = await service.getInstitution(widget.subject.institutionId);
+      final institution =
+          await service.getInstitution(widget.subject.institutionId);
 
       if (mounted) {
         setState(() {
@@ -53,7 +54,8 @@ class _AttendanceMatrixScreenState extends State<AttendanceMatrixScreen> {
     }
   }
 
-  Future<void> _toggleAttendance(Enrollment student, SyllabusSession session, bool isCurrentPresent) async {
+  Future<void> _toggleAttendance(Enrollment student, SyllabusSession session,
+      bool isCurrentPresent) async {
     if (_currentUser?.role == UserRole.student) return;
 
     final service = context.read<FirebaseService>();
@@ -61,7 +63,8 @@ class _AttendanceMatrixScreenState extends State<AttendanceMatrixScreen> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF1E293B),
-        title: AiTranslatedText(isCurrentPresent ? 'Remover Presença' : 'Marcar Presença Manual'),
+        title: AiTranslatedText(
+            isCurrentPresent ? 'Remover Presença' : 'Marcar Presença Manual'),
         content: AiTranslatedText(
           isCurrentPresent
               ? 'Deseja remover a presença de ${student.studentName} na sessão ${session.sessionNumber}?'
@@ -69,11 +72,15 @@ class _AttendanceMatrixScreenState extends State<AttendanceMatrixScreen> {
           style: const TextStyle(color: Colors.white70),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const AiTranslatedText('Cancelar')),
+          TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const AiTranslatedText('Cancelar')),
           CustomButton(
             onPressed: () => Navigator.pop(context, true),
             label: isCurrentPresent ? 'Remover' : 'Confirmar',
-            variant: isCurrentPresent ? CustomButtonVariant.danger : CustomButtonVariant.primary,
+            variant: isCurrentPresent
+                ? CustomButtonVariant.danger
+                : CustomButtonVariant.primary,
             height: 32,
           ),
         ],
@@ -109,12 +116,15 @@ class _AttendanceMatrixScreenState extends State<AttendanceMatrixScreen> {
       initialData: widget.subject,
       builder: (context, subjectSnapshot) {
         final currentSubject = subjectSnapshot.data ?? widget.subject;
-        final finalizedSessions = currentSubject.sessions.where((s) => s.isFinalized).toList()
+        final finalizedSessions = currentSubject.sessions
+            .where((s) => s.isFinalized)
+            .toList()
           ..sort((a, b) => a.sessionNumber.compareTo(b.sessionNumber));
 
         return StreamBuilder<List<Enrollment>>(
           stream: _currentUser?.role == UserRole.student
-              ? service.getEnrollmentsForSubjectByUser(currentSubject.id, _currentUser!.id)
+              ? service.getEnrollmentsForSubjectByUser(
+                  currentSubject.id, _currentUser!.id)
               : service.getEnrollmentsForSubject(currentSubject.id),
           builder: (context, enrollmentSnapshot) {
             final students = (enrollmentSnapshot.data ?? [])
@@ -134,10 +144,12 @@ class _AttendanceMatrixScreenState extends State<AttendanceMatrixScreen> {
                     backgroundColor: Colors.transparent,
                     elevation: 0,
                     actions: [
-                      if (_currentUser?.role == UserRole.teacher && _currentUser != null)
+                      if (_currentUser?.role == UserRole.teacher &&
+                          _currentUser != null)
                         IconButton(
                           icon: const Icon(Icons.picture_as_pdf),
-                          onPressed: () => PdfService.generateAttendanceMatrixPDF(
+                          onPressed: () =>
+                              PdfService.generateAttendanceMatrixPDF(
                             subject: currentSubject,
                             students: students,
                             attendances: allAttendances,
@@ -150,8 +162,8 @@ class _AttendanceMatrixScreenState extends State<AttendanceMatrixScreen> {
                       IconButton(
                         icon: const Icon(Icons.refresh),
                         onPressed: () {
-                           setState(() => _isLoading = true);
-                           _loadData();
+                          setState(() => _isLoading = true);
+                          _loadData();
                         },
                         tooltip: 'Recarregar Dados Fixos',
                       ),
@@ -176,25 +188,34 @@ class _AttendanceMatrixScreenState extends State<AttendanceMatrixScreen> {
                                   GlassCard(
                                     padding: const EdgeInsets.all(16),
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Row(
                                           children: [
-                                            const Icon(Icons.info_outline, color: Color(0xFF00D1FF)),
+                                            const Icon(Icons.info_outline,
+                                                color: Color(0xFF00D1FF)),
                                             const SizedBox(width: 12),
                                             Expanded(
                                               child: AiTranslatedText(
                                                 '${currentSubject.name} - ${currentSubject.academicYear}',
-                                                style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                                                style: const TextStyle(
+                                                    color: Colors.white,
+                                                    fontSize: 16,
+                                                    fontWeight:
+                                                        FontWeight.bold),
                                               ),
                                             ),
                                           ],
                                         ),
-                                        if (currentSubject.attendanceControlEnabled) ...[
+                                        if (currentSubject
+                                            .attendanceControlEnabled) ...[
                                           const SizedBox(height: 8),
                                           Text(
                                             'Controlo de Faltas Ativo: Mínimo ${currentSubject.requiredAttendancePercentage}%',
-                                            style: const TextStyle(color: Colors.orangeAccent, fontSize: 12),
+                                            style: const TextStyle(
+                                                color: Colors.orangeAccent,
+                                                fontSize: 12),
                                           ),
                                         ],
                                       ],
@@ -208,74 +229,144 @@ class _AttendanceMatrixScreenState extends State<AttendanceMatrixScreen> {
                                           ? const Center(
                                               child: AiTranslatedText(
                                                 'Nenhuma sessão finalizada para exibir presenças.',
-                                                style: TextStyle(color: Colors.white70),
+                                                style: TextStyle(
+                                                    color: Colors.white70),
                                               ),
                                             )
                                           : SingleChildScrollView(
                                               scrollDirection: Axis.vertical,
                                               child: SingleChildScrollView(
-                                                scrollDirection: Axis.horizontal,
+                                                scrollDirection:
+                                                    Axis.horizontal,
                                                 child: DataTable(
                                                   columnSpacing: 20,
-                                                  headingRowColor: WidgetStateProperty.all(Colors.white.withOpacity(0.1)),
+                                                  headingRowColor:
+                                                      WidgetStateProperty.all(
+                                                          Colors.white
+                                                              .withOpacity(
+                                                                  0.1)),
                                                   columns: [
                                                     const DataColumn(
-                                                      label: AiTranslatedText('Estudante',
-                                                          style: TextStyle(color: Color(0xFF00D1FF), fontWeight: FontWeight.bold)),
+                                                      label: AiTranslatedText(
+                                                          'Estudante',
+                                                          style: TextStyle(
+                                                              color: Color(
+                                                                  0xFF00D1FF),
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .bold)),
                                                     ),
-                                                    ...finalizedSessions.map((s) => DataColumn(
-                                                          label: Tooltip(
-                                                            message: s.topic,
-                                                            child: Column(
-                                                              mainAxisAlignment: MainAxisAlignment.center,
-                                                              children: [
-                                                                Text('S${s.sessionNumber}',
-                                                                    style: const TextStyle(color: Colors.white, fontSize: 12)),
-                                                                Text(DateFormat('dd/MM').format(s.date),
-                                                                    style: const TextStyle(color: Colors.white54, fontSize: 10)),
-                                                              ],
-                                                            ),
-                                                          ),
-                                                        )),
+                                                    ...finalizedSessions
+                                                        .map((s) => DataColumn(
+                                                              label: Tooltip(
+                                                                message:
+                                                                    s.topic,
+                                                                child: Column(
+                                                                  mainAxisAlignment:
+                                                                      MainAxisAlignment
+                                                                          .center,
+                                                                  children: [
+                                                                    Text(
+                                                                        'S${s.sessionNumber}',
+                                                                        style: const TextStyle(
+                                                                            color:
+                                                                                Colors.white,
+                                                                            fontSize: 12)),
+                                                                    Text(
+                                                                        DateFormat('dd/MM').format(s
+                                                                            .date),
+                                                                        style: const TextStyle(
+                                                                            color:
+                                                                                Colors.white54,
+                                                                            fontSize: 10)),
+                                                                  ],
+                                                                ),
+                                                              ),
+                                                            )),
                                                     const DataColumn(
-                                                      label: AiTranslatedText('Status',
-                                                          style: TextStyle(color: Color(0xFF00D1FF), fontWeight: FontWeight.bold)),
+                                                      label: AiTranslatedText(
+                                                          'Status',
+                                                          style: TextStyle(
+                                                              color: Color(
+                                                                  0xFF00D1FF),
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .bold)),
                                                     ),
                                                   ],
                                                   rows: students.map((student) {
                                                     int studentTotal = 0;
-                                                    for (var s in finalizedSessions) {
-                                                      if (allAttendances.any((a) => a.userId == student.userId && a.sessionId == s.id)) {
+                                                    for (var s
+                                                        in finalizedSessions) {
+                                                      if (allAttendances.any(
+                                                          (a) =>
+                                                              a.userId ==
+                                                                  student
+                                                                      .userId &&
+                                                              a.sessionId ==
+                                                                  s.id)) {
                                                         studentTotal++;
                                                       }
                                                     }
 
-                                                    final percentage = finalizedSessions.isEmpty
-                                                      ? 100.0
-                                                      : (studentTotal / finalizedSessions.length) * 100;
+                                                    final percentage =
+                                                        finalizedSessions
+                                                                .isEmpty
+                                                            ? 100.0
+                                                            : (studentTotal /
+                                                                    finalizedSessions
+                                                                        .length) *
+                                                                100;
 
                                                     return DataRow(
                                                       cells: [
                                                         DataCell(
                                                           SizedBox(
                                                             width: 120,
-                                                            child: Text(student.studentName,
-                                                                style: const TextStyle(color: Colors.white, fontSize: 13),
-                                                                overflow: TextOverflow.ellipsis),
+                                                            child: Text(
+                                                                student
+                                                                    .studentName,
+                                                                style: const TextStyle(
+                                                                    color: Colors
+                                                                        .white,
+                                                                    fontSize:
+                                                                        13),
+                                                                overflow:
+                                                                    TextOverflow
+                                                                        .ellipsis),
                                                           ),
                                                         ),
-                                                        ...finalizedSessions.map((session) {
-                                                          final isPresent = allAttendances.any(
-                                                              (a) => a.userId == student.userId && a.sessionId == session.id);
+                                                        ...finalizedSessions
+                                                            .map((session) {
+                                                          final isPresent =
+                                                              allAttendances.any((a) =>
+                                                                  a.userId ==
+                                                                      student
+                                                                          .userId &&
+                                                                  a.sessionId ==
+                                                                      session
+                                                                          .id);
                                                           return DataCell(
                                                             Center(
                                                               child: Icon(
-                                                                isPresent ? Icons.check_circle : Icons.cancel,
-                                                                color: isPresent ? Colors.greenAccent : Colors.white10,
+                                                                isPresent
+                                                                    ? Icons
+                                                                        .check_circle
+                                                                    : Icons
+                                                                        .cancel,
+                                                                color: isPresent
+                                                                    ? Colors
+                                                                        .greenAccent
+                                                                    : Colors
+                                                                        .white10,
                                                                 size: 20,
                                                               ),
                                                             ),
-                                                            onTap: () => _toggleAttendance(student, session, isPresent),
+                                                            onTap: () =>
+                                                                _toggleAttendance(
+                                                                    student,
+                                                                    session,
+                                                                    isPresent),
                                                           );
                                                         }),
                                                         DataCell(
@@ -283,19 +374,32 @@ class _AttendanceMatrixScreenState extends State<AttendanceMatrixScreen> {
                                                             children: [
                                                               Text(
                                                                 '${percentage.toStringAsFixed(0)}%',
-                                                                style: TextStyle(
-                                                                  color: currentSubject.attendanceControlEnabled &&
-                                                                          percentage < currentSubject.requiredAttendancePercentage
-                                                                      ? Colors.redAccent
-                                                                      : Colors.greenAccent,
-                                                                  fontWeight: FontWeight.bold,
+                                                                style:
+                                                                    TextStyle(
+                                                                  color: currentSubject
+                                                                              .attendanceControlEnabled &&
+                                                                          percentage <
+                                                                              currentSubject
+                                                                                  .requiredAttendancePercentage
+                                                                      ? Colors
+                                                                          .redAccent
+                                                                      : Colors
+                                                                          .greenAccent,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .bold,
                                                                   fontSize: 12,
                                                                 ),
                                                               ),
-                                                              const SizedBox(width: 4),
+                                                              const SizedBox(
+                                                                  width: 4),
                                                               Text(
                                                                 '($studentTotal/${finalizedSessions.length})',
-                                                                style: const TextStyle(color: Colors.white38, fontSize: 10),
+                                                                style: const TextStyle(
+                                                                    color: Colors
+                                                                        .white38,
+                                                                    fontSize:
+                                                                        10),
                                                               ),
                                                             ],
                                                           ),

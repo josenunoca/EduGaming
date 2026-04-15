@@ -72,11 +72,13 @@ class _LifestyleManagementScreenState extends State<LifestyleManagementScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     IconButton(
-                      icon: const Icon(Icons.analytics, color: Colors.blueAccent),
+                      icon:
+                          const Icon(Icons.analytics, color: Colors.blueAccent),
                       onPressed: () => _showAnalytics(q),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.refresh, color: Colors.greenAccent),
+                      icon:
+                          const Icon(Icons.refresh, color: Colors.greenAccent),
                       onPressed: () => _showReopenDialog(q),
                     ),
                   ],
@@ -108,13 +110,15 @@ class _LifestyleManagementScreenState extends State<LifestyleManagementScreen> {
             const SizedBox(height: 24),
             TextField(
               controller: titleController,
-              decoration: const InputDecoration(labelText: 'Título do Inquérito'),
+              decoration:
+                  const InputDecoration(labelText: 'Título do Inquérito'),
             ),
             const SizedBox(height: 16),
             TextField(
               controller: descController,
               maxLines: 3,
-              decoration: const InputDecoration(labelText: 'Descrição/Objetivo'),
+              decoration:
+                  const InputDecoration(labelText: 'Descrição/Objetivo'),
             ),
             const SizedBox(height: 24),
             _buildTargetingSection(targetRoles, setInternalState),
@@ -341,8 +345,8 @@ class _LifestyleManagementScreenState extends State<LifestyleManagementScreen> {
               const SizedBox(height: 8),
               Text(q.title, style: const TextStyle(color: Colors.white70)),
               const Divider(height: 48),
-              _buildStatsCard('Histograma de Distribuição',
-                  'Frequência de Bem-estar'),
+              _buildStatsCard(
+                  'Histograma de Distribuição', 'Frequência de Bem-estar'),
               const SizedBox(height: 24),
               _buildStatsCard('Diagrama de Extremos e Quartis',
                   'Distribuição de Qualidade de Vida'),
@@ -354,7 +358,9 @@ class _LifestyleManagementScreenState extends State<LifestyleManagementScreen> {
                   style: const TextStyle(fontSize: 15, height: 1.5)),
               const SizedBox(height: 32),
               Text('Estratégias Propostas',
-                  style: Theme.of(context).textTheme.titleLarge
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleLarge
                       ?.copyWith(color: Colors.greenAccent)),
               const SizedBox(height: 12),
               ...(analysis['strategies'] as List? ?? []).map((s) => ListTile(
@@ -389,18 +395,18 @@ class _LifestyleManagementScreenState extends State<LifestyleManagementScreen> {
             child: BarChart(
               BarChartData(
                 barGroups: [
-                  BarChartGroupData(
-                      x: 0,
-                      barRods: [BarChartRodData(toY: 8, color: Colors.blueAccent)]),
-                  BarChartGroupData(
-                      x: 1,
-                      barRods: [BarChartRodData(toY: 15, color: Colors.blueAccent)]),
-                  BarChartGroupData(
-                      x: 2,
-                      barRods: [BarChartRodData(toY: 10, color: Colors.blueAccent)]),
-                  BarChartGroupData(
-                      x: 3,
-                      barRods: [BarChartRodData(toY: 5, color: Colors.blueAccent)]),
+                  BarChartGroupData(x: 0, barRods: [
+                    BarChartRodData(toY: 8, color: Colors.blueAccent)
+                  ]),
+                  BarChartGroupData(x: 1, barRods: [
+                    BarChartRodData(toY: 15, color: Colors.blueAccent)
+                  ]),
+                  BarChartGroupData(x: 2, barRods: [
+                    BarChartRodData(toY: 10, color: Colors.blueAccent)
+                  ]),
+                  BarChartGroupData(x: 3, barRods: [
+                    BarChartRodData(toY: 5, color: Colors.blueAccent)
+                  ]),
                 ],
                 borderData: FlBorderData(show: false),
                 gridData: const FlGridData(show: false),

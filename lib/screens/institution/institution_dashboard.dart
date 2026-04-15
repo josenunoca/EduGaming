@@ -12,13 +12,14 @@ import '../../widgets/messaging_badge.dart';
 import '../../widgets/custom_button.dart';
 import '../../widgets/user_notices_widget.dart';
 import '../common/communication_center_screen.dart';
-import 'institution_professor_management_screen.dart';
+import 'institution_collaborator_management_screen.dart';
 import 'institutional_management_screen.dart';
 import 'credit_management_screen.dart';
 import 'academic_management_screen.dart';
 import '../common/personal_profile_screen.dart';
 import 'lifestyle_management_screen.dart';
 import '../login_screen.dart';
+import 'delegation_management_screen.dart';
 
 class InstitutionDashboard extends StatelessWidget {
   const InstitutionDashboard({super.key});
@@ -26,39 +27,52 @@ class InstitutionDashboard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final service = context.watch<FirebaseService>();
-    
+
     return StreamBuilder<User?>(
       stream: service.user,
       builder: (context, authSnap) {
         if (authSnap.hasError) {
-          return Scaffold(body: Center(child: Text('Erro de autenticação: ${authSnap.error}')));
+          return Scaffold(
+              body: Center(
+                  child: Text('Erro de autenticação: ${authSnap.error}')));
         }
         if (authSnap.connectionState == ConnectionState.waiting) {
-          return const Scaffold(body: Center(child: CircularProgressIndicator()));
+          return const Scaffold(
+              body: Center(child: CircularProgressIndicator()));
         }
         if (!authSnap.hasData) {
-          return const Scaffold(body: Center(child: AiTranslatedText('Por favor, faça login novamente.')));
+          return const Scaffold(
+              body: Center(
+                  child: AiTranslatedText('Por favor, faça login novamente.')));
         }
 
         return StreamBuilder<UserModel?>(
           stream: service.getUserStream(authSnap.data!.uid),
           builder: (context, userSnap) {
             if (userSnap.hasError) {
-              return Scaffold(body: Center(child: Text('Erro ao carregar perfil: ${userSnap.error}')));
+              return Scaffold(
+                  body: Center(
+                      child:
+                          Text('Erro ao carregar perfil: ${userSnap.error}')));
             }
             if (userSnap.connectionState == ConnectionState.waiting) {
-              return const Scaffold(body: Center(child: CircularProgressIndicator()));
+              return const Scaffold(
+                  body: Center(child: CircularProgressIndicator()));
             }
-            
+
             final user = userSnap.data;
             if (user == null) {
-              return const Scaffold(body: Center(child: AiTranslatedText('Perfil de utilizador não encontrado.')));
+              return const Scaffold(
+                  body: Center(
+                      child: AiTranslatedText(
+                          'Perfil de utilizador não encontrado.')));
             }
-            
+
             if (user.institutionId == null) {
               return Scaffold(
                 body: FutureBuilder(
-                  future: service.repairInstitutionLink(authSnap.data!.uid, authSnap.data!.email!),
+                  future: service.repairInstitutionLink(
+                      authSnap.data!.uid, authSnap.data!.email!),
                   builder: (context, repairSnap) {
                     if (repairSnap.connectionState == ConnectionState.waiting) {
                       return const Center(child: CircularProgressIndicator());
@@ -81,19 +95,28 @@ class InstitutionDashboard extends StatelessWidget {
               stream: service.getInstitutionStream(user.institutionId!),
               builder: (context, instSnap) {
                 if (instSnap.hasError) {
-                  return Scaffold(body: Center(child: Text('Erro ao carregar instituição: ${instSnap.error}')));
+                  return Scaffold(
+                      body: Center(
+                          child: Text(
+                              'Erro ao carregar instituição: ${instSnap.error}')));
                 }
                 if (instSnap.connectionState == ConnectionState.waiting) {
-                  return const Scaffold(body: Center(child: CircularProgressIndicator()));
+                  return const Scaffold(
+                      body: Center(child: CircularProgressIndicator()));
                 }
 
                 final institution = instSnap.data;
                 if (institution == null) {
-                  return const Scaffold(body: Center(child: AiTranslatedText('Instituição não encontrada ou sem permissões de acesso.')));
+                  return const Scaffold(
+                      body: Center(
+                          child: AiTranslatedText(
+                              'Instituição não encontrada ou sem permissões de acesso.')));
                 }
 
                 if (institution.isSuspended) {
-                  return Scaffold(body: _buildSuspendedView('Esta instituição está suspensa pela administração.'));
+                  return Scaffold(
+                      body: _buildSuspendedView(
+                          'Esta instituição está suspensa pela administração.'));
                 }
 
                 return Scaffold(
@@ -109,7 +132,9 @@ class InstitutionDashboard extends StatelessWidget {
                         icon: const Icon(Icons.person),
                         onPressed: () => Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (_) => PersonalProfileScreen(user: user)),
+                          MaterialPageRoute(
+                              builder: (_) =>
+                                  PersonalProfileScreen(user: user)),
                         ),
                         tooltip: 'Área Pessoal',
                       ),
@@ -118,7 +143,8 @@ class InstitutionDashboard extends StatelessWidget {
                         onPressed: () => Navigator.push(
                           context,
                           MaterialPageRoute(
-                              builder: (_) => const CommunicationCenterScreen()),
+                              builder: (_) =>
+                                  const CommunicationCenterScreen()),
                         ),
                       ),
                       IconButton(
@@ -128,7 +154,8 @@ class InstitutionDashboard extends StatelessWidget {
                           if (context.mounted) {
                             Navigator.pushAndRemoveUntil(
                               context,
-                              MaterialPageRoute(builder: (_) => const LoginScreen()),
+                              MaterialPageRoute(
+                                  builder: (_) => const LoginScreen()),
                               (route) => false,
                             );
                           }
@@ -146,23 +173,25 @@ class InstitutionDashboard extends StatelessWidget {
                           const SizedBox(height: 24),
                           UserNoticesWidget(user: user),
                           const SizedBox(height: 24),
-                          GridView.count(
+                          GridView(
                             shrinkWrap: true,
                             physics: const NeverScrollableScrollPhysics(),
-                            crossAxisCount: 4,
-                            crossAxisSpacing: 8,
-                            mainAxisSpacing: 8,
-                            childAspectRatio: 1.5,
+                            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 4,
+                              crossAxisSpacing: 8,
+                              mainAxisSpacing: 8,
+                              mainAxisExtent: 160,
+                            ),
                             children: [
                               _DashboardActionCard(
                                 icon: Icons.people,
-                                label: 'Gerir Professores',
+                                label: 'Gerir Colaboradores',
                                 color: const Color(0xFF00D1FF),
                                 onTap: () => Navigator.push(
                                   context,
                                   MaterialPageRoute(
                                       builder: (_) =>
-                                          InstitutionProfessorManagementScreen(
+                                          InstitutionCollaboratorManagementScreen(
                                               institution: institution)),
                                 ),
                               ),
@@ -197,20 +226,30 @@ class InstitutionDashboard extends StatelessWidget {
                                 onTap: () => Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                      builder: (_) =>
-                                          AcademicManagementScreen(
-                                              institution: institution)),
+                                      builder: (_) => AcademicManagementScreen(
+                                          institution: institution)),
                                 ),
                               ),
                               _DashboardActionCard(
-                                icon: Icons.favorite,
-                                label: 'Estilo de Vida',
-                                color: Colors.pinkAccent,
+                                  icon: Icons.favorite,
+                                  label: 'Estilo de Vida',
+                                  color: Colors.pinkAccent,
+                                  onTap: () => Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                            builder: (_) =>
+                                                const LifestyleManagementScreen()),
+                                      )),
+                              _DashboardActionCard(
+                                icon: Icons.assignment_ind,
+                                label: 'Delegações de Gestão',
+                                color: Colors.greenAccent,
                                 onTap: () => Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                      builder: (_) => const LifestyleManagementScreen()),
-                                )
+                                      builder: (_) => DelegationManagementScreen(
+                                          institution: institution)),
+                                ),
                               ),
                             ],
                           ),
@@ -227,7 +266,8 @@ class InstitutionDashboard extends StatelessWidget {
     );
   }
 
-  Widget _buildBrandingSection(BuildContext context, FirebaseService service, InstitutionModel inst) {
+  Widget _buildBrandingSection(
+      BuildContext context, FirebaseService service, InstitutionModel inst) {
     return GlassCard(
       child: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -236,8 +276,11 @@ class InstitutionDashboard extends StatelessWidget {
             CircleAvatar(
               radius: 30,
               backgroundColor: Colors.white10,
-              backgroundImage: inst.logoUrl != null ? NetworkImage(inst.logoUrl!) : null,
-              child: inst.logoUrl == null ? const Icon(Icons.business, color: Colors.white54) : null,
+              backgroundImage:
+                  inst.logoUrl != null ? NetworkImage(inst.logoUrl!) : null,
+              child: inst.logoUrl == null
+                  ? const Icon(Icons.business, color: Colors.white54)
+                  : null,
             ),
             const SizedBox(width: 16),
             const Expanded(
@@ -245,8 +288,10 @@ class InstitutionDashboard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   AiTranslatedText('Logótipo da Instituição',
-                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                  AiTranslatedText('Este logótipo será usado em todos os documentos oficiais.',
+                      style: TextStyle(
+                          color: Colors.white, fontWeight: FontWeight.bold)),
+                  AiTranslatedText(
+                      'Este logótipo será usado em todos os documentos oficiais.',
                       style: TextStyle(color: Colors.white54, fontSize: 12)),
                 ],
               ),
@@ -263,7 +308,8 @@ class InstitutionDashboard extends StatelessWidget {
     );
   }
 
-  Future<void> _pickAndUploadLogo(BuildContext context, FirebaseService service, String institutionId) async {
+  Future<void> _pickAndUploadLogo(BuildContext context, FirebaseService service,
+      String institutionId) async {
     final result = await FilePicker.platform.pickFiles(type: FileType.image);
     if (result != null && result.files.single.bytes != null) {
       if (context.mounted) {
@@ -271,10 +317,12 @@ class InstitutionDashboard extends StatelessWidget {
           const SnackBar(content: AiTranslatedText('A carregar logótipo...')),
         );
       }
-      await service.uploadInstitutionLogo(institutionId, result.files.single.bytes!);
+      await service.uploadInstitutionLogo(
+          institutionId, result.files.single.bytes!);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: AiTranslatedText('Logótipo atualizado com sucesso!')),
+          const SnackBar(
+              content: AiTranslatedText('Logótipo atualizado com sucesso!')),
         );
       }
     }

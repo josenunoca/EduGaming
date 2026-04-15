@@ -47,7 +47,8 @@ class AiTranslationService {
     final batch = List<_PendingTranslation>.from(_pending);
     _pending.clear();
 
-    final toTranslate = batch.where((t) => !_cache.containsKey(t.cacheKey)).toList();
+    final toTranslate =
+        batch.where((t) => !_cache.containsKey(t.cacheKey)).toList();
 
     for (final t in batch.where((t) => _cache.containsKey(t.cacheKey))) {
       t.completer.complete(_cache[t.cacheKey]);
@@ -97,7 +98,8 @@ $numbered''';
         _cache[toTranslate[i].cacheKey] = result;
         toTranslate[i].completer.complete(result);
       }
-      debugPrint('Batch translated ${toTranslate.length} texts to $targetLanguage ✅');
+      debugPrint(
+          'Batch translated ${toTranslate.length} texts to $targetLanguage ✅');
     } catch (e) {
       debugPrint('Batch translation error: $e');
       for (final t in toTranslate) {

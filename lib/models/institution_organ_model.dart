@@ -7,6 +7,7 @@ class InstitutionOrgan {
   final List<String> memberIds;
   final String? presidentEmail;
   final String? vicePresidentEmail;
+  final String institutionId;
   final DateTime createdAt;
   final bool isActive;
 
@@ -15,6 +16,7 @@ class InstitutionOrgan {
     required this.name,
     required this.description,
     required this.memberIds,
+    required this.institutionId,
     this.presidentEmail,
     this.vicePresidentEmail,
     required this.createdAt,
@@ -28,6 +30,7 @@ class InstitutionOrgan {
       name: data['name'] ?? '',
       description: data['description'] ?? '',
       memberIds: List<String>.from(data['memberIds'] ?? []),
+      institutionId: data['institutionId'] ?? '',
       presidentEmail: data['presidentEmail'],
       vicePresidentEmail: data['vicePresidentEmail'],
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
@@ -40,18 +43,21 @@ class InstitutionOrgan {
       'name': name,
       'description': description,
       'memberIds': memberIds,
+      'institutionId': institutionId,
       'presidentEmail': presidentEmail,
       'vicePresidentEmail': vicePresidentEmail,
       'createdAt': Timestamp.fromDate(createdAt),
       'isActive': isActive,
     };
   }
+
 }
 
 class Participant {
   final String name;
   final String email;
-  final String status; // 'invited', 'attended_manual', 'attended_auto', 'absent'
+  final String
+      status; // 'invited', 'attended_manual', 'attended_auto', 'absent'
   final bool isGuest;
   final DateTime? deliveredAt;
   final DateTime? readAt;
@@ -82,7 +88,8 @@ class Participant {
       'email': email,
       'status': status,
       'isGuest': isGuest,
-      'deliveredAt': deliveredAt != null ? Timestamp.fromDate(deliveredAt!) : null,
+      'deliveredAt':
+          deliveredAt != null ? Timestamp.fromDate(deliveredAt!) : null,
       'readAt': readAt != null ? Timestamp.fromDate(readAt!) : null,
     };
   }
@@ -125,6 +132,7 @@ class Meeting {
   final String? contextText;
   final String? location;
   final String? invitationText;
+  final String institutionId;
 
   Meeting({
     required this.id,
@@ -143,6 +151,7 @@ class Meeting {
     this.contextText,
     this.location,
     this.invitationText,
+    required this.institutionId,
   });
 
   factory Meeting.fromFirestore(DocumentSnapshot doc) {
@@ -166,6 +175,7 @@ class Meeting {
       contextText: data['contextText'],
       location: data['location'],
       invitationText: data['invitationText'],
+      institutionId: data['institutionId'] ?? '',
     );
   }
 
@@ -186,6 +196,7 @@ class Meeting {
       'contextText': contextText,
       'location': location,
       'invitationText': invitationText,
+      'institutionId': institutionId,
     };
   }
 
@@ -206,6 +217,7 @@ class Meeting {
     String? contextText,
     String? location,
     String? invitationText,
+    String? institutionId,
   }) {
     return Meeting(
       id: id ?? this.id,
@@ -224,6 +236,7 @@ class Meeting {
       contextText: contextText ?? this.contextText,
       location: location ?? this.location,
       invitationText: invitationText ?? this.invitationText,
+      institutionId: institutionId ?? this.institutionId,
     );
   }
 }

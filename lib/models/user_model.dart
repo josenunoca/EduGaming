@@ -1,3 +1,5 @@
+import 'curriculum_model.dart';
+
 enum UserRole {
   admin,
   institution,
@@ -33,6 +35,7 @@ class UserModel {
   final int? aiCreditLimit; // Weekly/Monthly limit set by institution
   final int totalCreditsConsumed; // Total historical consumption
   final String? preferredLanguage; // Support for localization strategy
+  final CurriculumModel? curriculum;
 
   UserModel({
     required this.id,
@@ -58,6 +61,7 @@ class UserModel {
     this.aiCreditLimit,
     this.totalCreditsConsumed = 0,
     this.preferredLanguage,
+    this.curriculum,
   });
 
   Map<String, dynamic> toMap() {
@@ -85,6 +89,7 @@ class UserModel {
       if (aiCreditLimit != null) 'aiCreditLimit': aiCreditLimit,
       'totalCreditsConsumed': totalCreditsConsumed,
       if (preferredLanguage != null) 'preferredLanguage': preferredLanguage,
+      if (curriculum != null) 'curriculum': curriculum!.toMap(),
     };
   }
 
@@ -117,6 +122,7 @@ class UserModel {
       aiCreditLimit: map['aiCreditLimit'],
       totalCreditsConsumed: map['totalCreditsConsumed'] ?? 0,
       preferredLanguage: map['preferredLanguage'],
+      curriculum: map['curriculum'] != null ? CurriculumModel.fromMap(map['curriculum']) : null,
     );
   }
 }

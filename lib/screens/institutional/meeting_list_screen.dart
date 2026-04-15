@@ -9,6 +9,7 @@ import '../../services/firebase_service.dart';
 import '../../services/pdf_service.dart';
 import '../../widgets/ai_translated_text.dart';
 import 'meeting_recording_screen.dart';
+import '../../models/institution_model.dart';
 
 class MeetingListScreen extends StatefulWidget {
   final InstitutionOrgan organ;
@@ -32,13 +33,29 @@ class _MeetingListScreenState extends State<MeetingListScreen> {
       stream: firebaseService.getUserStream(currentUser?.uid ?? ''),
       builder: (context, userSnapshot) {
         final userModel = userSnapshot.data;
-        // The user can manage if they are the institution/admin OR the leader of this specific organ
-        final bool canManage = userModel?.role == UserRole.institution || 
-                                userModel?.role == UserRole.admin ||
-                                (currentUser?.email?.startsWith('instituicao@') == true) ||
-                                institutionalService.isLeaderForOrgan(widget.organ, currentUser?.email);
+        if (userModel == null) return const Scaffold(body: Center(child: CircularProgressIndicator()));
 
-        return Scaffold(
+        return StreamBuilder<InstitutionModel?>(
+          stream: userModel.institutionId != null 
+              ? firebaseService.getInstitutionStream(userModel.institutionId!)
+              : Stream.value(null),
+          builder: (context, instSnapshot) {
+            final institution = instSnapshot.data;
+            
+            // The user can manage if they are the institution/admin OR the leader of this specific organ
+            // OR if they have delegated responsibility for this specific organ
+            final bool isDelegated = institution?.delegatedRoles['organs:${widget.organ.id}']?.contains(userModel.id) ?? false;
+            final bool isGlobalOrganDelegate = institution?.delegatedRoles['academic']?.contains(userModel.id) ?? false; // Academic usually covers organs
+
+            final bool canManage = userModel.role == UserRole.institution ||
+                userModel.role == UserRole.admin ||
+                (currentUser?.email?.startsWith('instituicao@') == true) ||
+                institutionalService.isLeaderForOrgan(
+                    widget.organ, currentUser?.email) ||
+                isDelegated ||
+                isGlobalOrganDelegate;
+
+            return Scaffold(
           backgroundColor: const Color(0xFF0F172A),
           appBar: AppBar(
             backgroundColor: Colors.transparent,
@@ -57,7 +74,8 @@ class _MeetingListScreenState extends State<MeetingListScreen> {
             ),
             actions: [
               IconButton(
-                icon: Icon(_showArchive ? Icons.list : Icons.archive, color: Colors.white70),
+                icon: Icon(_showArchive ? Icons.list : Icons.archive,
+                    color: Colors.white70),
                 onPressed: () => setState(() => _showArchive = !_showArchive),
                 tooltip: _showArchive ? 'Ver Sessões' : 'Ver Arquivo',
               ),
@@ -82,12 +100,17 @@ class _MeetingListScreenState extends State<MeetingListScreen> {
               return _buildMeetingsList(meetings, canManage);
             },
           ),
-          floatingActionButton: canManage ? FloatingActionButton.extended(
-            backgroundColor: const Color(0xFF7B61FF),
-            onPressed: () => _showAddMeetingDialog(context),
-            icon: const Icon(Icons.add, color: Colors.white),
-            label: const AiTranslatedText('Convocatória', style: TextStyle(color: Colors.white)),
-          ) : null,
+          floatingActionButton: canManage
+              ? FloatingActionButton.extended(
+                  backgroundColor: const Color(0xFF7B61FF),
+                  onPressed: () => _showAddMeetingDialog(context),
+                  icon: const Icon(Icons.add, color: Colors.white),
+                  label: const AiTranslatedText('Convocatória',
+                      style: TextStyle(color: Colors.white)),
+                )
+              : null,
+            );
+          },
         );
       },
     );
@@ -143,7 +166,11 @@ class _MeetingListScreenState extends State<MeetingListScreen> {
     return Padding(
       padding: const EdgeInsets.only(left: 4, bottom: 8),
       child: AiTranslatedText(title,
-          style: const TextStyle(color: Color(0xFF7B61FF), fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+          style: const TextStyle(
+              color: Color(0xFF7B61FF),
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 0.5)),
     );
   }
 
@@ -154,7 +181,9 @@ class _MeetingListScreenState extends State<MeetingListScreen> {
     return Card(
       color: Colors.white.withOpacity(0.05),
       margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.white.withOpacity(0.05))),
+      shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(color: Colors.white.withOpacity(0.05))),
       child: InkWell(
         onTap: () => _navigateToMeeting(context, meeting, canManage),
         borderRadius: BorderRadius.circular(12),
@@ -169,90 +198,118 @@ class _MeetingListScreenState extends State<MeetingListScreen> {
                   _buildStatusBadge(meeting.status),
                   Row(
                     children: [
-                      const Icon(Icons.calendar_today, color: Colors.white38, size: 12),
+                      const Icon(Icons.calendar_today,
+                          color: Colors.white38, size: 12),
                       const SizedBox(width: 4),
                       Text(dateFormat.format(meeting.date),
-                          style: const TextStyle(color: Colors.white38, fontSize: 12)),
+                          style: const TextStyle(
+                              color: Colors.white38, fontSize: 12)),
                     ],
                   ),
                 ],
               ),
               const SizedBox(height: 12),
               Text(meeting.title,
-                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16)),
               if (meeting.startTime != null)
                 Padding(
                   padding: const EdgeInsets.only(top: 4),
                   child: Row(
                     children: [
-                      const Icon(Icons.access_time, color: Colors.white24, size: 12),
+                      const Icon(Icons.access_time,
+                          color: Colors.white24, size: 12),
                       const SizedBox(width: 4),
                       Text(
                         '${timeFormat.format(meeting.startTime!)} - ${meeting.endTime != null ? timeFormat.format(meeting.endTime!) : '...'}',
-                        style: const TextStyle(color: Colors.white24, fontSize: 12),
+                        style: const TextStyle(
+                            color: Colors.white24, fontSize: 12),
                       ),
                       if (meeting.location != null) ...[
                         const SizedBox(width: 12),
-                        const Icon(Icons.location_on, color: Colors.white24, size: 12),
+                        const Icon(Icons.location_on,
+                            color: Colors.white24, size: 12),
                         const SizedBox(width: 4),
-                        Expanded(child: Text(meeting.location!, 
-                            maxLines: 1, overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(color: Colors.white24, fontSize: 12))),
+                        Expanded(
+                            child: Text(meeting.location!,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                    color: Colors.white24, fontSize: 12))),
                       ],
                     ],
                   ),
                 ),
-              
+
               // New: Invitation Preview for Scheduled meetings
-              if (meeting.status == 'scheduled' && meeting.invitationText != null)
+              if (meeting.status == 'scheduled' &&
+                  meeting.invitationText != null)
                 Container(
                   margin: const EdgeInsets.only(top: 12),
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     color: const Color(0xFF7B61FF).withOpacity(0.05),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: const Color(0xFF7B61FF).withOpacity(0.1)),
+                    border: Border.all(
+                        color: const Color(0xFF7B61FF).withOpacity(0.1)),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Row(
                         children: [
-                          Icon(Icons.email_outlined, color: Color(0xFF7B61FF), size: 14),
+                          Icon(Icons.email_outlined,
+                              color: Color(0xFF7B61FF), size: 14),
                           SizedBox(width: 8),
-                          AiTranslatedText('Convocatória Efetuada:', 
-                              style: TextStyle(color: Color(0xFF7B61FF), fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+                          AiTranslatedText('Convocatória Efetuada:',
+                              style: TextStyle(
+                                  color: Color(0xFF7B61FF),
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 0.5)),
                         ],
                       ),
                       const SizedBox(height: 8),
                       Text(meeting.invitationText!,
                           maxLines: 3,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(color: Colors.white70, fontSize: 12, height: 1.4)),
+                          style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 12,
+                              height: 1.4)),
                     ],
                   ),
                 ),
 
               // New: Supporting Documents for Upcoming meetings
-              if (meeting.status != 'finalized' && meeting.contextFileUrls.isNotEmpty)
+              if (meeting.status != 'finalized' &&
+                  meeting.contextFileUrls.isNotEmpty)
                 Padding(
                   padding: const EdgeInsets.only(top: 12),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const AiTranslatedText('Documentos Anexos:', 
-                          style: TextStyle(color: Colors.white38, fontSize: 10, fontWeight: FontWeight.bold)),
+                      const AiTranslatedText('Documentos Anexos:',
+                          style: TextStyle(
+                              color: Colors.white38,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold)),
                       const SizedBox(height: 6),
                       Wrap(
                         spacing: 8,
                         runSpacing: 8,
                         children: meeting.contextFileUrls.map((url) {
-                          final fileName = Uri.decodeFull(url.split('/').last.split('?').first);
-                          final extension = fileName.split('.').last.toLowerCase();
+                          final fileName = Uri.decodeFull(
+                              url.split('/').last.split('?').first);
+                          final extension =
+                              fileName.split('.').last.toLowerCase();
                           return InkWell(
                             onTap: () => _launchURL(url),
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 4),
                               decoration: BoxDecoration(
                                 color: Colors.white.withOpacity(0.05),
                                 borderRadius: BorderRadius.circular(4),
@@ -260,10 +317,16 @@ class _MeetingListScreenState extends State<MeetingListScreen> {
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Icon(_getFileIcon(extension), color: _getFileColor(extension), size: 12),
+                                  Icon(_getFileIcon(extension),
+                                      color: _getFileColor(extension),
+                                      size: 12),
                                   const SizedBox(width: 4),
-                                  Text(fileName.length > 15 ? '${fileName.substring(0, 12)}...' : fileName,
-                                      style: const TextStyle(color: Colors.white70, fontSize: 10)),
+                                  Text(
+                                      fileName.length > 15
+                                          ? '${fileName.substring(0, 12)}...'
+                                          : fileName,
+                                      style: const TextStyle(
+                                          color: Colors.white70, fontSize: 10)),
                                 ],
                               ),
                             ),
@@ -274,7 +337,10 @@ class _MeetingListScreenState extends State<MeetingListScreen> {
                   ),
                 ),
 
-              if (meeting.status != 'finalized' && meeting.agenda != null && meeting.agenda!.isNotEmpty && meeting.status != 'scheduled')
+              if (meeting.status != 'finalized' &&
+                  meeting.agenda != null &&
+                  meeting.agenda!.isNotEmpty &&
+                  meeting.status != 'scheduled')
                 Container(
                   margin: const EdgeInsets.only(top: 12),
                   padding: const EdgeInsets.all(10),
@@ -285,13 +351,19 @@ class _MeetingListScreenState extends State<MeetingListScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const AiTranslatedText('Agenda em curso:', 
-                          style: TextStyle(color: Color(0xFF7B61FF), fontSize: 10, fontWeight: FontWeight.bold)),
+                      const AiTranslatedText('Agenda em curso:',
+                          style: TextStyle(
+                              color: Color(0xFF7B61FF),
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold)),
                       const SizedBox(height: 4),
                       Text(meeting.agenda!,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(color: Colors.white54, fontSize: 12, height: 1.3)),
+                          style: const TextStyle(
+                              color: Colors.white54,
+                              fontSize: 12,
+                              height: 1.3)),
                     ],
                   ),
                 ),
@@ -303,7 +375,8 @@ class _MeetingListScreenState extends State<MeetingListScreen> {
                   child: InkWell(
                     onTap: () => _showTrackingDetails(meeting),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 6),
                       decoration: BoxDecoration(
                         color: Colors.blue.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(6),
@@ -311,14 +384,19 @@ class _MeetingListScreenState extends State<MeetingListScreen> {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.mark_email_read_outlined, color: Colors.blue, size: 14),
+                          const Icon(Icons.mark_email_read_outlined,
+                              color: Colors.blue, size: 14),
                           const SizedBox(width: 8),
                           Text(
                             '${meeting.participants.where((p) => p.deliveredAt != null).length} Entregues • ${meeting.participants.where((p) => p.readAt != null).length} Lidos',
-                            style: const TextStyle(color: Colors.blue, fontSize: 11, fontWeight: FontWeight.bold),
+                            style: const TextStyle(
+                                color: Colors.blue,
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold),
                           ),
                           const SizedBox(width: 4),
-                          const Icon(Icons.chevron_right, color: Colors.blue, size: 14),
+                          const Icon(Icons.chevron_right,
+                              color: Colors.blue, size: 14),
                         ],
                       ),
                     ),
@@ -332,13 +410,18 @@ class _MeetingListScreenState extends State<MeetingListScreen> {
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
                       ElevatedButton.icon(
-                        onPressed: () => _navigateToMeeting(context, meeting, canManage),
-                        icon: const Icon(Icons.login, size: 16, color: Colors.white),
-                        label: const AiTranslatedText('ENTRAR NA REUNIÃO', style: TextStyle(color: Colors.white)),
+                        onPressed: () =>
+                            _navigateToMeeting(context, meeting, canManage),
+                        icon: const Icon(Icons.login,
+                            size: 16, color: Colors.white),
+                        label: const AiTranslatedText('ENTRAR NA REUNIÃO',
+                            style: TextStyle(color: Colors.white)),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF7B61FF),
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 8),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8)),
                         ),
                       ),
                     ],
@@ -369,7 +452,8 @@ class _MeetingListScreenState extends State<MeetingListScreen> {
   }
 
   Widget _buildArchiveView(List<Meeting> meetings, bool canManage) {
-    final archivedMeetings = meetings.where((m) => m.status == 'finalized').toList();
+    final archivedMeetings =
+        meetings.where((m) => m.status == 'finalized').toList();
 
     if (archivedMeetings.isEmpty) {
       return const Center(
@@ -395,25 +479,35 @@ class _MeetingListScreenState extends State<MeetingListScreen> {
         return Card(
           color: Colors.white.withOpacity(0.03),
           margin: const EdgeInsets.only(bottom: 16),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: const BorderSide(color: Colors.white12)),
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: const BorderSide(color: Colors.white12)),
           child: ExpansionTile(
             collapsedIconColor: Colors.white54,
             iconColor: const Color(0xFF7B61FF),
-            title: Text(meeting.title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-            subtitle: Text(DateFormat('dd/MM/yyyy').format(meeting.date), style: const TextStyle(color: Colors.white38, fontSize: 12)),
+            title: Text(meeting.title,
+                style: const TextStyle(
+                    color: Colors.white, fontWeight: FontWeight.bold)),
+            subtitle: Text(DateFormat('dd/MM/yyyy').format(meeting.date),
+                style: const TextStyle(color: Colors.white38, fontSize: 12)),
             children: [
               Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const AiTranslatedText('Documentos da Sessão', style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.bold)),
+                    const AiTranslatedText('Documentos da Sessão',
+                        style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold)),
                     const SizedBox(height: 12),
                     _buildArchiveDocTile(
                       icon: Icons.description,
                       name: 'Ata da Sessão (PDF)',
                       color: Colors.green,
-                      onTap: () => PdfService.generateMeetingMinutesPDF(organ: widget.organ, meeting: meeting),
+                      onTap: () => PdfService.generateMeetingMinutesPDF(
+                          organ: widget.organ, meeting: meeting),
                     ),
                     if (meeting.invitationText != null)
                       _buildArchiveDocTile(
@@ -429,7 +523,8 @@ class _MeetingListScreenState extends State<MeetingListScreen> {
                       onTap: () => _viewParticipants(meeting),
                     ),
                     ...files.map((url) {
-                      final fileName = Uri.decodeFull(url.split('/').last.split('?').first);
+                      final fileName =
+                          Uri.decodeFull(url.split('/').last.split('?').first);
                       final extension = fileName.split('.').last.toLowerCase();
                       return _buildArchiveDocTile(
                         icon: _getFileIcon(extension),
@@ -448,7 +543,11 @@ class _MeetingListScreenState extends State<MeetingListScreen> {
     );
   }
 
-  Widget _buildArchiveDocTile({required IconData icon, required String name, required Color color, required VoidCallback onTap}) {
+  Widget _buildArchiveDocTile(
+      {required IconData icon,
+      required String name,
+      required Color color,
+      required VoidCallback onTap}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: InkWell(
@@ -463,7 +562,10 @@ class _MeetingListScreenState extends State<MeetingListScreen> {
             children: [
               Icon(icon, color: color, size: 20),
               const SizedBox(width: 12),
-              Expanded(child: Text(name, style: const TextStyle(color: Colors.white, fontSize: 13))),
+              Expanded(
+                  child: Text(name,
+                      style:
+                          const TextStyle(color: Colors.white, fontSize: 13))),
               const Icon(Icons.open_in_new, color: Colors.white24, size: 14),
             ],
           ),
@@ -477,7 +579,8 @@ class _MeetingListScreenState extends State<MeetingListScreen> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF1E293B),
-        title: const AiTranslatedText('Convocados e Presenças', style: TextStyle(color: Colors.white)),
+        title: const AiTranslatedText('Convocados e Presenças',
+            style: TextStyle(color: Colors.white)),
         content: SizedBox(
           width: double.maxFinite,
           child: ListView.builder(
@@ -488,19 +591,27 @@ class _MeetingListScreenState extends State<MeetingListScreen> {
               return ListTile(
                 leading: CircleAvatar(
                   backgroundColor: Colors.white12,
-                  child: Text(p.name[0], style: const TextStyle(color: Colors.white)),
+                  child: Text(p.name[0],
+                      style: const TextStyle(color: Colors.white)),
                 ),
-                title: Text(p.name, style: const TextStyle(color: Colors.white, fontSize: 14)),
-                subtitle: Text(p.email, style: const TextStyle(color: Colors.white54, fontSize: 12)),
-                trailing: p.isPresent 
-                  ? const Icon(Icons.check_circle, color: Colors.green, size: 20)
-                  : const Icon(Icons.radio_button_unchecked, color: Colors.white24, size: 20),
+                title: Text(p.name,
+                    style: const TextStyle(color: Colors.white, fontSize: 14)),
+                subtitle: Text(p.email,
+                    style:
+                        const TextStyle(color: Colors.white54, fontSize: 12)),
+                trailing: p.isPresent
+                    ? const Icon(Icons.check_circle,
+                        color: Colors.green, size: 20)
+                    : const Icon(Icons.radio_button_unchecked,
+                        color: Colors.white24, size: 20),
               );
             },
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const AiTranslatedText('Fechar')),
+          TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const AiTranslatedText('Fechar')),
         ],
       ),
     );
@@ -511,12 +622,16 @@ class _MeetingListScreenState extends State<MeetingListScreen> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF1E293B),
-        title: const AiTranslatedText('Convocatória Arquivada', style: TextStyle(color: Colors.white)),
+        title: const AiTranslatedText('Convocatória Arquivada',
+            style: TextStyle(color: Colors.white)),
         content: SingleChildScrollView(
-          child: Text(meeting.invitationText ?? '', style: const TextStyle(color: Colors.white70)),
+          child: Text(meeting.invitationText ?? '',
+              style: const TextStyle(color: Colors.white70)),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const AiTranslatedText('Fechar')),
+          TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const AiTranslatedText('Fechar')),
         ],
       ),
     );
@@ -534,7 +649,8 @@ class _MeetingListScreenState extends State<MeetingListScreen> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF1E293B),
-        title: const AiTranslatedText('Detalhes de Entrega', style: TextStyle(color: Colors.white)),
+        title: const AiTranslatedText('Detalhes de Entrega',
+            style: TextStyle(color: Colors.white)),
         content: SizedBox(
           width: double.maxFinite,
           child: ListView.builder(
@@ -545,40 +661,54 @@ class _MeetingListScreenState extends State<MeetingListScreen> {
               return ListTile(
                 leading: CircleAvatar(
                   backgroundColor: Colors.white12,
-                  child: Text(p.name[0], style: const TextStyle(color: Colors.white)),
+                  child: Text(p.name[0],
+                      style: const TextStyle(color: Colors.white)),
                 ),
-                title: Text(p.name, style: const TextStyle(color: Colors.white, fontSize: 14)),
+                title: Text(p.name,
+                    style: const TextStyle(color: Colors.white, fontSize: 14)),
                 subtitle: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(p.email, style: const TextStyle(color: Colors.white54, fontSize: 11)),
+                    Text(p.email,
+                        style: const TextStyle(
+                            color: Colors.white54, fontSize: 11)),
                     if (p.deliveredAt != null)
-                      Text('Entregue: ${DateFormat('dd/MM HH:mm').format(p.deliveredAt!)}', 
-                          style: const TextStyle(color: Colors.blue, fontSize: 10)),
+                      Text(
+                          'Entregue: ${DateFormat('dd/MM HH:mm').format(p.deliveredAt!)}',
+                          style: const TextStyle(
+                              color: Colors.blue, fontSize: 10)),
                   ],
                 ),
-                trailing: p.readAt != null 
-                  ? const Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.done_all, color: Colors.blue, size: 16),
-                        Text('Lido', style: TextStyle(color: Colors.blue, fontSize: 10)),
-                      ],
-                    )
-                  : (p.deliveredAt != null 
-                      ? const Icon(Icons.done, color: Colors.white24, size: 16)
-                      : const Icon(Icons.mail_outline, color: Colors.white10, size: 16)),
+                trailing: p.readAt != null
+                    ? const Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.done_all, color: Colors.blue, size: 16),
+                          Text('Lido',
+                              style:
+                                  TextStyle(color: Colors.blue, fontSize: 10)),
+                        ],
+                      )
+                    : (p.deliveredAt != null
+                        ? const Icon(Icons.done,
+                            color: Colors.white24, size: 16)
+                        : const Icon(Icons.mail_outline,
+                            color: Colors.white10, size: 16)),
                 onTap: () {
                   // Small cheat: Clicking on a participant marks it as read for demo purposes
-                  final service = Provider.of<InstitutionalService>(context, listen: false);
-                  service.updateParticipantEmailStatus(meeting.id, p.email, isRead: true);
+                  final service =
+                      Provider.of<InstitutionalService>(context, listen: false);
+                  service.updateParticipantEmailStatus(meeting.id, p.email,
+                      isRead: true);
                 },
               );
             },
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const AiTranslatedText('Fechar')),
+          TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const AiTranslatedText('Fechar')),
         ],
       ),
     );
@@ -586,30 +716,50 @@ class _MeetingListScreenState extends State<MeetingListScreen> {
 
   IconData _getFileIcon(String ext) {
     switch (ext) {
-      case 'pdf': return Icons.picture_as_pdf;
-      case 'docx': case 'doc': return Icons.description;
-      case 'xls': case 'xlsx': return Icons.table_chart;
-      case 'pptx': case 'ppt': return Icons.slideshow;
-      case 'mp3': case 'wav': return Icons.audio_file;
-      default: return Icons.insert_drive_file;
+      case 'pdf':
+        return Icons.picture_as_pdf;
+      case 'docx':
+      case 'doc':
+        return Icons.description;
+      case 'xls':
+      case 'xlsx':
+        return Icons.table_chart;
+      case 'pptx':
+      case 'ppt':
+        return Icons.slideshow;
+      case 'mp3':
+      case 'wav':
+        return Icons.audio_file;
+      default:
+        return Icons.insert_drive_file;
     }
   }
 
   Color _getFileColor(String ext) {
     switch (ext) {
-      case 'pdf': return Colors.red;
-      case 'docx': case 'doc': return Colors.blue;
-      case 'xls': case 'xlsx': return Colors.green;
-      case 'pptx': case 'ppt': return Colors.orange;
-      default: return Colors.white54;
+      case 'pdf':
+        return Colors.red;
+      case 'docx':
+      case 'doc':
+        return Colors.blue;
+      case 'xls':
+      case 'xlsx':
+        return Colors.green;
+      case 'pptx':
+      case 'ppt':
+        return Colors.orange;
+      default:
+        return Colors.white54;
     }
   }
 
-  void _navigateToMeeting(BuildContext context, Meeting meeting, bool canManage) {
+  void _navigateToMeeting(
+      BuildContext context, Meeting meeting, bool canManage) {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => MeetingRecordingScreen(meeting: meeting, canManage: canManage),
+        builder: (context) =>
+            MeetingRecordingScreen(meeting: meeting, canManage: canManage),
       ),
     );
   }
@@ -647,13 +797,15 @@ class _MeetingListScreenState extends State<MeetingListScreen> {
         border: Border.all(color: color.withOpacity(0.5)),
       ),
       child: AiTranslatedText(label,
-          style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold)),
+          style: TextStyle(
+              color: color, fontSize: 10, fontWeight: FontWeight.bold)),
     );
   }
 
   void _showAddMeetingDialog(BuildContext context) {
     final titleController = TextEditingController();
-    final locationController = TextEditingController(text: 'Sede da Empresa / Sala de Reuniões');
+    final locationController =
+        TextEditingController(text: 'Sede da Empresa / Sala de Reuniões');
     DateTime selectedDate = DateTime.now();
     TimeOfDay startTime = const TimeOfDay(hour: 9, minute: 0);
     TimeOfDay endTime = const TimeOfDay(hour: 10, minute: 0);
@@ -663,7 +815,8 @@ class _MeetingListScreenState extends State<MeetingListScreen> {
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
           backgroundColor: const Color(0xFF1E293B),
-          title: const AiTranslatedText('Nova Convocatória', style: TextStyle(color: Colors.white)),
+          title: const AiTranslatedText('Nova Convocatória',
+              style: TextStyle(color: Colors.white)),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -671,7 +824,9 @@ class _MeetingListScreenState extends State<MeetingListScreen> {
                 TextField(
                   controller: titleController,
                   style: const TextStyle(color: Colors.white),
-                  decoration: const InputDecoration(labelText: 'Assunto / Título', labelStyle: TextStyle(color: Colors.white54)),
+                  decoration: const InputDecoration(
+                      labelText: 'Assunto / Título',
+                      labelStyle: TextStyle(color: Colors.white54)),
                 ),
                 const SizedBox(height: 16),
                 _buildDialogPicker(
@@ -685,7 +840,8 @@ class _MeetingListScreenState extends State<MeetingListScreen> {
                       firstDate: DateTime.now(),
                       lastDate: DateTime.now().add(const Duration(days: 365)),
                     );
-                    if (picked != null) setDialogState(() => selectedDate = picked);
+                    if (picked != null)
+                      setDialogState(() => selectedDate = picked);
                   },
                 ),
                 const SizedBox(height: 8),
@@ -697,8 +853,10 @@ class _MeetingListScreenState extends State<MeetingListScreen> {
                         label: 'Início',
                         value: startTime.format(context),
                         onTap: () async {
-                          final picked = await showTimePicker(context: context, initialTime: startTime);
-                          if (picked != null) setDialogState(() => startTime = picked);
+                          final picked = await showTimePicker(
+                              context: context, initialTime: startTime);
+                          if (picked != null)
+                            setDialogState(() => startTime = picked);
                         },
                       ),
                     ),
@@ -709,8 +867,10 @@ class _MeetingListScreenState extends State<MeetingListScreen> {
                         label: 'Fim',
                         value: endTime.format(context),
                         onTap: () async {
-                          final picked = await showTimePicker(context: context, initialTime: endTime);
-                          if (picked != null) setDialogState(() => endTime = picked);
+                          final picked = await showTimePicker(
+                              context: context, initialTime: endTime);
+                          if (picked != null)
+                            setDialogState(() => endTime = picked);
                         },
                       ),
                     ),
@@ -720,21 +880,33 @@ class _MeetingListScreenState extends State<MeetingListScreen> {
                 TextField(
                   controller: locationController,
                   style: const TextStyle(color: Colors.white),
-                  decoration: const InputDecoration(labelText: 'Local da Sessão', labelStyle: TextStyle(color: Colors.white54)),
+                  decoration: const InputDecoration(
+                      labelText: 'Local da Sessão',
+                      labelStyle: TextStyle(color: Colors.white54)),
                 ),
               ],
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const AiTranslatedText('Cancelar')),
+            TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const AiTranslatedText('Cancelar')),
             ElevatedButton(
               onPressed: () async {
                 if (titleController.text.isNotEmpty) {
-                  final service = Provider.of<InstitutionalService>(context, listen: false);
-                  final participants = await service.getOrganMembers(widget.organ.memberIds);
+                  final service =
+                      Provider.of<InstitutionalService>(context, listen: false);
+                  final participants =
+                      await service.getOrganMembers(widget.organ.memberIds);
 
-                  final startDT = DateTime(selectedDate.year, selectedDate.month, selectedDate.day, startTime.hour, startTime.minute);
-                  final endDT = DateTime(selectedDate.year, selectedDate.month, selectedDate.day, endTime.hour, endTime.minute);
+                  final startDT = DateTime(
+                      selectedDate.year,
+                      selectedDate.month,
+                      selectedDate.day,
+                      startTime.hour,
+                      startTime.minute);
+                  final endDT = DateTime(selectedDate.year, selectedDate.month,
+                      selectedDate.day, endTime.hour, endTime.minute);
 
                   final meeting = Meeting(
                     id: '',
@@ -746,6 +918,7 @@ class _MeetingListScreenState extends State<MeetingListScreen> {
                     location: locationController.text,
                     status: 'scheduled',
                     participants: participants,
+                    institutionId: widget.organ.institutionId,
                   );
 
                   final id = await service.createMeeting(meeting);
@@ -765,7 +938,11 @@ class _MeetingListScreenState extends State<MeetingListScreen> {
     );
   }
 
-  Widget _buildDialogPicker({required IconData icon, required String label, required String value, required VoidCallback onTap}) {
+  Widget _buildDialogPicker(
+      {required IconData icon,
+      required String label,
+      required String value,
+      required VoidCallback onTap}) {
     return InkWell(
       onTap: onTap,
       child: Container(
@@ -782,11 +959,17 @@ class _MeetingListScreenState extends State<MeetingListScreen> {
               children: [
                 Icon(icon, size: 12, color: const Color(0xFF7B61FF)),
                 const SizedBox(width: 4),
-                AiTranslatedText(label, style: const TextStyle(color: Colors.white54, fontSize: 10)),
+                AiTranslatedText(label,
+                    style:
+                        const TextStyle(color: Colors.white54, fontSize: 10)),
               ],
             ),
             const SizedBox(height: 4),
-            Text(value, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
+            Text(value,
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold)),
           ],
         ),
       ),

@@ -2,7 +2,8 @@ class OrganMember {
   final String email;
   final String name;
   final String? userId; // Optional if already registered
-  final String? function; // Presidente, Vice-Presidente, Secretário, Vogal, Membro
+  final String?
+      function; // Presidente, Vice-Presidente, Secretário, Vogal, Membro
   final Map<String, bool> permissions; // e.g., {'can_approve_minutes': true}
 
   OrganMember({

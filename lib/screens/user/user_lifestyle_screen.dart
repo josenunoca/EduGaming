@@ -41,7 +41,8 @@ class _UserLifestyleScreenState extends State<UserLifestyleScreen> {
 
                 if (list.isEmpty) {
                   return const Center(
-                      child: Text('Nenhum questionário disponível no momento.'));
+                      child:
+                          Text('Nenhum questionário disponível no momento.'));
                 }
 
                 return ListView.builder(
@@ -52,7 +53,8 @@ class _UserLifestyleScreenState extends State<UserLifestyleScreen> {
                     return Card(
                       child: ListTile(
                         leading: const CircleAvatar(
-                            child: Icon(Icons.favorite, color: Colors.redAccent)),
+                            child:
+                                Icon(Icons.favorite, color: Colors.redAccent)),
                         title: Text(q.title),
                         subtitle: Text(
                             'Expira em: ${DateFormat('dd/MM').format(q.endDate)}'),

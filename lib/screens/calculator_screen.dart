@@ -77,7 +77,8 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
         const SizedBox(height: 4),
         Text(
           'Premium MVP Experience',
-          style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 16),
+          style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.6), fontSize: 16),
         ).animate().fadeIn(delay: 200.ms, duration: 600.ms),
       ],
     );

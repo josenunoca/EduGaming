@@ -27,11 +27,13 @@ class ParentDashboard extends StatelessWidget {
       builder: (context, parentSnap) {
         final parent = parentSnap.data;
         if (parentSnap.connectionState == ConnectionState.waiting) {
-          return const Scaffold(body: Center(child: CircularProgressIndicator()));
+          return const Scaffold(
+              body: Center(child: CircularProgressIndicator()));
         }
         if (parent == null) {
           return const Scaffold(
-              body: Center(child: AiTranslatedText('Utilizador não encontrado')));
+              body:
+                  Center(child: AiTranslatedText('Utilizador não encontrado')));
         }
 
         if (parent.isSuspended) {
@@ -157,14 +159,16 @@ class ParentDashboard extends StatelessWidget {
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 12),
                       child: GlassCard(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 8),
                         child: Column(
                           children: [
                             ListTile(
                               leading: const CircleAvatar(
                                 backgroundColor: Color(0xFF7B61FF),
                                 radius: 16,
-                                child: Icon(Icons.person, color: Colors.white, size: 16),
+                                child: Icon(Icons.person,
+                                    color: Colors.white, size: 16),
                               ),
                               title: Text(child.name,
                                   style: const TextStyle(

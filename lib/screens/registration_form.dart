@@ -173,7 +173,7 @@ class _RegistrationFormState extends State<RegistrationForm> {
                                   content: Text('Conta criada com sucesso!')),
                             );
                             if (!mounted) return;
-    Navigator.pop(context);
+                            Navigator.pop(context);
                           } else {
                             if (!mounted) return;
                             ScaffoldMessenger.of(context).showSnackBar(

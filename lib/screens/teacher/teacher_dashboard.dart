@@ -1,20 +1,31 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../login_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../login_screen.dart';
 import '../../models/subject_model.dart';
 import '../../models/user_model.dart';
 import '../../models/institution_model.dart';
+import '../../models/institution_organ_model.dart';
+import '../../models/activity_model.dart';
 import '../../services/firebase_service.dart';
 import '../../widgets/glass_card.dart';
 import '../../widgets/branded_title.dart';
-import 'subject_details_screen.dart';
-import '../common/personal_profile_screen.dart';
-import '../common/communication_center_screen.dart';
 import '../../widgets/messaging_badge.dart';
 import '../../widgets/advanced_search_anchor.dart';
 import '../../widgets/ai_translated_text.dart';
 import '../../widgets/user_notices_widget.dart';
+import 'subject_details_screen.dart';
+import '../common/personal_profile_screen.dart';
+import '../common/communication_center_screen.dart';
+import '../common/timetable_user_screen.dart';
+import '../institution/institutional_management_screen.dart';
+import '../institution/academic_management_screen.dart';
+import '../institution/activity_details_screen.dart';
+import '../institution/institution_collaborator_management_screen.dart';
+import '../institution/credit_management_screen.dart';
+import '../institution/lifestyle_management_screen.dart';
+import '../institution/delegation_management_screen.dart';
+import '../institutional/institutional_organs_screen.dart';
 
 class TeacherDashboard extends StatefulWidget {
   const TeacherDashboard({super.key});
@@ -180,8 +191,19 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
                           onPressed: () => Navigator.push(
                               context,
                               MaterialPageRoute(
-                                  builder: (_) => const CommunicationCenterScreen())),
+                                  builder: (_) =>
+                                      const CommunicationCenterScreen())),
                         ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.calendar_month),
+                        onPressed: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => TimetableUserScreen(user: teacher),
+                          ),
+                        ),
+                        tooltip: 'Ver o meu horário escolar',
                       ),
                       Tooltip(
                         message: 'Sair da conta e voltar ao ecrã de login',
@@ -263,8 +285,8 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
                                     context,
                                     MaterialPageRoute(
                                         builder: (_) => SubjectDetailsScreen(
-                                            subject:
-                                                res.originalObject as Subject)));
+                                            subject: res.originalObject
+                                                as Subject)));
                               } else {
                                 setState(() => _searchQuery = res.title);
                               }
@@ -289,129 +311,217 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
                             const SizedBox(height: 16),
                             DropdownButton<String?>(
                               value: _selectedYearFilter,
-                              hint: const AiTranslatedText('Filtrar por Ano Letivo',
+                              hint: const AiTranslatedText(
+                                  'Filtrar por Ano Letivo',
                                   style: TextStyle(color: Colors.white70)),
                               dropdownColor: const Color(0xFF1E293B),
                               style: const TextStyle(color: Colors.white),
                               items: [
                                 const DropdownMenuItem(
                                     value: null, child: Text('Todos os Anos')),
-                                ...['2023/2024', '2024/2025', '2025/2026'].map(
-                                    (y) =>
-                                        DropdownMenuItem(value: y, child: Text(y))),
+                                ...[
+                                  '2023/2024',
+                                  '2024/2025',
+                                  '2025/2026'
+                                ].map((y) =>
+                                    DropdownMenuItem(value: y, child: Text(y))),
                               ],
                               onChanged: (v) =>
                                   setState(() => _selectedYearFilter = v),
                             ),
                             const SizedBox(height: 16),
                             Expanded(
-                              child: StreamBuilder<List<Subject>>(
-                                stream: service.getSubjectsByTeacher(teacher.id,
-                                    academicYear: _selectedYearFilter),
-                                builder: (context, snapshot) {
-                                  if (snapshot.connectionState ==
-                                      ConnectionState.waiting) {
-                                    return const Center(
-                                        child: CircularProgressIndicator());
-                                  }
-                                  final subjects = snapshot.data ?? [];
-                                  return ListView.builder(
-                                    itemCount: subjects.length,
-                                    itemBuilder: (context, index) {
-                                      final subject = subjects[index];
-                                      return Padding(
-                                        padding:
-                                            const EdgeInsets.only(bottom: 12.0),
-                                        child: GlassCard(
-                                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                          child: Row(
-                                            children: [
-                                              Container(
-                                                width: 32,
-                                                height: 32,
-                                                decoration: BoxDecoration(
-                                                  color: const Color(0xFF7B61FF)
-                                                      .withValues(alpha: 0.2),
-                                                  borderRadius:
-                                                      BorderRadius.circular(12),
-                                                ),
-                                                child: const Icon(Icons.book,
-                                                    color: Color(0xFF7B61FF),
-                                                    size: 16),
-                                              ),
-                                              const SizedBox(width: 16),
-                                              Expanded(
-                                                child: Column(
-                                                  crossAxisAlignment:
-                                                      CrossAxisAlignment.start,
-                                                  children: [
-                                                    AiTranslatedText(subject.name,
-                                                        style: const TextStyle(
-                                                            fontSize: 16,
-                                                            fontWeight:
-                                                                FontWeight.bold,
-                                                            color: Colors.white)),
-                                                    AiTranslatedText(
-                                                        '${subject.level} • ${subject.academicYear}',
-                                                        style: const TextStyle(
-                                                            color: Colors.white54,
-                                                            fontSize: 13)),
-                                                    AiTranslatedText(
-                                                        '${subject.contents.length} conteúdos',
-                                                        style: const TextStyle(
-                                                            color: Colors.white38,
-                                                            fontSize: 12)),
-                                                  ],
-                                                ),
-                                              ),
-                                              Column(
-                                                children: [
-                                                  ElevatedButton(
-                                                    onPressed: () => Navigator.push(
-                                                      context,
-                                                      MaterialPageRoute(
-                                                          builder: (_) =>
-                                                              SubjectDetailsScreen(
-                                                                  subject:
-                                                                      subject)),
+                              child: DefaultTabController(
+                                length: 3,
+                                child: Column(
+                                  children: [
+                                    const TabBar(
+                                      indicatorColor: Color(0xFF7B61FF),
+                                      labelColor: Colors.white,
+                                      unselectedLabelColor: Colors.white54,
+                                      tabs: [
+                                        Tab(text: 'Minhas Turmas'),
+                                        Tab(text: 'Minhas Atividades'),
+                                        Tab(text: 'Gestão Delegada'),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 12),
+                                    Expanded(
+                                      child: TabBarView(
+                                        children: [
+                                          // TAB 1: Subjects
+                                          StreamBuilder<List<Subject>>(
+                                            stream: service.getSubjectsByTeacher(teacher.id, academicYear: _selectedYearFilter),
+                                            builder: (context, snapshot) {
+                                              if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
+                                              final subjects = snapshot.data ?? [];
+                                              if (subjects.isEmpty) return const Center(child: AiTranslatedText('Sem turmas atribuídas.', style: TextStyle(color: Colors.white54)));
+                                              return ListView.builder(
+                                                itemCount: subjects.length,
+                                                itemBuilder: (context, index) {
+                                                  final subject = subjects[index];
+                                                  return Padding(
+                                                    padding: const EdgeInsets.only(bottom: 12.0),
+                                                    child: GlassCard(
+                                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                                      child: Row(
+                                                        children: [
+                                                          Container(
+                                                            width: 32,
+                                                            height: 32,
+                                                            decoration: BoxDecoration(
+                                                              color: const Color(0xFF7B61FF).withValues(alpha: 0.2),
+                                                              borderRadius: BorderRadius.circular(12),
+                                                            ),
+                                                            child: const Icon(Icons.book, color: Color(0xFF7B61FF), size: 16),
+                                                          ),
+                                                          const SizedBox(width: 16),
+                                                          Expanded(
+                                                            child: Column(
+                                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                                              children: [
+                                                                AiTranslatedText(subject.name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+                                                                AiTranslatedText('${subject.level} • ${subject.academicYear}', style: const TextStyle(color: Colors.white54, fontSize: 13)),
+                                                                AiTranslatedText('${subject.contents.length} conteúdos', style: const TextStyle(color: Colors.white38, fontSize: 12)),
+                                                              ],
+                                                            ),
+                                                          ),
+                                                          Column(
+                                                            children: [
+                                                              ElevatedButton(
+                                                                onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => SubjectDetailsScreen(subject: subject))),
+                                                                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF7B61FF), foregroundColor: Colors.white),
+                                                                child: const AiTranslatedText('GERIR', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
+                                                              ),
+                                                              TextButton.icon(
+                                                                onPressed: () => _showDuplicateDialog(context, service, subject),
+                                                                icon: const Icon(Icons.copy, size: 14, color: Colors.blueAccent),
+                                                                label: const AiTranslatedText('Duplicar', style: TextStyle(fontSize: 10, color: Colors.blueAccent)),
+                                                              ),
+                                                            ],
+                                                          ),
+                                                        ],
+                                                      ),
                                                     ),
-                                                    style: ElevatedButton.styleFrom(
-                                                      backgroundColor:
-                                                          const Color(0xFF7B61FF),
-                                                      foregroundColor: Colors.white,
-                                                    ),
-                                                    child: const AiTranslatedText(
-                                                        'GERIR',
-                                                        style: TextStyle(
-                                                            fontWeight:
-                                                                FontWeight.bold,
-                                                            fontSize: 11)),
-                                                  ),
-                                                  TextButton.icon(
-                                                    onPressed: () =>
-                                                        _showDuplicateDialog(
-                                                            context,
-                                                            service,
-                                                            subject),
-                                                    icon: const Icon(Icons.copy,
-                                                        size: 14,
-                                                        color: Colors.blueAccent),
-                                                    label: const AiTranslatedText(
-                                                        'Duplicar',
-                                                        style: TextStyle(
-                                                            fontSize: 10,
-                                                            color:
-                                                                Colors.blueAccent)),
-                                                  ),
-                                                ],
-                                              ),
-                                            ],
+                                                  );
+                                                },
+                                              );
+                                            },
                                           ),
-                                        ),
-                                      );
-                                    },
-                                  );
-                                },
+                                          
+                                          StreamBuilder<List<InstitutionalActivity>>(
+                                            stream: service.getActivitiesByResponsible(teacher.id, academicYear: _selectedYearFilter),
+                                            builder: (context, snapshot) {
+                                              if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
+                                              
+                                              // Standardized sorting: planned first, then nearest date
+                                              final activities = snapshot.data ?? [];
+                                              activities.sort((a, b) {
+                                                if (a.status == 'planned' && b.status == 'completed') return -1;
+                                                if (a.status == 'completed' && b.status == 'planned') return 1;
+                                                return a.startDate.compareTo(b.startDate);
+                                              });
+
+                                              if (activities.isEmpty) return const Center(child: AiTranslatedText('Nenhuma atividade atribuída como responsável.', style: TextStyle(color: Colors.white54)));
+                                              
+                                              return ListView.builder(
+                                                itemCount: activities.length,
+                                                itemBuilder: (context, index) {
+                                                  final activity = activities[index];
+                                                  final isCompleted = activity.status == 'completed';
+                                                  return Padding(
+                                                    padding: const EdgeInsets.only(bottom: 12.0),
+                                                    child: GlassCard(
+                                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                                      child: ListTile(
+                                                        leading: Container(
+                                                          width: 40, height: 40,
+                                                          decoration: BoxDecoration(
+                                                            color: (isCompleted ? Colors.green : Colors.teal).withValues(alpha: 0.2),
+                                                            borderRadius: BorderRadius.circular(12),
+                                                          ),
+                                                          child: Icon(
+                                                            isCompleted ? Icons.check_circle : Icons.event,
+                                                            color: isCompleted ? Colors.greenAccent : Colors.teal,
+                                                          ),
+                                                        ),
+                                                        title: Text(
+                                                          activity.title,
+                                                          style: TextStyle(
+                                                            color: isCompleted ? Colors.white54 : Colors.white,
+                                                            fontWeight: FontWeight.bold,
+                                                            decoration: isCompleted ? TextDecoration.lineThrough : null,
+                                                          ),
+                                                        ),
+                                                        subtitle: Column(
+                                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                                          children: [
+                                                            Text(
+                                                              '${activity.startDate.day}/${activity.startDate.month}/${activity.startDate.year} - ${activity.activityGroup}',
+                                                              style: const TextStyle(color: Colors.white70, fontSize: 12),
+                                                            ),
+                                                            if (activity.responsibleName != null && activity.responsibleUserId != teacher.id)
+                                                              Text(
+                                                                'Resp: ${activity.responsibleName}',
+                                                                style: const TextStyle(color: Colors.white38, fontSize: 11),
+                                                              ),
+                                                          ],
+                                                        ),
+                                                        trailing: Row(
+                                                          mainAxisSize: MainAxisSize.min,
+                                                          children: [
+                                                            if (!isCompleted)
+                                                              IconButton(
+                                                                icon: const Icon(Icons.check_circle_outline,
+                                                                    color: Colors.greenAccent),
+                                                                onPressed: () => service.updateActivityStatus(
+                                                                    activity.id, 'completed'),
+                                                                tooltip: 'Concluir Atividade',
+                                                              ),
+                                                            ElevatedButton(
+                                                              onPressed: () {
+                                                                if (institution != null) {
+                                                                  Navigator.push(
+                                                                      context,
+                                                                      MaterialPageRoute(
+                                                                          builder: (_) =>
+                                                                              ActivityDetailsScreen(
+                                                                                  activity: activity,
+                                                                                  institution:
+                                                                                      institution)));
+                                                                }
+                                                              },
+                                                              style: ElevatedButton.styleFrom(
+                                                                backgroundColor: isCompleted
+                                                                    ? Colors.white10
+                                                                    : Colors.teal,
+                                                                foregroundColor: Colors.white,
+                                                                padding: const EdgeInsets.symmetric(
+                                                                    horizontal: 12),
+                                                              ),
+                                                              child: const Text('GERIR',
+                                                                  style: TextStyle(
+                                                                      fontSize: 11,
+                                                                      fontWeight:
+                                                                          FontWeight.bold)),
+                                                            ),
+                                                          ],
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  );
+                                                },
+                                              );
+                                            },
+                                          ),
+
+                                          // TAB 3: Delegated Management (SAP Style)
+                                          _buildDelegatedTab(context, teacher, institution),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           ],
@@ -491,6 +601,187 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
           ],
         );
       },
+    );
+  }
+
+  Widget _buildDelegatedTab(BuildContext context, UserModel teacher, InstitutionModel? institution) {
+    if (institution == null) return const Center(child: CircularProgressIndicator());
+
+    final service = context.read<FirebaseService>();
+
+    return StreamBuilder<List<InstitutionOrgan>>(
+      stream: service.getInstitutionOrgans(institution.id),
+      builder: (context, organSnapshot) {
+        final organs = organSnapshot.data ?? [];
+        final delegated = <Map<String, dynamic>>[];
+        
+        // Helper to check if a specific key OR its parent is delegated
+        bool isAnyDelegated(String key) {
+          if (institution.delegatedRoles[key]?.contains(teacher.id) ?? false) return true;
+          // Check parent if applicable
+          if (key.contains(':')) {
+            final parent = key.split(':').first;
+            if (institution.delegatedRoles[parent]?.contains(teacher.id) ?? false) return true;
+          }
+          return false;
+        }
+
+        // 1. Check Global Modules
+        if (isAnyDelegated('professors')) {
+          delegated.add({
+            'label': 'Gerir Colaboradores',
+            'icon': Icons.people,
+            'color': const Color(0xFF00D1FF),
+            'page': InstitutionCollaboratorManagementScreen(institution: institution),
+          });
+        }
+        
+        if (isAnyDelegated('global_360')) {
+          delegated.add({
+            'label': 'Gestão Global 360º',
+            'icon': Icons.admin_panel_settings,
+            'color': const Color(0xFF7B61FF),
+            'page': InstitutionalManagementScreen(institution: institution),
+          });
+        } else {
+          // Check sub-modules of global_360 if full access isn't granted
+          if (isAnyDelegated('global_360:activities')) {
+            delegated.add({
+              'label': 'Gestão Atividades',
+              'icon': Icons.event,
+              'color': const Color(0xFF7B61FF),
+              'page': InstitutionalManagementScreen(institution: institution, initialTab: 1), 
+            });
+          }
+          if (isAnyDelegated('global_360:spaces')) {
+            delegated.add({
+              'label': 'Gestão Espaços',
+              'icon': Icons.room,
+              'color': const Color(0xFF7B61FF),
+              'page': InstitutionalManagementScreen(institution: institution, initialTab: 0),
+            });
+          }
+          if (isAnyDelegated('global_360:timetable')) {
+            delegated.add({
+              'label': 'Gestão Horários',
+              'icon': Icons.calendar_today,
+              'color': const Color(0xFF7B61FF),
+              'page': InstitutionalManagementScreen(institution: institution, initialTab: 2),
+            });
+          }
+        }
+
+        if (isAnyDelegated('credits')) {
+          delegated.add({
+            'label': 'Gestão de Créditos',
+            'icon': Icons.token,
+            'color': Colors.amber,
+            'page': InstitutionCreditManagementScreen(institution: institution),
+          });
+        }
+
+        if (isAnyDelegated('academic')) {
+          delegated.add({
+            'label': 'Gestão Académica',
+            'icon': Icons.school,
+            'color': Colors.indigo,
+            'page': AcademicManagementScreen(institution: institution),
+          });
+        }
+
+        if (isAnyDelegated('lifestyle')) {
+          delegated.add({
+            'label': 'Estilo de Vida',
+            'icon': Icons.favorite,
+            'color': Colors.pinkAccent,
+            'page': const LifestyleManagementScreen(),
+          });
+        }
+
+        if (isAnyDelegated('delegations')) {
+          delegated.add({
+            'label': 'Gestão de Delegações',
+            'icon': Icons.supervised_user_circle,
+            'color': Colors.tealAccent,
+            'page': DelegationManagementScreen(institution: institution),
+          });
+        }
+
+        // 2. Check Specific Organs
+        for (final organ in organs) {
+          final organKey = 'organs:${organ.id}';
+          if (institution.delegatedRoles[organKey]?.contains(teacher.id) ?? false) {
+            delegated.add({
+              'label': organ.name,
+              'icon': Icons.account_balance,
+              'color': Colors.tealAccent,
+              'page': InstitutionalOrgansScreen(institution: institution),
+            });
+          }
+        }
+
+        if (delegated.isEmpty) {
+          return const Center(
+            child: Padding(
+              padding: EdgeInsets.all(32.0),
+              child: AiTranslatedText(
+                'Não possui responsabilidades delegadas pela instituição neste momento.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.white54),
+              ),
+            ),
+          );
+        }
+
+        return ListView(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          children: [
+            if (delegated.any((d) => d['label'].startsWith('Gestão') || d['label'].startsWith('Gerir'))) ...[
+              const _SectionHeader(title: 'MÓDULOS INSTITUCIONAIS'),
+              ...delegated.where((d) => !d['label'].contains('Conselho') && !organs.any((o) => o.name == d['label'])).map((d) => _buildDelegatedTile(context, d)),
+            ],
+            if (delegated.any((d) => organs.any((o) => o.name == d['label']))) ...[
+              const SizedBox(height: 16),
+              const _SectionHeader(title: 'ÓRGÃOS E ATAS DELEGADOS'),
+              ...delegated.where((d) => organs.any((o) => o.name == d['label'])).map((d) => _buildDelegatedTile(context, d)),
+            ],
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildDelegatedTile(BuildContext context, Map<String, dynamic> d) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 6),
+      child: GlassCard(
+        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => d['page'])),
+        child: ListTile(
+          leading: Icon(d['icon'], color: d['color']),
+          title: AiTranslatedText(d['label'], style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          trailing: const Icon(Icons.arrow_forward_ios, color: Colors.white24, size: 14),
+        ),
+      ),
+    );
+  }
+}
+
+class _SectionHeader extends StatelessWidget {
+  final String title;
+  const _SectionHeader({required this.title});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 20, bottom: 8, top: 12),
+      child: AiTranslatedText(
+        title,
+        style: const TextStyle(
+          color: Colors.white38,
+          fontSize: 11,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
     );
   }
 }

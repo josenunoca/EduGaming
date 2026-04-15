@@ -18,7 +18,8 @@ class OtherDashboard extends StatelessWidget {
             message: 'Sair da aplicação e voltar ao login',
             child: IconButton(
               icon: const Icon(Icons.logout),
-              onPressed: () => Navigator.pushReplacementNamed(context, '/login'),
+              onPressed: () =>
+                  Navigator.pushReplacementNamed(context, '/login'),
             ),
           ),
         ],
@@ -75,68 +76,97 @@ class OtherDashboard extends StatelessWidget {
   void _showOrgansAndDocuments(BuildContext context) {
     final service = context.read<FirebaseService>();
     showModalBottomSheet(
-      context: context,
-      backgroundColor: const Color(0xFF1E1E2E),
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (context) {
-        return DraggableScrollableSheet(
-          initialChildSize: 0.7,
-          minChildSize: 0.5,
-          maxChildSize: 0.95,
-          expand: false,
-          builder: (context, scrollController) {
-            return Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const AiTranslatedText('Os Meus Órgãos e Documentos', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 16),
-                  Expanded(
-                    child: StreamBuilder<List<InstitutionalOrgan>>(
-                      stream: service.getInstitutionalOrgans('default_institution'), // Placeholder
-                      builder: (context, snapshot) {
-                        if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-                        final organs = snapshot.data!;
-                        return ListView.builder(
-                          controller: scrollController,
-                          itemCount: organs.length,
-                          itemBuilder: (context, index) {
-                            final organ = organs[index];
-                            return ExpansionTile(
-                              title: Text(organ.name, style: const TextStyle(color: Colors.white)),
-                              children: [
-                                StreamBuilder<List<OrganDocument>>(
-                                  stream: service.getDocumentsForMember(organ.id, "current_user", false),
-                                  builder: (context, docSnapshot) {
-                                    if (!docSnapshot.hasData) return const SizedBox.shrink();
-                                    final docs = docSnapshot.data!;
-                                    if (docs.isEmpty) return const Padding(padding: EdgeInsets.all(16.0), child: Text('Nenhum documento disponível.', style: TextStyle(color: Colors.white54)));
-                                    return Column(
-                                      children: docs.map((doc) => ListTile(
-                                        leading: const Icon(Icons.file_present, color: Colors.white38),
-                                        title: Text(doc.title, style: const TextStyle(color: Colors.white70)),
-                                        subtitle: Text(doc.type.name.toUpperCase(), style: const TextStyle(color: Colors.white24, fontSize: 10)),
-                                        onTap: () {},
-                                      )).toList(),
-                                    );
-                                  },
-                                ),
-                              ],
-                            );
-                          },
-                        );
-                      },
+        context: context,
+        backgroundColor: const Color(0xFF1E1E2E),
+        isScrollControlled: true,
+        shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+        builder: (context) {
+          return DraggableScrollableSheet(
+            initialChildSize: 0.7,
+            minChildSize: 0.5,
+            maxChildSize: 0.95,
+            expand: false,
+            builder: (context, scrollController) {
+              return Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const AiTranslatedText('Os Meus Órgãos e Documentos',
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 16),
+                    Expanded(
+                      child: StreamBuilder<List<InstitutionalOrgan>>(
+                        stream: service.getInstitutionalOrgans(
+                            'default_institution'), // Placeholder
+                        builder: (context, snapshot) {
+                          if (!snapshot.hasData)
+                            return const Center(
+                                child: CircularProgressIndicator());
+                          final organs = snapshot.data!;
+                          return ListView.builder(
+                            controller: scrollController,
+                            itemCount: organs.length,
+                            itemBuilder: (context, index) {
+                              final organ = organs[index];
+                              return ExpansionTile(
+                                title: Text(organ.name,
+                                    style:
+                                        const TextStyle(color: Colors.white)),
+                                children: [
+                                  StreamBuilder<List<OrganDocument>>(
+                                    stream: service.getDocumentsForMember(
+                                        organ.id, "current_user", false),
+                                    builder: (context, docSnapshot) {
+                                      if (!docSnapshot.hasData)
+                                        return const SizedBox.shrink();
+                                      final docs = docSnapshot.data!;
+                                      if (docs.isEmpty)
+                                        return const Padding(
+                                            padding: EdgeInsets.all(16.0),
+                                            child: Text(
+                                                'Nenhum documento disponível.',
+                                                style: TextStyle(
+                                                    color: Colors.white54)));
+                                      return Column(
+                                        children: docs
+                                            .map((doc) => ListTile(
+                                                  leading: const Icon(
+                                                      Icons.file_present,
+                                                      color: Colors.white38),
+                                                  title: Text(doc.title,
+                                                      style: const TextStyle(
+                                                          color:
+                                                              Colors.white70)),
+                                                  subtitle: Text(
+                                                      doc.type.name
+                                                          .toUpperCase(),
+                                                      style: const TextStyle(
+                                                          color: Colors.white24,
+                                                          fontSize: 10)),
+                                                  onTap: () {},
+                                                ))
+                                            .toList(),
+                                      );
+                                    },
+                                  ),
+                                ],
+                              );
+                            },
+                          );
+                        },
+                      ),
                     ),
-                  ),
-                ],
-              ),
-            );
-          },
-        );
-      }
-    );
+                  ],
+                ),
+              );
+            },
+          );
+        });
   }
 }
 

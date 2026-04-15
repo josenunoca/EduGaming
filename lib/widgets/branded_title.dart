@@ -15,7 +15,8 @@ class BrandedTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (logoUrl == null && (institutionName == null || institutionName!.isEmpty)) {
+    if (logoUrl == null &&
+        (institutionName == null || institutionName!.isEmpty)) {
       return AiTranslatedText(defaultTitle);
     }
 
@@ -35,7 +36,8 @@ class BrandedTitle extends StatelessWidget {
               logoUrl!,
               fit: BoxFit.cover,
               errorBuilder: (context, error, stackTrace) {
-                return const Icon(Icons.business, color: Colors.white54, size: 20);
+                return const Icon(Icons.business,
+                    color: Colors.white54, size: 20);
               },
               loadingBuilder: (context, child, loadingProgress) {
                 if (loadingProgress == null) return child;
@@ -70,7 +72,8 @@ class BrandedTitle extends StatelessWidget {
                 defaultTitle,
                 style: TextStyle(
                   fontSize: 11,
-                  color: institutionName != null ? Colors.white54 : Colors.white,
+                  color:
+                      institutionName != null ? Colors.white54 : Colors.white,
                 ),
               ),
             ],

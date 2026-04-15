@@ -83,7 +83,9 @@ class _GradesManagementScreenState extends State<GradesManagementScreen> {
 
     // 2. Results Stream
     _subscriptions.add(
-      _firebaseService.getAllSubjectGameResultsStream(_subject.id).listen((results) {
+      _firebaseService
+          .getAllSubjectGameResultsStream(_subject.id)
+          .listen((results) {
         setState(() => _allResults = results);
         _checkLoading();
       }),
@@ -120,7 +122,9 @@ class _GradesManagementScreenState extends State<GradesManagementScreen> {
 
   void _checkLoading() {
     // We consider it loaded when we have all initial data
-    if (_students.isNotEmpty || _allResults.isNotEmpty || _gamesMap.isNotEmpty) {
+    if (_students.isNotEmpty ||
+        _allResults.isNotEmpty ||
+        _gamesMap.isNotEmpty) {
       if (_isLoading) {
         setState(() => _isLoading = false);
       }

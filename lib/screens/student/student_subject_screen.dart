@@ -101,7 +101,8 @@ class _StudentSubjectScreenState extends State<StudentSubjectScreen>
     return StreamBuilder<Subject?>(
       stream: service.getSubjectStream(widget.subjectId),
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
+        if (snapshot.connectionState == ConnectionState.waiting &&
+            !snapshot.hasData) {
           return const Scaffold(
               backgroundColor: Color(0xFF0F172A),
               body: Center(child: CircularProgressIndicator()));
@@ -417,10 +418,10 @@ class _StudentSubjectScreenState extends State<StudentSubjectScreen>
                                       : Colors.redAccent),
                               _buildStatItem('Vezes',
                                   stats.playCount.toString(), Colors.white),
-                                  _buildStatItem(
-                                      'Máx',
-                                      '${stats.maxScore.toStringAsFixed(0)} pts',
-                                      const Color(0xFF00D1FF)),
+                              _buildStatItem(
+                                  'Máx',
+                                  '${stats.maxScore.toStringAsFixed(0)} pts',
+                                  const Color(0xFF00D1FF)),
                               if (stats.playCount > 0)
                                 IconButton(
                                   icon: const Icon(Icons.picture_as_pdf,
@@ -631,8 +632,8 @@ class _StudentSubjectScreenState extends State<StudentSubjectScreen>
                                   ],
                                 ),
                               );
-                          },
-                        ),
+                            },
+                          ),
                           const SizedBox(height: 20),
                           Builder(builder: (context) {
                             return StreamBuilder<AiGameStats?>(
@@ -762,7 +763,9 @@ class _StudentSubjectScreenState extends State<StudentSubjectScreen>
 
             // Fetch games map for calculations
             return FutureBuilder<List<AiGame>>(
-              future: service.getAiGamesBySubject(subject.id, publishedOnly: true).first,
+              future: service
+                  .getAiGamesBySubject(subject.id, publishedOnly: true)
+                  .first,
               builder: (context, gamesSnapshot) {
                 if (!gamesSnapshot.hasData) {
                   return const Center(child: CircularProgressIndicator());
@@ -1073,8 +1076,10 @@ class _StudentSubjectScreenState extends State<StudentSubjectScreen>
       final userId = widget.studentId ?? FirebaseAuth.instance.currentUser?.uid;
       if (userId != null) {
         final attendances = await service.getAttendanceForSubject(subject.id);
-        final studentAttendances = attendances.where((a) => a.userId == userId).toList();
-        final finalizedSessions = subject.sessions.where((s) => s.isFinalized).toList();
+        final studentAttendances =
+            attendances.where((a) => a.userId == userId).toList();
+        final finalizedSessions =
+            subject.sessions.where((s) => s.isFinalized).toList();
 
         if (finalizedSessions.isNotEmpty) {
           int presentCount = 0;
@@ -1090,7 +1095,8 @@ class _StudentSubjectScreenState extends State<StudentSubjectScreen>
                 context: context,
                 builder: (context) => AlertDialog(
                   backgroundColor: const Color(0xFF1E293B),
-                  title: const AiTranslatedText('Acesso Bloqueado', style: TextStyle(color: Colors.redAccent)),
+                  title: const AiTranslatedText('Acesso Bloqueado',
+                      style: TextStyle(color: Colors.redAccent)),
                   content: AiTranslatedText(
                     'Não cumpre os critérios de assiduidade para avaliação contínua (${percentage.toStringAsFixed(0)}% de ${subject.requiredAttendancePercentage.toStringAsFixed(0)}% exigidos).',
                     style: const TextStyle(color: Colors.white70),

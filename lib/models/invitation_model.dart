@@ -36,7 +36,8 @@ class ExternalInvitation {
       institutionId: map['institutionId'] ?? '',
       organId: map['organId'] ?? '',
       invitedBy: map['invitedBy'] ?? '',
-      createdAt: DateTime.parse(map['createdAt'] ?? DateTime.now().toIso8601String()),
+      createdAt:
+          DateTime.parse(map['createdAt'] ?? DateTime.now().toIso8601String()),
       isUsed: map['isUsed'] ?? false,
     );
   }

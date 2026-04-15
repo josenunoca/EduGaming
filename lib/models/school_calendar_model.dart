@@ -1,4 +1,3 @@
-
 class SchoolCalendar {
   final String id;
   final String institutionId;
@@ -32,9 +31,15 @@ class SchoolCalendar {
       id: map['id'] ?? '',
       institutionId: map['institutionId'] ?? '',
       academicYear: map['academicYear'] ?? '',
-      terms: (map['terms'] as List? ?? []).map((t) => SchoolTerm.fromMap(t)).toList(),
-      holidays: (map['holidays'] as List? ?? []).map((h) => Holiday.fromMap(h)).toList(),
-      vacations: (map['vacations'] as List? ?? []).map((v) => VacationPeriod.fromMap(v)).toList(),
+      terms: (map['terms'] as List? ?? [])
+          .map((t) => SchoolTerm.fromMap(t))
+          .toList(),
+      holidays: (map['holidays'] as List? ?? [])
+          .map((h) => Holiday.fromMap(h))
+          .toList(),
+      vacations: (map['vacations'] as List? ?? [])
+          .map((v) => VacationPeriod.fromMap(v))
+          .toList(),
     );
   }
 }

@@ -14,7 +14,8 @@ class FacilityManagementScreen extends StatefulWidget {
   const FacilityManagementScreen({super.key, required this.institution});
 
   @override
-  State<FacilityManagementScreen> createState() => _FacilityManagementScreenState();
+  State<FacilityManagementScreen> createState() =>
+      _FacilityManagementScreenState();
 }
 
 class _FacilityManagementScreenState extends State<FacilityManagementScreen> {
@@ -37,16 +38,21 @@ class _FacilityManagementScreenState extends State<FacilityManagementScreen> {
               child: StreamBuilder<List<Classroom>>(
                 stream: service.getClassrooms(widget.institution.id),
                 builder: (context, snapshot) {
-                  if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+                  if (!snapshot.hasData)
+                    return const Center(child: CircularProgressIndicator());
                   final rooms = snapshot.data!;
-                  if (rooms.isEmpty) return const Center(child: AiTranslatedText('Nenhuma sala cadastrada.', style: TextStyle(color: Colors.white54)));
+                  if (rooms.isEmpty)
+                    return const Center(
+                        child: AiTranslatedText('Nenhuma sala cadastrada.',
+                            style: TextStyle(color: Colors.white54)));
 
                   return GridView.builder(
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 3,
-                        crossAxisSpacing: 10,
-                        mainAxisSpacing: 10,
-                        childAspectRatio: 1.2),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 3,
+                            crossAxisSpacing: 10,
+                            mainAxisSpacing: 10,
+                            childAspectRatio: 1.2),
                     itemCount: rooms.length,
                     itemBuilder: (context, index) =>
                         _ClassroomCard(room: rooms[index]),
@@ -74,7 +80,9 @@ class _FacilityManagementScreenState extends State<FacilityManagementScreen> {
             const SizedBox(height: 16),
             const Expanded(
               child: Center(
-                child: AiTranslatedText('A selecionar sala para visualizar horário...', style: TextStyle(color: Colors.white24)),
+                child: AiTranslatedText(
+                    'A selecionar sala para visualizar horário...',
+                    style: TextStyle(color: Colors.white24)),
               ),
             ),
           ],
@@ -87,8 +95,14 @@ class _FacilityManagementScreenState extends State<FacilityManagementScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        const AiTranslatedText('Salas de Aula', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
-        IconButton(onPressed: onAdd, icon: const Icon(Icons.add_business, color: Color(0xFFFFB800))),
+        const AiTranslatedText('Salas de Aula',
+            style: TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.bold)),
+        IconButton(
+            onPressed: onAdd,
+            icon: const Icon(Icons.add_business, color: Color(0xFFFFB800))),
       ],
     );
   }
@@ -101,21 +115,26 @@ class _FacilityManagementScreenState extends State<FacilityManagementScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1E293B),
-        title: const AiTranslatedText('Nova Sala/Espaço', style: TextStyle(color: Colors.white)),
+        title: const AiTranslatedText('Nova Sala/Espaço',
+            style: TextStyle(color: Colors.white)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
               controller: nameController,
               style: const TextStyle(color: Colors.white),
-              decoration: const InputDecoration(labelText: 'Identificação (ex: Sala 102)', labelStyle: TextStyle(color: Colors.white70)),
+              decoration: const InputDecoration(
+                  labelText: 'Identificação (ex: Sala 102)',
+                  labelStyle: TextStyle(color: Colors.white70)),
             ),
             const SizedBox(height: 16),
             TextField(
               controller: capController,
               keyboardType: TextInputType.number,
               style: const TextStyle(color: Colors.white),
-              decoration: const InputDecoration(labelText: 'Capacidade', labelStyle: TextStyle(color: Colors.white70)),
+              decoration: const InputDecoration(
+                  labelText: 'Capacidade',
+                  labelStyle: TextStyle(color: Colors.white70)),
             ),
           ],
         ),
@@ -142,12 +161,13 @@ class _FacilityManagementScreenState extends State<FacilityManagementScreen> {
       ),
     );
   }
-  
+
   void _showTimetableBuilder(BuildContext context) {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => TimetableManagementScreen(institution: widget.institution),
+        builder: (context) =>
+            TimetableManagementScreen(institution: widget.institution),
       ),
     );
   }
@@ -170,15 +190,21 @@ class _ClassroomCard extends StatelessWidget {
               children: [
                 const Icon(Icons.room, color: Color(0xFFFFB800), size: 16),
                 const SizedBox(width: 4),
-                Expanded(child: Text(room.name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis)),
+                Expanded(
+                    child: Text(room.name,
+                        style: const TextStyle(
+                            color: Colors.white, fontWeight: FontWeight.bold),
+                        overflow: TextOverflow.ellipsis)),
               ],
             ),
             const SizedBox(height: 4),
-            AiTranslatedText('Capacidade: ${room.capacity}', style: const TextStyle(color: Colors.white54, fontSize: 10)),
+            AiTranslatedText('Capacidade: ${room.capacity}',
+                style: const TextStyle(color: Colors.white54, fontSize: 10)),
             const Spacer(),
             Align(
               alignment: Alignment.bottomRight,
-              child: Icon(Icons.calendar_today, size: 14, color: Colors.white.withValues(alpha: 0.1)),
+              child: Icon(Icons.calendar_today,
+                  size: 14, color: Colors.white.withValues(alpha: 0.1)),
             ),
           ],
         ),

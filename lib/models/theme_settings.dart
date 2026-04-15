@@ -31,6 +31,11 @@ class ThemeSettings {
       color: const Color(0xFF1E293B),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
     ),
+    elevatedButtonTheme: ElevatedButtonThemeData(
+      style: ElevatedButton.styleFrom(
+        foregroundColor: Colors.white,
+      ),
+    ),
   );
 
   static final _oceanTheme = ThemeData(
@@ -49,6 +54,11 @@ class ThemeSettings {
       color: const Color(0xFF0C4A6E),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
     ),
+    elevatedButtonTheme: ElevatedButtonThemeData(
+      style: ElevatedButton.styleFrom(
+        foregroundColor: Colors.white,
+      ),
+    ),
   );
 
   static final _forestTheme = ThemeData(
@@ -66,6 +76,11 @@ class ThemeSettings {
     cardTheme: CardThemeData(
       color: const Color(0xFF065F46),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+    ),
+    elevatedButtonTheme: ElevatedButtonThemeData(
+      style: ElevatedButton.styleFrom(
+        foregroundColor: Colors.white,
+      ),
     ),
   );
 }

@@ -36,13 +36,17 @@ class HealthSpecialistDashboard extends StatelessWidget {
                 style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 16),
             StreamBuilder<List<Questionnaire>>(
-              stream: service.getQuestionnaires('inst_default'), // Simplified for MVP
+              stream: service
+                  .getQuestionnaires('inst_default'), // Simplified for MVP
               builder: (context, snapshot) {
                 if (!snapshot.hasData) return const LinearProgressIndicator();
-                final sensitiveQs = snapshot.data!.where((q) => q.isSensitive).toList();
+                final sensitiveQs =
+                    snapshot.data!.where((q) => q.isSensitive).toList();
 
                 if (sensitiveQs.isEmpty) {
-                  return const Center(child: Text('Nenhum dado sensível autorizado no momento.'));
+                  return const Center(
+                      child:
+                          Text('Nenhum dado sensível autorizado no momento.'));
                 }
 
                 return ListView.builder(
@@ -113,7 +117,8 @@ class HealthSpecialistDashboard extends StatelessWidget {
           StreamBuilder<List<QuestionnaireResponse>>(
             stream: service.getSpecialistAccessibleResponses(q.id),
             builder: (context, snapshot) {
-              if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+              if (!snapshot.hasData)
+                return const Center(child: CircularProgressIndicator());
               final responses = snapshot.data!;
 
               if (responses.isEmpty) {
@@ -124,7 +129,9 @@ class HealthSpecialistDashboard extends StatelessWidget {
               }
 
               return Column(
-                children: responses.map((r) => _buildResponseRow(context, r)).toList(),
+                children: responses
+                    .map((r) => _buildResponseRow(context, r))
+                    .toList(),
               );
             },
           ),
@@ -136,7 +143,8 @@ class HealthSpecialistDashboard extends StatelessWidget {
   Widget _buildResponseRow(BuildContext context, QuestionnaireResponse r) {
     return ListTile(
       title: Text('Colaborador ID: ${r.userId.substring(0, 8)}'),
-      subtitle: Text('Data Consentimento: ${DateFormat('dd/MM HH:mm').format(r.rgpdConsentDate ?? r.timestamp)}'),
+      subtitle: Text(
+          'Data Consentimento: ${DateFormat('dd/MM HH:mm').format(r.rgpdConsentDate ?? r.timestamp)}'),
       trailing: ElevatedButton(
         onPressed: () => _showAdviceDialog(context, r.userId),
         child: const Text('Enviar Conselho'),
@@ -159,12 +167,15 @@ class HealthSpecialistDashboard extends StatelessWidget {
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
+          TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancelar')),
           ElevatedButton(
             onPressed: () {
               // Logic to send internal message/notification
               Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Conselho enviado com sucesso!')));
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                  content: Text('Conselho enviado com sucesso!')));
             },
             child: const Text('Enviar'),
           ),

@@ -24,7 +24,8 @@ class MeetingSignature {
     return MeetingSignature(
       userId: map['userId'] ?? '',
       userName: map['userName'] ?? '',
-      signedAt: DateTime.parse(map['signedAt'] ?? DateTime.now().toIso8601String()),
+      signedAt:
+          DateTime.parse(map['signedAt'] ?? DateTime.now().toIso8601String()),
     );
   }
 }

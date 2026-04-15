@@ -50,9 +50,11 @@ class ErpModuleScreen extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                   Icon(Icons.inventory_2_outlined, size: 64, color: themeColor.withValues(alpha: 0.3)),
-                   const SizedBox(height: 16),
-                   const AiTranslatedText('Nenhum registo encontrado.', style: TextStyle(color: Colors.white54)),
+                  Icon(Icons.inventory_2_outlined,
+                      size: 64, color: themeColor.withValues(alpha: 0.3)),
+                  const SizedBox(height: 16),
+                  const AiTranslatedText('Nenhum registo encontrado.',
+                      style: TextStyle(color: Colors.white54)),
                 ],
               ),
             );
@@ -71,7 +73,8 @@ class ErpModuleScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildRecordCard(BuildContext context, FirebaseService service, ErpRecord record) {
+  Widget _buildRecordCard(
+      BuildContext context, FirebaseService service, ErpRecord record) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       child: GlassCard(
@@ -82,10 +85,16 @@ class ErpModuleScreen extends StatelessWidget {
               color: themeColor.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Icon(_getStatusIcon(record.status), color: _getStatusColor(record.status), size: 20),
+            child: Icon(_getStatusIcon(record.status),
+                color: _getStatusColor(record.status), size: 20),
           ),
-          title: Text(record.title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-          subtitle: Text(record.description, style: const TextStyle(color: Colors.white54, fontSize: 12), maxLines: 1, overflow: TextOverflow.ellipsis),
+          title: Text(record.title,
+              style: const TextStyle(
+                  color: Colors.white, fontWeight: FontWeight.bold)),
+          subtitle: Text(record.description,
+              style: const TextStyle(color: Colors.white54, fontSize: 12),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis),
           trailing: const Icon(Icons.chevron_right, color: Colors.white24),
           onTap: () => _showRecordDetails(context, service, record),
         ),
@@ -101,7 +110,8 @@ class ErpModuleScreen extends StatelessWidget {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF1E1E2E),
-        title: AiTranslatedText('Novo Registo - $title', style: const TextStyle(color: Colors.white)),
+        title: AiTranslatedText('Novo Registo - $title',
+            style: const TextStyle(color: Colors.white)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -125,7 +135,9 @@ class ErpModuleScreen extends StatelessWidget {
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const AiTranslatedText('Cancelar')),
+          TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const AiTranslatedText('Cancelar')),
           ElevatedButton(
             onPressed: () async {
               if (titleController.text.isNotEmpty) {
@@ -135,7 +147,8 @@ class ErpModuleScreen extends StatelessWidget {
                   module: module,
                   title: titleController.text,
                   description: descController.text,
-                  createdBy: 'admin', // In a real app, this would be the actual user ID
+                  createdBy:
+                      'admin', // In a real app, this would be the actual user ID
                   createdAt: DateTime.now(),
                   updatedAt: DateTime.now(),
                 );
@@ -150,11 +163,13 @@ class ErpModuleScreen extends StatelessWidget {
     );
   }
 
-  void _showRecordDetails(BuildContext context, FirebaseService service, ErpRecord record) {
+  void _showRecordDetails(
+      BuildContext context, FirebaseService service, ErpRecord record) {
     showModalBottomSheet(
       context: context,
       backgroundColor: const Color(0xFF1E1E2E),
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (context) => Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
@@ -164,24 +179,35 @@ class ErpModuleScreen extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Expanded(child: Text(record.title, style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold))),
+                Expanded(
+                    child: Text(record.title,
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold))),
                 _StatusBadge(status: record.status),
               ],
             ),
             const SizedBox(height: 16),
-            Text(record.description, style: const TextStyle(color: Colors.white70)),
+            Text(record.description,
+                style: const TextStyle(color: Colors.white70)),
             const SizedBox(height: 24),
             const Divider(color: Colors.white10),
             const SizedBox(height: 12),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                 _ActionButton(icon: Icons.edit, label: 'Editar', onTap: () {}),
-                 _ActionButton(icon: Icons.attach_file, label: 'Anexos', onTap: () {}),
-                 _ActionButton(icon: Icons.delete, label: 'Eliminar', color: Colors.redAccent, onTap: () async {
-                   await service.deleteErpRecord(record.id);
-                   if (context.mounted) Navigator.pop(context);
-                 }),
+                _ActionButton(icon: Icons.edit, label: 'Editar', onTap: () {}),
+                _ActionButton(
+                    icon: Icons.attach_file, label: 'Anexos', onTap: () {}),
+                _ActionButton(
+                    icon: Icons.delete,
+                    label: 'Eliminar',
+                    color: Colors.redAccent,
+                    onTap: () async {
+                      await service.deleteErpRecord(record.id);
+                      if (context.mounted) Navigator.pop(context);
+                    }),
               ],
             ),
           ],
@@ -192,21 +218,31 @@ class ErpModuleScreen extends StatelessWidget {
 
   IconData _getStatusIcon(ErpRecordStatus status) {
     switch (status) {
-      case ErpRecordStatus.active: return Icons.play_circle_outline;
-      case ErpRecordStatus.completed: return Icons.check_circle_outline;
-      case ErpRecordStatus.pending: return Icons.hourglass_empty;
-      case ErpRecordStatus.cancelled: return Icons.cancel_outlined;
-      default: return Icons.info_outline;
+      case ErpRecordStatus.active:
+        return Icons.play_circle_outline;
+      case ErpRecordStatus.completed:
+        return Icons.check_circle_outline;
+      case ErpRecordStatus.pending:
+        return Icons.hourglass_empty;
+      case ErpRecordStatus.cancelled:
+        return Icons.cancel_outlined;
+      default:
+        return Icons.info_outline;
     }
   }
 
   Color _getStatusColor(ErpRecordStatus status) {
     switch (status) {
-      case ErpRecordStatus.active: return Colors.blueAccent;
-      case ErpRecordStatus.completed: return Colors.greenAccent;
-      case ErpRecordStatus.pending: return Colors.amberAccent;
-      case ErpRecordStatus.cancelled: return Colors.redAccent;
-      default: return Colors.white54;
+      case ErpRecordStatus.active:
+        return Colors.blueAccent;
+      case ErpRecordStatus.completed:
+        return Colors.greenAccent;
+      case ErpRecordStatus.pending:
+        return Colors.amberAccent;
+      case ErpRecordStatus.cancelled:
+        return Colors.redAccent;
+      default:
+        return Colors.white54;
     }
   }
 }
@@ -225,17 +261,24 @@ class _StatusBadge extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: color, width: 1),
       ),
-      child: Text(status.name.toUpperCase(), style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold)),
+      child: Text(status.name.toUpperCase(),
+          style: TextStyle(
+              color: color, fontSize: 10, fontWeight: FontWeight.bold)),
     );
   }
 
   Color _getStatusColor(ErpRecordStatus status) {
     switch (status) {
-      case ErpRecordStatus.active: return Colors.blueAccent;
-      case ErpRecordStatus.completed: return Colors.greenAccent;
-      case ErpRecordStatus.pending: return Colors.amberAccent;
-      case ErpRecordStatus.cancelled: return Colors.redAccent;
-      default: return Colors.white54;
+      case ErpRecordStatus.active:
+        return Colors.blueAccent;
+      case ErpRecordStatus.completed:
+        return Colors.greenAccent;
+      case ErpRecordStatus.pending:
+        return Colors.amberAccent;
+      case ErpRecordStatus.cancelled:
+        return Colors.redAccent;
+      default:
+        return Colors.white54;
     }
   }
 }
@@ -246,7 +289,11 @@ class _ActionButton extends StatelessWidget {
   final Color color;
   final VoidCallback onTap;
 
-  const _ActionButton({required this.icon, required this.label, this.color = Colors.white, required this.onTap});
+  const _ActionButton(
+      {required this.icon,
+      required this.label,
+      this.color = Colors.white,
+      required this.onTap});
 
   @override
   Widget build(BuildContext context) {

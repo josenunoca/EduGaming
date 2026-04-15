@@ -7,9 +7,15 @@ class InstitutionalService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
   // Organ Management
-  Future<List<InstitutionOrgan>> getOrgans() async {
-    final snapshot = await _db.collection('organs').orderBy('name').get();
-    return snapshot.docs.map((doc) => InstitutionOrgan.fromFirestore(doc)).toList();
+  Future<List<InstitutionOrgan>> getOrgans(String institutionId) async {
+    final snapshot = await _db
+        .collection('organs')
+        .where('institutionId', isEqualTo: institutionId)
+        .orderBy('name')
+        .get();
+    return snapshot.docs
+        .map((doc) => InstitutionOrgan.fromFirestore(doc))
+        .toList();
   }
 
   Future<String> createOrgan(InstitutionOrgan organ) async {
@@ -32,22 +38,26 @@ class InstitutionalService {
     return docRef.id;
   }
 
-  Future<void> updateMeeting(String meetingId, Map<String, dynamic> data) async {
+  Future<void> updateMeeting(
+      String meetingId, Map<String, dynamic> data) async {
     await _db.collection('meetings').doc(meetingId).update(data);
   }
 
-  Future<String> uploadMeetingDocument(String meetingId, Uint8List bytes, String fileName) async {
-    final storageRef = FirebaseStorage.instance
-        .ref()
-        .child('meetings/$meetingId/documents/${DateTime.now().millisecondsSinceEpoch}_$fileName');
-    
+  Future<String> uploadMeetingDocument(
+      String meetingId, Uint8List bytes, String fileName) async {
+    final storageRef = FirebaseStorage.instance.ref().child(
+        'meetings/$meetingId/documents/${DateTime.now().millisecondsSinceEpoch}_$fileName');
+
     final uploadTask = await storageRef.putData(bytes);
     return await uploadTask.ref.getDownloadURL();
   }
 
   Future<List<Participant>> getOrganMembers(List<String> memberIds) async {
     if (memberIds.isEmpty) return [];
-    final snapshot = await _db.collection('users').where(FieldPath.documentId, whereIn: memberIds).get();
+    final snapshot = await _db
+        .collection('users')
+        .where(FieldPath.documentId, whereIn: memberIds)
+        .get();
     return snapshot.docs.map((doc) {
       final data = doc.data();
       return Participant(
@@ -58,7 +68,8 @@ class InstitutionalService {
     }).toList();
   }
 
-  Future<void> updateParticipantStatus(String meetingId, String email, String status) async {
+  Future<void> updateParticipantStatus(
+      String meetingId, String email, String status) async {
     final meetingDoc = await _db.collection('meetings').doc(meetingId).get();
     if (!meetingDoc.exists) return;
 
@@ -80,7 +91,8 @@ class InstitutionalService {
     });
   }
 
-  Future<void> updateParticipantEmailStatus(String meetingId, String email, {bool isRead = false}) async {
+  Future<void> updateParticipantEmailStatus(String meetingId, String email,
+      {bool isRead = false}) async {
     final meetingDoc = await _db.collection('meetings').doc(meetingId).get();
     if (!meetingDoc.exists) return;
 
@@ -120,29 +132,39 @@ class InstitutionalService {
     return _db
         .collection('meetings')
         .where('organId', isEqualTo: organId)
-        .orderBy('date', descending: true)
         .snapshots()
-        .map((snapshot) =>
-            snapshot.docs.map((doc) => Meeting.fromFirestore(doc)).toList());
+        .map((snapshot) {
+      final list =
+          snapshot.docs.map((doc) => Meeting.fromFirestore(doc)).toList();
+      list.sort((a, b) => b.date.compareTo(a.date)); // Sort descending by date
+      return list;
+    });
   }
 
-  Stream<List<InstitutionOrgan>> getOrgansStream() {
+  Stream<List<InstitutionOrgan>> getOrgansStream(String institutionId) {
     return _db
         .collection('organs')
-        .orderBy('name')
+        .where('institutionId', isEqualTo: institutionId)
         .snapshots()
-        .map((snapshot) =>
-            snapshot.docs.map((doc) => InstitutionOrgan.fromFirestore(doc)).toList());
+        .map((snapshot) {
+      final list = snapshot.docs
+          .map((doc) => InstitutionOrgan.fromFirestore(doc))
+          .toList();
+      list.sort((a, b) => a.name.compareTo(b.name)); // Sort alphabetically
+      return list;
+    });
   }
 
   bool isLeaderForOrgan(InstitutionOrgan organ, String? userEmail) {
     if (userEmail == null) return false;
-    return organ.presidentEmail == userEmail || organ.vicePresidentEmail == userEmail;
+    return organ.presidentEmail == userEmail ||
+        organ.vicePresidentEmail == userEmail;
   }
 
-  Stream<List<Meeting>> getActiveMeetingsStream() {
+  Stream<List<Meeting>> getActiveMeetingsStream(String institutionId) {
     return _db
         .collection('meetings')
+        .where('institutionId', isEqualTo: institutionId)
         .where('status', whereIn: ['scheduled', 'ongoing'])
         .snapshots()
         .map((snapshot) =>

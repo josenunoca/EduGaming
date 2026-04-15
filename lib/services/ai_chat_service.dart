@@ -33,7 +33,8 @@ class AiChatService {
         .map((c) => '- ${c.name} (${c.type}): ${c.url}')
         .join('\n');
 
-    _systemPrompt = '$_systemInstruction\n\nDocumentos de referência disponíveis:\n$contentSummaries';
+    _systemPrompt =
+        '$_systemInstruction\n\nDocumentos de referência disponíveis:\n$contentSummaries';
 
     // Initialize new model with updated system instruction
     _model = GenerativeModel(
@@ -65,8 +66,10 @@ class AiChatService {
 
   Future<String?> generateImage(String prompt) async {
     const modelId = 'imagen-4.0-fast-generate-001';
-    const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/$modelId:predict';
-    final fullPrompt = 'Educational illustration: $prompt. Style: Professional, clean, and clear.';
+    const endpoint =
+        'https://generativelanguage.googleapis.com/v1beta/models/$modelId:predict';
+    final fullPrompt =
+        'Educational illustration: $prompt. Style: Professional, clean, and clear.';
 
     try {
       final response = await http.post(
@@ -89,11 +92,13 @@ class AiChatService {
           final base64Image = predictions[0]?['bytesBase64Encoded'];
           if (base64Image != null) return base64Image;
         }
-        debugPrint('Image Gen: Success response but no image data found. Body: ${response.body}');
+        debugPrint(
+            'Image Gen: Success response but no image data found. Body: ${response.body}');
         return null;
       } else {
         if (response.statusCode == 404) {
-          throw Exception('Erro ao gerar imagem: 404 (Modelo não encontrado ou acesso restringido à região/allowlist)');
+          throw Exception(
+              'Erro ao gerar imagem: 404 (Modelo não encontrado ou acesso restringido à região/allowlist)');
         }
         throw Exception('Erro ao gerar imagem: ${response.statusCode}');
       }
@@ -212,8 +217,10 @@ class AiChatService {
           }
         } else {
           final errorData = jsonDecode(response.body);
-          final errorMessage = errorData['error']?['message'] ?? 'Erro na API de Voz';
-          debugPrint('TTS Error for segment $i: $errorMessage (Status: ${response.statusCode})');
+          final errorMessage =
+              errorData['error']?['message'] ?? 'Erro na API de Voz';
+          debugPrint(
+              'TTS Error for segment $i: $errorMessage (Status: ${response.statusCode})');
           // If the error is 403 or 404, it's likely a configuration issue that won't resolve per-segment
           if (response.statusCode == 403 || response.statusCode == 404) {
             throw 'Erro na API de Voz (${response.statusCode}): $errorMessage. Verifique se a API "Cloud Text-to-Speech" está ativa e se a sua Chave API tem permissão para a usar.';
@@ -297,7 +304,11 @@ class AiChatService {
     try {
       final response = await _model.generateContent([Content.text(prompt)]);
       final text = response.text ?? '';
-      return text.split('\n').where((l) => l.trim().isNotEmpty).take(count).toList();
+      return text
+          .split('\n')
+          .where((l) => l.trim().isNotEmpty)
+          .take(count)
+          .toList();
     } catch (e) {
       debugPrint('Suggest answers exception: $e');
     }
@@ -344,7 +355,8 @@ class AiChatService {
       if (audioUrl != null && audioUrl.isNotEmpty) {
         final audioResponse = await http.get(Uri.parse(audioUrl));
         if (audioResponse.statusCode == 200) {
-          parts.add(DataPart(_getAudioMimeType(audioUrl), audioResponse.bodyBytes));
+          parts.add(
+              DataPart(_getAudioMimeType(audioUrl), audioResponse.bodyBytes));
         }
       }
 
@@ -358,14 +370,15 @@ class AiChatService {
           } else if (path.endsWith('.webp')) {
             mimeType = 'image/webp';
           }
-          
+
           parts.add(DataPart(mimeType, imageResponse.bodyBytes));
         }
       }
 
       final response = await _model.generateContent(
         [Content.multi(parts)],
-        generationConfig: GenerationConfig(responseMimeType: 'application/json'),
+        generationConfig:
+            GenerationConfig(responseMimeType: 'application/json'),
       );
       final text = response.text ?? '{}';
       return jsonDecode(text);
@@ -381,8 +394,10 @@ class AiChatService {
   }
 
   /// Generates meeting minutes from a recorded audio URL
-  Future<Map<String, dynamic>> generateMeetingMinutes(String audioUrl, {String? previousMinutes, String? context}) async {
-    final prompt = 'Abaixo está uma gravação de uma reunião institucional (em áudio). '
+  Future<Map<String, dynamic>> generateMeetingMinutes(String audioUrl,
+      {String? previousMinutes, String? context}) async {
+    final prompt =
+        'Abaixo está uma gravação de uma reunião institucional (em áudio). '
         'Por favor, faz a transcrição completa e gera uma proposta de ATA formal. '
         'A ATA deve conter: Título da Reunião, Data, Ordem de Trabalhos, e Resumo das Decisões e Intervenções. '
         'Mantém o tom formal e profissional de uma instituição de ensino. '
@@ -392,21 +407,24 @@ class AiChatService {
 
     try {
       final List<Part> parts = [TextPart(prompt)];
-      
+
       final audioResponse = await http.get(Uri.parse(audioUrl));
       if (audioResponse.statusCode == 200) {
-        parts.add(DataPart(_getAudioMimeType(audioUrl), audioResponse.bodyBytes));
+        parts.add(
+            DataPart(_getAudioMimeType(audioUrl), audioResponse.bodyBytes));
       } else {
         throw Exception('Erro ao baixar o áudio: ${audioResponse.statusCode}');
       }
 
       final response = await _model.generateContent(
         [Content.multi(parts)],
-        generationConfig: GenerationConfig(responseMimeType: 'application/json'),
+        generationConfig:
+            GenerationConfig(responseMimeType: 'application/json'),
       );
-      
+
       final text = response.text ?? '{}';
-      final cleaned = text.replaceAll('```json', '').replaceAll('```', '').trim();
+      final cleaned =
+          text.replaceAll('```json', '').replaceAll('```', '').trim();
       return jsonDecode(cleaned);
     } catch (e) {
       debugPrint('Generate minutes exception: $e');
@@ -582,7 +600,8 @@ IMPORTANTE:
 
   /// Refines a meeting agenda using IA
   Future<String> refineMeetingAgenda(String currentAgenda) async {
-    final prompt = 'Abaixo está a Ordem de Trabalhos (Agenda) de uma reunião institucional. '
+    final prompt =
+        'Abaixo está a Ordem de Trabalhos (Agenda) de uma reunião institucional. '
         'Por favor, melhora a redação, organiza os pontos de forma lógica e profissional, '
         'e sugere tópicos adicionais se parecerem relevantes para uma reunião institucional. '
         'Mantém o tom formal. Retorna APENAS o texto da agenda melhorada.\n\n'
@@ -628,7 +647,8 @@ IMPORTANTE:
 
   /// Transcribes audio dictation and suggests a professional meeting agenda
   Future<String> transcribeAndImproveAgenda(Uint8List audioBytes) async {
-    final prompt = 'Abaixo está um ficheiro de áudio com a gravação de uma pessoa a ditar os pontos da ordem de trabalhos para uma reunião. '
+    final prompt =
+        'Abaixo está um ficheiro de áudio com a gravação de uma pessoa a ditar os pontos da ordem de trabalhos para uma reunião. '
         'Por favor, faz a transcrição e organiza esses pontos de forma profissional, lógica e institucional. '
         'Melhora a redação e sugere tópicos adicionais se necessário. '
         'Retorna APENAS o texto da agenda resultante, formatado com numeração ou pontos.';
@@ -640,10 +660,66 @@ IMPORTANTE:
       ];
 
       final response = await _model.generateContent([Content.multi(parts)]);
-      return response.text?.trim() ?? 'Não foi possível gerar a agenda a partir do áudio.';
+      return response.text?.trim() ??
+          'Não foi possível gerar a agenda a partir do áudio.';
     } catch (e) {
       debugPrint('Transcribe and improve agenda exception: $e');
       return 'Erro ao processar áudio da agenda: $e';
     }
+  }
+
+  Future<String> generateSocialMediaPosts({
+    required String title,
+    required String description,
+    required String platform,
+  }) async {
+    final prompt = 'Abaixo estão os detalhes de uma atividade institucional. '
+        'Por favor, gera uma proposta de publicação para a rede social "$platform" em português. '
+        'A publicação deve ser cativante, incluir emojis relevantes e hashtags apropriadas. '
+        'Adapta o tom ao público da rede escolhida ($platform). '
+        'TÍTULO: $title\n'
+        'DESCRIÇÃO: $description\n\n'
+        'Retorna APENAS o texto da publicação.';
+
+    try {
+      final response = await _model.generateContent([Content.text(prompt)]);
+      return response.text?.trim() ?? '';
+    } catch (e) {
+      debugPrint('Generate social post exception: $e');
+      return '';
+    }
+  }
+
+  Future<List<Map<String, String>>> checkSpelling(String text) async {
+    if (text.trim().isEmpty) return [];
+
+    final prompt = 'Atua como um corretor ortográfico e gramatical estrito de Português (Portugal). '
+        'Analisa o seguinte texto palavra a palavra. Identifica TODOS os erros ortográficos, gralhas, erros de digitação e gramática (ex: "Lectivv" em vez de "Letivo" ou "Lectivo"). '
+        'Para cada erro encontrado, fornece a palavra exatamente como foi escrita e a tua sugestão de correção. '
+        'Retorna um JSON estritamente neste formato: [{"original": "palvra", "suggestion": "palavra"}, ...]. '
+        'Se o texto estiver 100% correto, retorna apenas uma lista vazia: [].\n\n'
+        'TEXTO: "$text"';
+
+    // Let exceptions propagate — callers should handle them appropriately.
+    final response = await _model.generateContent(
+      [Content.text(prompt)],
+      generationConfig: GenerationConfig(responseMimeType: 'application/json'),
+    );
+    final textResponse = response.text ?? '[]';
+    final decoded = jsonDecode(_cleanJsonResponse(textResponse));
+
+    // Handle both plain list [] and wrapped object {"errors": [...]}
+    List<dynamic> list;
+    if (decoded is List) {
+      list = decoded;
+    } else if (decoded is Map) {
+      final value = decoded['errors'] ?? decoded['corrections'] ?? decoded['erros'] ??
+          decoded.values.firstWhere((v) => v is List, orElse: () => []);
+      list = value is List ? value : [];
+    } else {
+      list = [];
+    }
+
+    return list.map((e) => Map<String, String>.from(e as Map)).toList();
   }
 }

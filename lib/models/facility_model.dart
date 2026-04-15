@@ -37,7 +37,7 @@ class Classroom {
 class TimetableEntry {
   final String id;
   final String? subjectId; // Null if it's a break
-  final String? classroomId; 
+  final String? classroomId;
   final String? teacherId;
   final int weekday; // 1-7 (Monday-Sunday)
   final String startTime; // HH:mm
@@ -45,6 +45,10 @@ class TimetableEntry {
   final String institutionId;
   final bool isBreak;
   final String? academicYear;
+  final DateTime? startDate;
+  final DateTime? endDate;
+  final bool isClosed;
+  final String? customActivityName;
 
   TimetableEntry({
     required this.id,
@@ -57,6 +61,10 @@ class TimetableEntry {
     required this.institutionId,
     this.isBreak = false,
     this.academicYear,
+    this.startDate,
+    this.endDate,
+    this.isClosed = false,
+    this.customActivityName,
   });
 
   Map<String, dynamic> toMap() {
@@ -71,6 +79,10 @@ class TimetableEntry {
       'institutionId': institutionId,
       'isBreak': isBreak,
       'academicYear': academicYear,
+      'startDate': startDate?.toIso8601String(),
+      'endDate': endDate?.toIso8601String(),
+      'isClosed': isClosed,
+      'customActivityName': customActivityName,
     };
   }
 
@@ -86,6 +98,11 @@ class TimetableEntry {
       institutionId: map['institutionId'] ?? '',
       isBreak: map['isBreak'] ?? false,
       academicYear: map['academicYear'],
+      startDate:
+          map['startDate'] != null ? DateTime.parse(map['startDate']) : null,
+      endDate: map['endDate'] != null ? DateTime.parse(map['endDate']) : null,
+      isClosed: map['isClosed'] ?? false,
+      customActivityName: map['customActivityName'],
     );
   }
 }

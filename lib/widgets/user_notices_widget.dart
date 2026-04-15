@@ -9,23 +9,25 @@ import 'ai_translated_text.dart';
 
 class UserNoticesWidget extends StatelessWidget {
   final UserModel user;
-  
+
   const UserNoticesWidget({super.key, required this.user});
 
   @override
   Widget build(BuildContext context) {
     if (user.institutionId == null) return const SizedBox.shrink();
-    
-    final instService = Provider.of<InstitutionalService>(context, listen: false);
-    
+
+    final instService =
+        Provider.of<InstitutionalService>(context, listen: false);
+
     return StreamBuilder<List<Meeting>>(
-      stream: instService.getActiveMeetingsStream(),
+      stream: instService.getActiveMeetingsStream(user.institutionId!),
       builder: (context, snapshot) {
         if (!snapshot.hasData) return const SizedBox.shrink();
-        
+
         // Filter meetings where the user is a participant
         final activeNotices = snapshot.data!.where((m) {
-          final isParticipant = m.participants.any((p) => p.email.toLowerCase() == user.email.toLowerCase());
+          final isParticipant = m.participants
+              .any((p) => p.email.toLowerCase() == user.email.toLowerCase());
           return isParticipant;
         }).toList();
 
@@ -45,47 +47,61 @@ class UserNoticesWidget extends StatelessWidget {
                 ),
               ),
             ),
-            ...activeNotices.map((meeting) => Padding(
-              padding: const EdgeInsets.only(bottom: 8.0),
-              child: InkWell(
-                borderRadius: BorderRadius.circular(16),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => MeetingRecordingScreen(
-                        meeting: meeting,
-                        canManage: false,
+            ...activeNotices
+                .map((meeting) => Padding(
+                      padding: const EdgeInsets.only(bottom: 8.0),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(16),
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => MeetingRecordingScreen(
+                                meeting: meeting,
+                                canManage: false,
+                              ),
+                            ),
+                          );
+                        },
+                        child: GlassCard(
+                          child: ListTile(
+                            leading: const Icon(Icons.meeting_room,
+                                color: Color(0xFF00D1FF)),
+                            title: Text(
+                              meeting.title,
+                              style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold),
+                            ),
+                            subtitle: Text(
+                              'Data: ${meeting.date.day}/${meeting.date.month}/${meeting.date.year} | Local: ${meeting.location ?? "N/A"}',
+                              style: const TextStyle(
+                                  color: Colors.white70, fontSize: 12),
+                            ),
+                            trailing: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: meeting.status == 'ongoing'
+                                    ? Colors.green
+                                    : Colors.blue,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                meeting.status == 'ongoing'
+                                    ? 'A Decorrer'
+                                    : 'Agendada',
+                                style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
-                  );
-                },
-                child: GlassCard(
-                  child: ListTile(
-                    leading: const Icon(Icons.meeting_room, color: Color(0xFF00D1FF)),
-                    title: Text(
-                      meeting.title,
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                    ),
-                    subtitle: Text(
-                      'Data: ${meeting.date.day}/${meeting.date.month}/${meeting.date.year} | Local: ${meeting.location ?? "N/A"}',
-                      style: const TextStyle(color: Colors.white70, fontSize: 12),
-                    ),
-                    trailing: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: meeting.status == 'ongoing' ? Colors.green : Colors.blue,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        meeting.status == 'ongoing' ? 'A Decorrer' : 'Agendada',
-                        style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            )).toList(),
+                    ))
+                .toList(),
             const SizedBox(height: 16),
           ],
         );

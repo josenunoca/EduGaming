@@ -11,13 +11,7 @@ enum ErpModule {
   other
 }
 
-enum ErpRecordStatus {
-  active,
-  pending,
-  completed,
-  cancelled,
-  archived
-}
+enum ErpRecordStatus { active, pending, completed, cancelled, archived }
 
 class ErpRecord {
   final String id;

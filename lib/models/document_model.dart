@@ -79,7 +79,8 @@ class DocumentProposal {
       userName: map['userName'] ?? '',
       suggestedText: map['suggestedText'] ?? '',
       status: map['status'] ?? 'pending',
-      timestamp: DateTime.parse(map['timestamp'] ?? DateTime.now().toIso8601String()),
+      timestamp:
+          DateTime.parse(map['timestamp'] ?? DateTime.now().toIso8601String()),
     );
   }
 }

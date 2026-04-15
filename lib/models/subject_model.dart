@@ -28,8 +28,8 @@ class ModificationEntry {
       userId: map['userId'] ?? '',
       userName: map['userName'] ?? '',
       userRole: map['userRole'] ?? '',
-      timestamp: DateTime.parse(
-          map['timestamp'] ?? DateTime.now().toIso8601String()),
+      timestamp:
+          DateTime.parse(map['timestamp'] ?? DateTime.now().toIso8601String()),
       action: map['action'] ?? '',
     );
   }
@@ -439,7 +439,12 @@ class SyllabusSession {
 
 enum PautaStatus { draft, finalized, sealed }
 
-enum SyllabusStatus { provisional, inValidationScientific, inValidationPedagogical, approved }
+enum SyllabusStatus {
+  provisional,
+  inValidationScientific,
+  inValidationPedagogical,
+  approved
+}
 
 class Subject {
   final String id;
@@ -470,7 +475,7 @@ class Subject {
   final double otherHours;
   final double ects;
   final SyllabusStatus syllabusStatus;
-  
+
   // Approval Info
   final DateTime? scientificApprovalDate;
   final String? scientificApprovedBy;
@@ -486,7 +491,7 @@ class Subject {
   final bool attendanceControlEnabled;
   final double requiredAttendancePercentage;
 
-    Subject({
+  Subject({
     required this.id,
     required this.name,
     required this.level,
@@ -601,7 +606,8 @@ class Subject {
       scientificApprovedBy: scientificApprovedBy ?? this.scientificApprovedBy,
       pedagogicalApprovalDate:
           pedagogicalApprovalDate ?? this.pedagogicalApprovalDate,
-      pedagogicalApprovedBy: pedagogicalApprovedBy ?? this.pedagogicalApprovedBy,
+      pedagogicalApprovedBy:
+          pedagogicalApprovedBy ?? this.pedagogicalApprovedBy,
       pedagogicalSignatures:
           pedagogicalSignatures ?? this.pedagogicalSignatures,
       syllabusFileUrl: syllabusFileUrl ?? this.syllabusFileUrl,

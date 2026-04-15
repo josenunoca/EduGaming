@@ -16,8 +16,13 @@ import '../../widgets/ai_translated_text.dart';
 
 class AcademicManagementScreen extends StatefulWidget {
   final InstitutionModel institution;
+  final int? initialTab;
 
-  const AcademicManagementScreen({super.key, required this.institution});
+  const AcademicManagementScreen({
+    super.key,
+    required this.institution,
+    this.initialTab,
+  });
 
   @override
   State<AcademicManagementScreen> createState() =>
@@ -31,7 +36,11 @@ class _AcademicManagementScreenState extends State<AcademicManagementScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(
+      length: 4,
+      vsync: this,
+      initialIndex: widget.initialTab ?? 0,
+    );
   }
 
   @override
@@ -114,12 +123,15 @@ class _AcademicManagementScreenState extends State<AcademicManagementScreen>
                     children: snapshot.data!
                         .map((cycle) => InputChip(
                               backgroundColor: const Color(0xFF1E1E2E),
-                              avatar: const Icon(Icons.description, size: 16, color: Colors.white54),
-                              label: Text('${cycle.name} (${cycle.durationValue} ${cycle.durationUnit})',
+                              avatar: const Icon(Icons.description,
+                                  size: 16, color: Colors.white54),
+                              label: Text(
+                                  '${cycle.name} (${cycle.durationValue} ${cycle.durationUnit})',
                                   style: const TextStyle(
                                       color: Colors.white, fontSize: 12)),
                               onPressed: () => _showCycleDocsDialog(cycle),
-                              deleteIcon: const Icon(Icons.delete_outline, size: 14, color: Colors.redAccent),
+                              deleteIcon: const Icon(Icons.delete_outline,
+                                  size: 14, color: Colors.redAccent),
                               onDeleted: () => _confirmDeleteStudyCycle(cycle),
                             ))
                         .toList(),
@@ -157,7 +169,8 @@ class _AcademicManagementScreenState extends State<AcademicManagementScreen>
                         builder: (context, cycleSnap) {
                           final cycleName = cycleSnap.hasData
                               ? cycleSnap.data!
-                                  .firstWhere((c) => c.id == course.studyCycleId,
+                                  .firstWhere(
+                                      (c) => c.id == course.studyCycleId,
                                       orElse: () => StudyCycle(
                                           id: '',
                                           name: 'Desconhecido',
@@ -175,10 +188,12 @@ class _AcademicManagementScreenState extends State<AcademicManagementScreen>
                       children: [
                         ListTile(
                           onTap: () => _showCourseSubjectsDialog(course),
-                          leading: const Icon(Icons.book, color: Color(0xFF00D1FF)),
+                          leading:
+                              const Icon(Icons.book, color: Color(0xFF00D1FF)),
                           title: const Text('Gerir Disciplinas',
                               style: TextStyle(color: Colors.white)),
-                          trailing: const Icon(Icons.chevron_right, color: Colors.white54),
+                          trailing: const Icon(Icons.chevron_right,
+                              color: Colors.white54),
                         ),
                         ListTile(
                           leading:
@@ -206,7 +221,8 @@ class _AcademicManagementScreenState extends State<AcademicManagementScreen>
                                 tooltip: 'Eliminar Curso',
                               ),
                               IconButton(
-                                icon: const Icon(Icons.edit, color: Colors.white54),
+                                icon: const Icon(Icons.edit,
+                                    color: Colors.white54),
                                 onPressed: () =>
                                     _showAssignCoordinatorDialog(course),
                                 tooltip: 'Atribuir Coordenador',
@@ -236,7 +252,8 @@ class _AcademicManagementScreenState extends State<AcademicManagementScreen>
                                           backgroundColor:
                                               const Color(0xFF2E2E3E),
                                           deleteIcon: const Icon(Icons.close,
-                                              size: 14, color: Colors.redAccent),
+                                              size: 14,
+                                              color: Colors.redAccent),
                                           onDeleted: () =>
                                               _confirmDeleteYear(course, year),
                                         ))
@@ -254,7 +271,10 @@ class _AcademicManagementScreenState extends State<AcademicManagementScreen>
                               } catch (e) {
                                 if (context.mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text(e.toString().replaceAll('Exception: ', ''))),
+                                    SnackBar(
+                                        content: Text(e
+                                            .toString()
+                                            .replaceAll('Exception: ', ''))),
                                   );
                                 }
                               }
@@ -309,7 +329,8 @@ class _AcademicManagementScreenState extends State<AcademicManagementScreen>
                           labelText: 'Duração',
                           labelStyle: TextStyle(color: Colors.white54)),
                       style: const TextStyle(color: Colors.white),
-                      onChanged: (val) => durationValue = int.tryParse(val) ?? 1,
+                      onChanged: (val) =>
+                          durationValue = int.tryParse(val) ?? 1,
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -387,7 +408,7 @@ class _AcademicManagementScreenState extends State<AcademicManagementScreen>
                     final cycles = snapshot.data ?? [];
                     return DropdownButtonFormField<String>(
                       dropdownColor: const Color(0xFF1E1E2E),
-                    value: selectedCycleId,
+                      value: selectedCycleId,
                       hint: const Text('Selecionar Ciclo',
                           style: TextStyle(color: Colors.white54)),
                       items: cycles
@@ -404,7 +425,9 @@ class _AcademicManagementScreenState extends State<AcademicManagementScreen>
                 const SizedBox(height: 16),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
-                  initialValue: academicYearController.text.isEmpty ? '2024/2025' : academicYearController.text,
+                  initialValue: academicYearController.text.isEmpty
+                      ? '2024/2025'
+                      : academicYearController.text,
                   dropdownColor: const Color(0xFF1E1E2E),
                   style: const TextStyle(color: Colors.white),
                   decoration: const InputDecoration(
@@ -480,7 +503,9 @@ class _AcademicManagementScreenState extends State<AcademicManagementScreen>
                   return const Center(child: CircularProgressIndicator());
                 }
                 final teachers = snapshot.data!
-                    .where((u) => u.role == UserRole.teacher || u.role == UserRole.courseCoordinator)
+                    .where((u) =>
+                        u.role == UserRole.teacher ||
+                        u.role == UserRole.courseCoordinator)
                     .toList();
                 return ListView.builder(
                   shrinkWrap: true,
@@ -595,7 +620,9 @@ class _AcademicManagementScreenState extends State<AcademicManagementScreen>
         SizedBox(height: 24),
         Text('Fluxo de Assinaturas Pendentes',
             style: TextStyle(
-                color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.bold)),
         SizedBox(height: 8),
         Text(
             'O departamento administrativo pode carregar contratos e selecionar os docentes para assinatura digital.',
@@ -609,7 +636,8 @@ class _AcademicManagementScreenState extends State<AcademicManagementScreen>
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF0F0F1E),
-        title: Text('Docs: ${cycle.name}', style: const TextStyle(color: Colors.white)),
+        title: Text('Docs: ${cycle.name}',
+            style: const TextStyle(color: Colors.white)),
         content: SizedBox(
           width: double.maxFinite,
           child: SingleChildScrollView(
@@ -654,9 +682,12 @@ class _AcademicManagementScreenState extends State<AcademicManagementScreen>
               final allSubjects = results[1] as List<Subject>;
               final allUsers = results[2] as List<UserModel>;
 
-              courses = allCourses.where((c) => c.studyCycleId == cycle.id).toList();
+              courses =
+                  allCourses.where((c) => c.studyCycleId == cycle.id).toList();
               final courseIds = courses.map((c) => c.id).toSet();
-              subjects = allSubjects.where((s) => courseIds.contains(s.courseId)).toList();
+              subjects = allSubjects
+                  .where((s) => courseIds.contains(s.courseId))
+                  .toList();
               teachers = allUsers
                   .where((u) =>
                       u.role == UserRole.teacher ||
@@ -677,7 +708,8 @@ class _AcademicManagementScreenState extends State<AcademicManagementScreen>
 
           return AlertDialog(
             backgroundColor: const Color(0xFF1E1E2E),
-            title: Text('Duplicar: ${cycle.name}', style: const TextStyle(color: Colors.white)),
+            title: Text('Duplicar: ${cycle.name}',
+                style: const TextStyle(color: Colors.white)),
             content: SizedBox(
               width: 500,
               child: SingleChildScrollView(
@@ -695,15 +727,23 @@ class _AcademicManagementScreenState extends State<AcademicManagementScreen>
                     const SizedBox(height: 16),
                     const SizedBox(height: 16),
                     DropdownButtonFormField<String>(
-                      initialValue: yearController.text.isEmpty ? '2024/2025' : yearController.text,
+                      initialValue: yearController.text.isEmpty
+                          ? '2024/2025'
+                          : yearController.text,
                       dropdownColor: const Color(0xFF1E1E2E),
                       style: const TextStyle(color: Colors.white),
                       decoration: const InputDecoration(
                         labelText: 'Novo Ano Letivo',
                         labelStyle: TextStyle(color: Colors.white70),
                       ),
-                      items: ['2024/2025', '2025/2026', '2026/2027', '2027/2028']
-                          .map((y) => DropdownMenuItem(value: y, child: Text(y)))
+                      items: [
+                        '2024/2025',
+                        '2025/2026',
+                        '2026/2027',
+                        '2027/2028'
+                      ]
+                          .map(
+                              (y) => DropdownMenuItem(value: y, child: Text(y)))
                           .toList(),
                       onChanged: (v) {
                         if (v != null) yearController.text = v;
@@ -711,7 +751,8 @@ class _AcademicManagementScreenState extends State<AcademicManagementScreen>
                     ),
                     const SizedBox(height: 24),
                     const Text('Atribuição de Professores:',
-                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                        style: TextStyle(
+                            color: Colors.white, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 8),
                     ...subjects.map((s) {
                       return Padding(
@@ -720,7 +761,9 @@ class _AcademicManagementScreenState extends State<AcademicManagementScreen>
                           children: [
                             Expanded(
                               flex: 2,
-                              child: Text(s.name, style: const TextStyle(color: Colors.white70, fontSize: 13)),
+                              child: Text(s.name,
+                                  style: const TextStyle(
+                                      color: Colors.white70, fontSize: 13)),
                             ),
                             const SizedBox(width: 12),
                             Expanded(
@@ -729,7 +772,8 @@ class _AcademicManagementScreenState extends State<AcademicManagementScreen>
                                 value: subjectMappings[s.id],
                                 dropdownColor: const Color(0xFF1E1E2E),
                                 isExpanded: true,
-                                style: const TextStyle(color: Colors.white, fontSize: 13),
+                                style: const TextStyle(
+                                    color: Colors.white, fontSize: 13),
                                 items: teachers.map((t) {
                                   return DropdownMenuItem(
                                     value: t.id,
@@ -737,7 +781,9 @@ class _AcademicManagementScreenState extends State<AcademicManagementScreen>
                                   );
                                 }).toList(),
                                 onChanged: (val) {
-                                  if (val != null) setDialogState(() => subjectMappings[s.id] = val);
+                                  if (val != null)
+                                    setDialogState(
+                                        () => subjectMappings[s.id] = val);
                                 },
                               ),
                             ),
@@ -750,16 +796,21 @@ class _AcademicManagementScreenState extends State<AcademicManagementScreen>
               ),
             ),
             actions: [
-              TextButton(onPressed: () => Navigator.pop(context), child: const AiTranslatedText('Cancelar')),
+              TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const AiTranslatedText('Cancelar')),
               CustomButton(
                 onPressed: () async {
-                  if (nameController.text.isEmpty || yearController.text.isEmpty) {
+                  if (nameController.text.isEmpty ||
+                      yearController.text.isEmpty) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: AiTranslatedText('Preencha o nome e o ano letivo')),
+                      const SnackBar(
+                          content: AiTranslatedText(
+                              'Preencha o nome e o ano letivo')),
                     );
                     return;
                   }
-                  
+
                   try {
                     await service.duplicateStudyCycle(
                       sourceCycleId: cycle.id,
@@ -770,7 +821,9 @@ class _AcademicManagementScreenState extends State<AcademicManagementScreen>
                     if (mounted) {
                       Navigator.pop(context);
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: AiTranslatedText('Ciclo duplicado com sucesso!')),
+                        const SnackBar(
+                            content: AiTranslatedText(
+                                'Ciclo duplicado com sucesso!')),
                       );
                     }
                   } catch (e) {
@@ -809,7 +862,9 @@ class _AcademicManagementScreenState extends State<AcademicManagementScreen>
             onPressed: () async {
               try {
                 final nav = Navigator.of(context);
-                await context.read<FirebaseService>().deleteStudyCycle(cycle.id);
+                await context
+                    .read<FirebaseService>()
+                    .deleteStudyCycle(cycle.id);
                 if (nav.mounted) nav.pop();
               } catch (e) {
                 if (context.mounted) {
@@ -906,7 +961,8 @@ class _AcademicManagementScreenState extends State<AcademicManagementScreen>
   void _showCourseSubjectsDialog(Course course) {
     final service = context.read<FirebaseService>();
 
-    String? filterYear = course.academicYears.isNotEmpty ? course.academicYears.first : null;
+    String? filterYear =
+        course.academicYears.isNotEmpty ? course.academicYears.first : null;
 
     showDialog(
       context: context,
@@ -963,7 +1019,8 @@ class _AcademicManagementScreenState extends State<AcademicManagementScreen>
                               backgroundColor: const Color(0xFF2E2E3E),
                               selectedColor: const Color(0xFF7B61FF),
                               labelStyle: TextStyle(
-                                color: isSelected ? Colors.white : Colors.white70,
+                                color:
+                                    isSelected ? Colors.white : Colors.white70,
                                 fontSize: 12,
                               ),
                             ),
@@ -978,10 +1035,13 @@ class _AcademicManagementScreenState extends State<AcademicManagementScreen>
                       builder: (context, snapshot) {
                         var subjects = snapshot.data ?? [];
                         if (filterYear != null) {
-                          subjects = subjects.where((s) => s.academicYear == filterYear).toList();
+                          subjects = subjects
+                              .where((s) => s.academicYear == filterYear)
+                              .toList();
                         }
                         // Sort by cycle year
-                        subjects.sort((a, b) => a.cycleYear.compareTo(b.cycleYear));
+                        subjects
+                            .sort((a, b) => a.cycleYear.compareTo(b.cycleYear));
 
                         if (subjects.isEmpty) {
                           return const Center(
@@ -998,7 +1058,8 @@ class _AcademicManagementScreenState extends State<AcademicManagementScreen>
                                 width: 32,
                                 height: 32,
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFF00D1FF).withValues(alpha: 0.1),
+                                  color: const Color(0xFF00D1FF)
+                                      .withValues(alpha: 0.1),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: Center(
@@ -1031,7 +1092,8 @@ class _AcademicManagementScreenState extends State<AcademicManagementScreen>
                     ),
                   ),
                   const Divider(color: Colors.white12, height: 32),
-                  _AddSubjectForm(course: course, institutionId: widget.institution.id),
+                  _AddSubjectForm(
+                      course: course, institutionId: widget.institution.id),
                 ],
               ),
             ),
@@ -1050,7 +1112,8 @@ class _AcademicManagementScreenState extends State<AcademicManagementScreen>
     return StatefulBuilder(
       builder: (context, setState) {
         return FutureBuilder<SchoolCalendar?>(
-          future: service.getSchoolCalendar(widget.institution.id, selectedYear),
+          future:
+              service.getSchoolCalendar(widget.institution.id, selectedYear),
           builder: (context, snapshot) {
             final calendar = snapshot.data;
 
@@ -1072,7 +1135,10 @@ class _AcademicManagementScreenState extends State<AcademicManagementScreen>
                             '2024/2025',
                             '2025/2026',
                             '2026/2027'
-                          ].map((y) => DropdownMenuItem(value: y, child: Text(y))).toList(),
+                          ]
+                              .map((y) =>
+                                  DropdownMenuItem(value: y, child: Text(y)))
+                              .toList(),
                           onChanged: (v) {
                             if (v != null) setState(() => selectedYear = v);
                           },
@@ -1080,7 +1146,8 @@ class _AcademicManagementScreenState extends State<AcademicManagementScreen>
                       ),
                       if (calendar == null)
                         CustomButton(
-                          onPressed: () => _showCalendarSetupWizard(selectedYear),
+                          onPressed: () =>
+                              _showCalendarSetupWizard(selectedYear),
                           label: 'Configurar Calendário',
                           variant: CustomButtonVariant.secondary,
                           height: 32,
@@ -1094,7 +1161,8 @@ class _AcademicManagementScreenState extends State<AcademicManagementScreen>
                         padding: EdgeInsets.symmetric(vertical: 40),
                         child: Column(
                           children: [
-                            Icon(Icons.calendar_today, size: 48, color: Colors.white24),
+                            Icon(Icons.calendar_today,
+                                size: 48, color: Colors.white24),
                             SizedBox(height: 16),
                             Text('Nenhum calendário configurado para este ano.',
                                 style: TextStyle(color: Colors.white54)),
@@ -1121,11 +1189,15 @@ class _AcademicManagementScreenState extends State<AcademicManagementScreen>
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text('Períodos Letivos',
-            style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+            style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.bold)),
         const SizedBox(height: 12),
         ...calendar.terms.map((term) => GlassCard(
               child: ListTile(
-                title: Text(term.name, style: const TextStyle(color: Colors.white)),
+                title: Text(term.name,
+                    style: const TextStyle(color: Colors.white)),
                 subtitle: Text(
                     '${DateFormat('dd/MM/yyyy').format(term.startDate)} - ${DateFormat('dd/MM/yyyy').format(term.endDate)}',
                     style: const TextStyle(color: Colors.white54)),
@@ -1140,14 +1212,17 @@ class _AcademicManagementScreenState extends State<AcademicManagementScreen>
   }
 
   Widget _buildHolidaysSection(SchoolCalendar calendar) {
-     return Column(
+    return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             const Text('Feriados e Pausas',
-                style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold)),
             CustomButton(
               onPressed: () => _addHoliday(calendar),
               label: 'Adicionar',
@@ -1160,13 +1235,17 @@ class _AcademicManagementScreenState extends State<AcademicManagementScreen>
         Wrap(
           spacing: 8,
           runSpacing: 8,
-          children: calendar.holidays.map((h) => Chip(
-            backgroundColor: const Color(0xFF1E1E2E),
-            label: Text('${h.name} (${DateFormat('dd/MM').format(h.date)})',
-                style: const TextStyle(color: Colors.white, fontSize: 12)),
-            onDeleted: () => _deleteHoliday(calendar, h),
-            deleteIconColor: Colors.redAccent,
-          )).toList(),
+          children: calendar.holidays
+              .map((h) => Chip(
+                    backgroundColor: const Color(0xFF1E1E2E),
+                    label: Text(
+                        '${h.name} (${DateFormat('dd/MM').format(h.date)})',
+                        style:
+                            const TextStyle(color: Colors.white, fontSize: 12)),
+                    onDeleted: () => _deleteHoliday(calendar, h),
+                    deleteIconColor: Colors.redAccent,
+                  ))
+              .toList(),
         ),
       ],
     );
@@ -1176,7 +1255,7 @@ class _AcademicManagementScreenState extends State<AcademicManagementScreen>
     int numPeriods = 2;
     final yearParts = academicYear.split('/');
     final startYear = int.parse(yearParts[0]);
-    
+
     // Default names based on period count
     String getPeriodName(int count, int index) {
       if (count == 2) return '${index + 1}º Semestre';
@@ -1188,7 +1267,9 @@ class _AcademicManagementScreenState extends State<AcademicManagementScreen>
     // Default dates based on period count
     DateTime getStartDate(int count, int index) {
       if (count == 2) {
-        return index == 0 ? DateTime(startYear, 9, 1) : DateTime(startYear + 1, 2, 1);
+        return index == 0
+            ? DateTime(startYear, 9, 1)
+            : DateTime(startYear + 1, 2, 1);
       }
       if (count == 3) {
         if (index == 0) return DateTime(startYear, 9, 1);
@@ -1205,8 +1286,10 @@ class _AcademicManagementScreenState extends State<AcademicManagementScreen>
     }
 
     DateTime getEndDate(int count, int index) {
-       if (count == 2) {
-        return index == 0 ? DateTime(startYear, 12, 20) : DateTime(startYear + 1, 6, 30);
+      if (count == 2) {
+        return index == 0
+            ? DateTime(startYear, 12, 20)
+            : DateTime(startYear + 1, 6, 30);
       }
       if (count == 3) {
         if (index == 0) return DateTime(startYear, 12, 15);
@@ -1222,21 +1305,25 @@ class _AcademicManagementScreenState extends State<AcademicManagementScreen>
       return DateTime(startYear + 1, 6, 30);
     }
 
-    List<Map<String, dynamic>> periods = List.generate(2, (i) => {
-      'name': getPeriodName(2, i),
-      'start': getStartDate(2, i),
-      'end': getEndDate(2, i),
-    });
+    List<Map<String, dynamic>> periods = List.generate(
+        2,
+        (i) => {
+              'name': getPeriodName(2, i),
+              'start': getStartDate(2, i),
+              'end': getEndDate(2, i),
+            });
 
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) {
-          final controllers = List.generate(numPeriods, (i) => TextEditingController(text: periods[i]['name']));
-          
+          final controllers = List.generate(numPeriods,
+              (i) => TextEditingController(text: periods[i]['name']));
+
           return AlertDialog(
             backgroundColor: const Color(0xFF1E1E2E),
-            title: Text('Configurar $academicYear', style: const TextStyle(color: Colors.white)),
+            title: Text('Configurar $academicYear',
+                style: const TextStyle(color: Colors.white)),
             content: SizedBox(
               width: double.maxFinite,
               child: SingleChildScrollView(
@@ -1244,31 +1331,45 @@ class _AcademicManagementScreenState extends State<AcademicManagementScreen>
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Tipo de Organização:', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                    const Text('Tipo de Organização:',
+                        style: TextStyle(color: Colors.white70, fontSize: 12)),
                     const SizedBox(height: 8),
                     DropdownButtonFormField<int>(
                       value: numPeriods,
                       dropdownColor: const Color(0xFF1E1E2E),
                       items: const [
-                        DropdownMenuItem(value: 2, child: Text('2 Semestres', style: TextStyle(color: Colors.white))),
-                        DropdownMenuItem(value: 3, child: Text('3 Quadrimestres', style: TextStyle(color: Colors.white))),
-                        DropdownMenuItem(value: 4, child: Text('4 Trimestres', style: TextStyle(color: Colors.white))),
+                        DropdownMenuItem(
+                            value: 2,
+                            child: Text('2 Semestres',
+                                style: TextStyle(color: Colors.white))),
+                        DropdownMenuItem(
+                            value: 3,
+                            child: Text('3 Quadrimestres',
+                                style: TextStyle(color: Colors.white))),
+                        DropdownMenuItem(
+                            value: 4,
+                            child: Text('4 Trimestres',
+                                style: TextStyle(color: Colors.white))),
                       ],
                       onChanged: (v) {
                         if (v != null) {
                           setDialogState(() {
                             numPeriods = v;
-                            periods = List.generate(numPeriods, (i) => {
-                              'name': getPeriodName(numPeriods, i),
-                              'start': getStartDate(numPeriods, i),
-                              'end': getEndDate(numPeriods, i),
-                            });
+                            periods = List.generate(
+                                numPeriods,
+                                (i) => {
+                                      'name': getPeriodName(numPeriods, i),
+                                      'start': getStartDate(numPeriods, i),
+                                      'end': getEndDate(numPeriods, i),
+                                    });
                           });
                         }
                       },
                     ),
                     const SizedBox(height: 24),
-                    const Text('Editar Períodos e Datas:', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                    const Text('Editar Períodos e Datas:',
+                        style: TextStyle(
+                            color: Colors.white, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 12),
                     ...List.generate(numPeriods, (index) {
                       final p = periods[index];
@@ -1285,16 +1386,24 @@ class _AcademicManagementScreenState extends State<AcademicManagementScreen>
                             TextField(
                               controller: ctrl,
                               onChanged: (val) => p['name'] = val,
-                              style: const TextStyle(color: Colors.white, fontSize: 13),
-                              decoration: const InputDecoration(labelText: 'Nome do Período'),
+                              style: const TextStyle(
+                                  color: Colors.white, fontSize: 13),
+                              decoration: const InputDecoration(
+                                  labelText: 'Nome do Período'),
                             ),
                             Row(
                               children: [
                                 Expanded(
                                   child: ListTile(
                                     dense: true,
-                                    title: const Text('Início', style: TextStyle(color: Colors.white54, fontSize: 10)),
-                                    subtitle: Text(DateFormat('dd/MM').format(p['start']), style: const TextStyle(color: Colors.white)),
+                                    title: const Text('Início',
+                                        style: TextStyle(
+                                            color: Colors.white54,
+                                            fontSize: 10)),
+                                    subtitle: Text(
+                                        DateFormat('dd/MM').format(p['start']),
+                                        style: const TextStyle(
+                                            color: Colors.white)),
                                     onTap: () async {
                                       final d = await showDatePicker(
                                         context: ctx,
@@ -1302,15 +1411,22 @@ class _AcademicManagementScreenState extends State<AcademicManagementScreen>
                                         firstDate: DateTime(startYear, 1, 1),
                                         lastDate: DateTime(startYear + 2, 1, 1),
                                       );
-                                      if (d != null) setDialogState(() => p['start'] = d);
+                                      if (d != null)
+                                        setDialogState(() => p['start'] = d);
                                     },
                                   ),
                                 ),
                                 Expanded(
                                   child: ListTile(
                                     dense: true,
-                                    title: const Text('Fim', style: TextStyle(color: Colors.white54, fontSize: 10)),
-                                    subtitle: Text(DateFormat('dd/MM').format(p['end']), style: const TextStyle(color: Colors.white)),
+                                    title: const Text('Fim',
+                                        style: TextStyle(
+                                            color: Colors.white54,
+                                            fontSize: 10)),
+                                    subtitle: Text(
+                                        DateFormat('dd/MM').format(p['end']),
+                                        style: const TextStyle(
+                                            color: Colors.white)),
                                     onTap: () async {
                                       final d = await showDatePicker(
                                         context: ctx,
@@ -1318,7 +1434,8 @@ class _AcademicManagementScreenState extends State<AcademicManagementScreen>
                                         firstDate: DateTime(startYear, 1, 1),
                                         lastDate: DateTime(startYear + 2, 1, 1),
                                       );
-                                      if (d != null) setDialogState(() => p['end'] = d);
+                                      if (d != null)
+                                        setDialogState(() => p['end'] = d);
                                     },
                                   ),
                                 ),
@@ -1333,23 +1450,29 @@ class _AcademicManagementScreenState extends State<AcademicManagementScreen>
               ),
             ),
             actions: [
-              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
+              TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Cancelar')),
               ElevatedButton(
                 onPressed: () async {
                   final calendar = SchoolCalendar(
                     id: academicYear.replaceAll('/', '_'),
                     institutionId: widget.institution.id,
                     academicYear: academicYear,
-                    terms: List.generate(numPeriods, (i) => SchoolTerm(
-                      id: 't${i + 1}',
-                      name: periods[i]['name'],
-                      startDate: periods[i]['start'],
-                      endDate: periods[i]['end'],
-                    )),
+                    terms: List.generate(
+                        numPeriods,
+                        (i) => SchoolTerm(
+                              id: 't${i + 1}',
+                              name: periods[i]['name'],
+                              startDate: periods[i]['start'],
+                              endDate: periods[i]['end'],
+                            )),
                     holidays: [],
                     vacations: [],
                   );
-                  await context.read<FirebaseService>().saveSchoolCalendar(calendar);
+                  await context
+                      .read<FirebaseService>()
+                      .saveSchoolCalendar(calendar);
                   controllers.forEach((c) => c.dispose());
                   if (mounted) Navigator.pop(ctx);
                   if (mounted) setState(() {});
@@ -1362,7 +1485,7 @@ class _AcademicManagementScreenState extends State<AcademicManagementScreen>
       ),
     );
   }
-  
+
   void _editTerm(SchoolCalendar calendar, SchoolTerm term) {
     DateTime start = term.startDate;
     DateTime end = term.endDate;
@@ -1384,8 +1507,10 @@ class _AcademicManagementScreenState extends State<AcademicManagementScreen>
               ),
               const SizedBox(height: 16),
               ListTile(
-                title: const AiTranslatedText('Início', style: TextStyle(color: Colors.white70, fontSize: 12)),
-                subtitle: Text(DateFormat('dd/MM/yyyy').format(start), style: const TextStyle(color: Colors.white)),
+                title: const AiTranslatedText('Início',
+                    style: TextStyle(color: Colors.white70, fontSize: 12)),
+                subtitle: Text(DateFormat('dd/MM/yyyy').format(start),
+                    style: const TextStyle(color: Colors.white)),
                 onTap: () async {
                   final picked = await showDatePicker(
                     context: ctx,
@@ -1397,8 +1522,10 @@ class _AcademicManagementScreenState extends State<AcademicManagementScreen>
                 },
               ),
               ListTile(
-                title: const AiTranslatedText('Fim', style: TextStyle(color: Colors.white70, fontSize: 12)),
-                subtitle: Text(DateFormat('dd/MM/yyyy').format(end), style: const TextStyle(color: Colors.white)),
+                title: const AiTranslatedText('Fim',
+                    style: TextStyle(color: Colors.white70, fontSize: 12)),
+                subtitle: Text(DateFormat('dd/MM/yyyy').format(end),
+                    style: const TextStyle(color: Colors.white)),
                 onTap: () async {
                   final picked = await showDatePicker(
                     context: ctx,
@@ -1412,13 +1539,21 @@ class _AcademicManagementScreenState extends State<AcademicManagementScreen>
             ],
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const AiTranslatedText('Cancelar')),
+            TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const AiTranslatedText('Cancelar')),
             ElevatedButton(
               onPressed: () async {
-                final updatedTerms = calendar.terms.map((t) => t.id == term.id 
-                  ? SchoolTerm(id: t.id, name: nameController.text, startDate: start, endDate: end)
-                  : t).toList();
-                
+                final updatedTerms = calendar.terms
+                    .map((t) => t.id == term.id
+                        ? SchoolTerm(
+                            id: t.id,
+                            name: nameController.text,
+                            startDate: start,
+                            endDate: end)
+                        : t)
+                    .toList();
+
                 final updatedCalendar = SchoolCalendar(
                   id: calendar.id,
                   institutionId: calendar.institutionId,
@@ -1427,7 +1562,9 @@ class _AcademicManagementScreenState extends State<AcademicManagementScreen>
                   holidays: calendar.holidays,
                   vacations: calendar.vacations,
                 );
-                await context.read<FirebaseService>().saveSchoolCalendar(updatedCalendar);
+                await context
+                    .read<FirebaseService>()
+                    .saveSchoolCalendar(updatedCalendar);
                 if (mounted) Navigator.pop(ctx);
                 setState(() {});
               },
@@ -1459,8 +1596,10 @@ class _AcademicManagementScreenState extends State<AcademicManagementScreen>
               ),
               const SizedBox(height: 16),
               ListTile(
-                title: const AiTranslatedText('Data', style: TextStyle(color: Colors.white70, fontSize: 12)),
-                subtitle: Text(DateFormat('dd/MM/yyyy').format(date), style: const TextStyle(color: Colors.white)),
+                title: const AiTranslatedText('Data',
+                    style: TextStyle(color: Colors.white70, fontSize: 12)),
+                subtitle: Text(DateFormat('dd/MM/yyyy').format(date),
+                    style: const TextStyle(color: Colors.white)),
                 onTap: () async {
                   final picked = await showDatePicker(
                     context: ctx,
@@ -1474,17 +1613,19 @@ class _AcademicManagementScreenState extends State<AcademicManagementScreen>
             ],
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const AiTranslatedText('Cancelar')),
+            TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const AiTranslatedText('Cancelar')),
             ElevatedButton(
               onPressed: () async {
                 if (nameController.text.isEmpty) return;
-                
+
                 final newHoliday = Holiday(
                   id: const Uuid().v4(),
                   name: nameController.text,
                   date: date,
                 );
-                
+
                 final updatedCalendar = SchoolCalendar(
                   id: calendar.id,
                   institutionId: calendar.institutionId,
@@ -1493,7 +1634,9 @@ class _AcademicManagementScreenState extends State<AcademicManagementScreen>
                   holidays: [...calendar.holidays, newHoliday],
                   vacations: calendar.vacations,
                 );
-                await context.read<FirebaseService>().saveSchoolCalendar(updatedCalendar);
+                await context
+                    .read<FirebaseService>()
+                    .saveSchoolCalendar(updatedCalendar);
                 if (mounted) Navigator.pop(ctx);
                 setState(() {});
               },
@@ -1504,9 +1647,10 @@ class _AcademicManagementScreenState extends State<AcademicManagementScreen>
       ),
     );
   }
-  
+
   void _deleteHoliday(SchoolCalendar calendar, Holiday holiday) async {
-    final updatedHolidays = calendar.holidays.where((h) => h.id != holiday.id).toList();
+    final updatedHolidays =
+        calendar.holidays.where((h) => h.id != holiday.id).toList();
     final updatedCalendar = SchoolCalendar(
       id: calendar.id,
       institutionId: calendar.institutionId,
@@ -1654,7 +1798,9 @@ class _AddSubjectFormState extends State<_AddSubjectForm> {
                 future: service.getAllInstitutionMembers(widget.institutionId),
                 builder: (context, snapshot) {
                   final teachers = (snapshot.data ?? [])
-                      .where((u) => u.role == UserRole.teacher || u.role == UserRole.courseCoordinator)
+                      .where((u) =>
+                          u.role == UserRole.teacher ||
+                          u.role == UserRole.courseCoordinator)
                       .toList();
                   return DropdownButtonFormField<String>(
                     value: _selectedTeacherId,
@@ -1731,13 +1877,17 @@ class _AddSubjectFormState extends State<_AddSubjectForm> {
                   games: [],
                   evaluationComponents: [],
                   ects: double.tryParse(_ectsController.text) ?? 6.0,
-                  theoreticalHours: double.tryParse(_tHoursController.text) ?? 30.0,
-                  practicalHours: double.tryParse(_pHoursController.text) ?? 30.0,
+                  theoreticalHours:
+                      double.tryParse(_tHoursController.text) ?? 30.0,
+                  practicalHours:
+                      double.tryParse(_pHoursController.text) ?? 30.0,
                   attendanceControlEnabled: _attendanceControlEnabled,
-                  requiredAttendancePercentage: double.tryParse(_requiredPercentageController.text) ?? 75.0,
+                  requiredAttendancePercentage:
+                      double.tryParse(_requiredPercentageController.text) ??
+                          75.0,
                 );
                 await service.updateSubject(sub);
-                
+
                 // Also update course to include this subjectId
                 final updatedCourse = Course(
                   id: widget.course.id,
@@ -1755,7 +1905,8 @@ class _AddSubjectFormState extends State<_AddSubjectForm> {
                 _nameController.clear();
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Disciplina adicionada com sucesso!')),
+                    const SnackBar(
+                        content: Text('Disciplina adicionada com sucesso!')),
                   );
                 }
                 setState(() {}); // Refresh form

@@ -16,6 +16,7 @@ import 'package:syncfusion_flutter_pdf/pdf.dart';
 import 'package:archive/archive.dart' as archive;
 import 'package:xml/xml.dart' as xml;
 import 'attendance_matrix_screen.dart';
+import '../../widgets/ai_text_field.dart';
 
 class SyllabusManagementScreen extends StatefulWidget {
   final Subject subject;
@@ -88,7 +89,7 @@ class _SyllabusManagementScreenState extends State<SyllabusManagementScreen> {
           try {
             final updatedSubject = widget.subject.copyWith(sessions: _sessions);
             await service.updateSubject(updatedSubject);
-            
+
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
                   content: AiTranslatedText('Sumário guardado com sucesso!'),
@@ -133,7 +134,8 @@ class _SyllabusManagementScreenState extends State<SyllabusManagementScreen> {
             onPressed: () => Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => AttendanceMatrixScreen(subject: widget.subject),
+                builder: (context) =>
+                    AttendanceMatrixScreen(subject: widget.subject),
               ),
             ),
             tooltip: 'Matrix de Presenças',
@@ -155,143 +157,137 @@ class _SyllabusManagementScreenState extends State<SyllabusManagementScreen> {
           ),
         ),
         child: ListView.builder(
-                padding: const EdgeInsets.all(16),
-                itemCount: _sessions.length + 1,
-                itemBuilder: (context, index) {
-                  if (index == 0) {
-                    return _buildProgramHeader(context);
-                  }
-                  final session = _sessions[index - 1];
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: GlassCard(
-                      child: ListTile(
-                        onTap: () => _addOrEditSession(session),
-                        leading: CircleAvatar(
-                          backgroundColor:
-                              const Color(0xFF7B61FF).withValues(alpha: 0.2),
-                          child: Text(
-                            session.sessionNumber.toString(),
-                            style: const TextStyle(
-                                color: Color(0xFF7B61FF),
+          padding: const EdgeInsets.all(16),
+          itemCount: _sessions.length + 1,
+          itemBuilder: (context, index) {
+            if (index == 0) {
+              return _buildProgramHeader(context);
+            }
+            final session = _sessions[index - 1];
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: GlassCard(
+                child: ListTile(
+                  onTap: () => _addOrEditSession(session),
+                  leading: CircleAvatar(
+                    backgroundColor:
+                        const Color(0xFF7B61FF).withValues(alpha: 0.2),
+                    child: Text(
+                      session.sessionNumber.toString(),
+                      style: const TextStyle(
+                          color: Color(0xFF7B61FF),
+                          fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  title: Text(
+                    session.topic,
+                    style: const TextStyle(
+                        color: Colors.white, fontWeight: FontWeight.bold),
+                  ),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      AiTranslatedText(
+                        DateFormat('dd/MM/yyyy').format(session.date),
+                        style: const TextStyle(
+                            color: Colors.white54, fontSize: 12),
+                      ),
+                      if (session.finalSummary != null) ...[
+                        const Padding(
+                          padding: EdgeInsets.only(top: 4),
+                          child: AiTranslatedText(
+                            'Sumário Finalizado:',
+                            style: TextStyle(
+                                color: Color(0xFF00D1FF),
+                                fontSize: 10,
                                 fontWeight: FontWeight.bold),
                           ),
                         ),
-                        title: Text(
-                          session.topic,
-                          style: const TextStyle(
-                              color: Colors.white, fontWeight: FontWeight.bold),
-                        ),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            AiTranslatedText(
-                              DateFormat('dd/MM/yyyy').format(session.date),
+                        if (session.finalSummary != null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4, bottom: 8),
+                            child: Text(
+                              session.finalSummary!,
                               style: const TextStyle(
-                                  color: Colors.white54, fontSize: 12),
+                                  color: Colors.white70, fontSize: 12),
+                              maxLines: 3,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                            if (session.finalSummary != null) ...[
-                              const Padding(
-                                padding: EdgeInsets.only(top: 4),
-                                child: AiTranslatedText(
-                                  'Sumário Finalizado:',
-                                  style: TextStyle(
+                          ),
+                        if (session.materialIds.isNotEmpty) ...[
+                          const SizedBox(height: 4),
+                          Wrap(
+                            spacing: 4,
+                            runSpacing: 2,
+                            children: session.materialIds.map((id) {
+                              final content =
+                                  widget.subject.contents.firstWhere(
+                                (c) => c.id == id,
+                                orElse: () => SubjectContent(
+                                    id: '',
+                                    name: 'Material',
+                                    url: '',
+                                    type: ''),
+                              );
+                              if (content.url.isEmpty) {
+                                return const SizedBox();
+                              }
+                              return GestureDetector(
+                                onTap: () async {
+                                  final uri = Uri.tryParse(content.url);
+                                  if (uri != null && await canLaunchUrl(uri)) {
+                                    await launchUrl(uri,
+                                        mode: LaunchMode.externalApplication);
+                                  }
+                                },
+                                child: Text(
+                                  '🔗 ${content.name}',
+                                  style: const TextStyle(
                                       color: Color(0xFF00D1FF),
                                       fontSize: 10,
-                                      fontWeight: FontWeight.bold),
+                                      decoration: TextDecoration.underline),
                                 ),
+                              );
+                            }).toList(),
+                          ),
+                        ],
+                      ],
+                    ],
+                  ),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.video_call,
+                            color: Color(0xFF00D1FF)),
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  VirtualClassroomTeacherScreen(
+                                subject: widget.subject,
+                                session: session,
                               ),
-                              if (session.finalSummary != null)
-                                Padding(
-                                  padding:
-                                      const EdgeInsets.only(top: 4, bottom: 8),
-                                  child: Text(
-                                    session.finalSummary!,
-                                    style: const TextStyle(
-                                        color: Colors.white70, fontSize: 12),
-                                    maxLines: 3,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              if (session.materialIds.isNotEmpty) ...[
-                                const SizedBox(height: 4),
-                                Wrap(
-                                  spacing: 4,
-                                  runSpacing: 2,
-                                  children: session.materialIds.map((id) {
-                                    final content =
-                                        widget.subject.contents.firstWhere(
-                                      (c) => c.id == id,
-                                      orElse: () => SubjectContent(
-                                          id: '',
-                                          name: 'Material',
-                                          url: '',
-                                          type: ''),
-                                    );
-                                    if (content.url.isEmpty) {
-                                      return const SizedBox();
-                                    }
-                                    return GestureDetector(
-                                      onTap: () async {
-                                        final uri = Uri.tryParse(content.url);
-                                        if (uri != null &&
-                                            await canLaunchUrl(uri)) {
-                                          await launchUrl(uri,
-                                              mode: LaunchMode
-                                                  .externalApplication);
-                                        }
-                                      },
-                                      child: Text(
-                                        '🔗 ${content.name}',
-                                        style: const TextStyle(
-                                            color: Color(0xFF00D1FF),
-                                            fontSize: 10,
-                                            decoration:
-                                                TextDecoration.underline),
-                                      ),
-                                    );
-                                  }).toList(),
-                                ),
-                              ],
-                            ],
-                          ],
-                        ),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(
-                              icon: const Icon(Icons.video_call,
-                                  color: Color(0xFF00D1FF)),
-                              onPressed: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) =>
-                                        VirtualClassroomTeacherScreen(
-                                      subject: widget.subject,
-                                      session: session,
-                                    ),
-                                  ),
-                                );
-                              },
-                              tooltip: 'Iniciar Aula em Direto',
                             ),
-                            IconButton(
-                              icon: const Icon(Icons.people_outline,
-                                  color: Colors.greenAccent),
-                              onPressed: () =>
-                                  _showAttendanceList(context, session),
-                              tooltip: 'Ver Presenças',
-                            ),
-                            const Icon(Icons.edit,
-                                color: Colors.white24, size: 20),
-                          ],
-                        ),
+                          );
+                        },
+                        tooltip: 'Iniciar Aula em Direto',
                       ),
-                    ),
-                  );
-                },
+                      IconButton(
+                        icon: const Icon(Icons.people_outline,
+                            color: Colors.greenAccent),
+                        onPressed: () => _showAttendanceList(context, session),
+                        tooltip: 'Ver Presenças',
+                      ),
+                      const Icon(Icons.edit, color: Colors.white24, size: 20),
+                    ],
+                  ),
+                ),
               ),
+            );
+          },
+        ),
       ),
     );
   }
@@ -347,8 +343,8 @@ class _SyllabusManagementScreenState extends State<SyllabusManagementScreen> {
                                 IconButton(
                                   icon: const Icon(Icons.sync_alt,
                                       color: Colors.greenAccent),
-                                  onPressed: () =>
-                                      _syncWithInstitutional(institutionalProgram),
+                                  onPressed: () => _syncWithInstitutional(
+                                      institutionalProgram),
                                   tooltip: 'Sincronizar com Instituição',
                                 ),
                               IconButton(
@@ -370,7 +366,8 @@ class _SyllabusManagementScreenState extends State<SyllabusManagementScreen> {
                             color: Colors.blueAccent.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(8),
                             border: Border.all(
-                                color: Colors.blueAccent.withValues(alpha: 0.3)),
+                                color:
+                                    Colors.blueAccent.withValues(alpha: 0.3)),
                           ),
                           child: const Row(
                             children: [
@@ -656,15 +653,10 @@ class _SyllabusManagementScreenState extends State<SyllabusManagementScreen> {
                       ),
                     )
                   else
-                    TextField(
+                    AiTextField(
                       controller: controller,
                       maxLines: 15,
-                      style: const TextStyle(color: Colors.white),
-                      decoration: const InputDecoration(
-                        hintText:
-                            'Introduza os objetivos gerais, conteúdos programáticos e bibliografia geral ou arraste um ficheiro aqui...',
-                        border: OutlineInputBorder(),
-                      ),
+                      hintText: 'Introduza os objetivos gerais, conteúdos programáticos e bibliografia geral ou arraste um ficheiro aqui...',
                     ),
                   const SizedBox(height: 24),
                   ElevatedButton(
@@ -1008,11 +1000,9 @@ class _SessionEditorModalState extends State<_SessionEditorModal> {
                 const SizedBox(width: 16),
                 Expanded(
                   flex: 3,
-                  child: TextField(
+                  child: AiTextField(
                     controller: _topicController,
-                    style: const TextStyle(color: Colors.white),
-                    decoration: const InputDecoration(
-                        labelText: 'Tópico', border: OutlineInputBorder()),
+                    labelText: 'Tópico',
                     onChanged: (v) {
                       if (_summaryController.text.isEmpty) {
                         _generateProposedSummary();
@@ -1105,13 +1095,10 @@ class _SessionEditorModalState extends State<_SessionEditorModal> {
               }).toList(),
             ),
             const SizedBox(height: 16),
-            TextField(
+            AiTextField(
               controller: _biblioController,
               maxLines: 2,
-              style: const TextStyle(color: Colors.white),
-              decoration: const InputDecoration(
-                  labelText: 'Bibliografia Recomendada',
-                  border: OutlineInputBorder()),
+              labelText: 'Bibliografia Recomendada',
             ),
             const SizedBox(height: 16),
             Row(
@@ -1128,13 +1115,10 @@ class _SessionEditorModalState extends State<_SessionEditorModal> {
                 ),
               ],
             ),
-            TextField(
+            AiTextField(
               controller: _summaryController,
               maxLines: 4,
-              style: const TextStyle(color: Colors.white),
-              decoration: const InputDecoration(
-                  hintText: 'Escreva o sumário da aula...',
-                  border: OutlineInputBorder()),
+              hintText: 'Escreva o sumário da aula...',
             ),
             const SizedBox(height: 32),
             Row(

@@ -4,7 +4,8 @@ import 'package:http/http.dart' as http;
 
 void main() async {
   const apiKey = "AIzaSyBijmKqyafP2tDtoe_Jkab1gzGdJXHxefo";
-  const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-001:generateContent';
+  const endpoint =
+      'https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-001:generateContent';
 
   print('Testing Imagen API with key: ${apiKey.substring(0, 5)}...');
 

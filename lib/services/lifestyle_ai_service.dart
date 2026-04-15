@@ -38,7 +38,7 @@ Retorne APENAS o JSON.
 
     final content = [Content.text(prompt)];
     final response = await _model.generateContent(content);
-    
+
     try {
       final text = response.text ?? '{}';
       return jsonDecode(_cleanJsonResponse(text));
@@ -57,7 +57,8 @@ Retorne APENAS o JSON.
   }
 
   Future<String> generateProposalEvent(String strategy) async {
-    final prompt = 'Baseado nesta estratégia de melhoria do estilo de vida: "$strategy", descreva um evento detalhado (nome, duração, atividades, impacto esperado) para a instituição implementar.';
+    final prompt =
+        'Baseado nesta estratégia de melhoria do estilo de vida: "$strategy", descreva um evento detalhado (nome, duração, atividades, impacto esperado) para a instituição implementar.';
     final content = [Content.text(prompt)];
     final response = await _model.generateContent(content);
     return response.text ?? 'Detalhes não disponíveis';

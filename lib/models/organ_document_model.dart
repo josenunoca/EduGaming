@@ -55,7 +55,8 @@ class OrganDocument {
       content: map['content'],
       isVisibleToAllMembers: map['isVisibleToAllMembers'] ?? false,
       createdBy: map['createdBy'] ?? '',
-      createdAt: DateTime.parse(map['createdAt'] ?? DateTime.now().toIso8601String()),
+      createdAt:
+          DateTime.parse(map['createdAt'] ?? DateTime.now().toIso8601String()),
     );
   }
 }
