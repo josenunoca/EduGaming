@@ -459,18 +459,18 @@ class InstitutionCollaboratorManagementScreen extends StatelessWidget {
                 return;
               }
               final service = context.read<FirebaseService>();
-              final messenger = ScaffoldMessenger.of(context);
-              final nav = Navigator.of(dialogContext);
               await service.updateUserProfile(user.id, {
                 'name': nameController.text.trim(),
                 'email': emailController.text.trim(),
                 'phone': phoneController.text.trim(),
               });
-              nav.pop();
-              messenger.showSnackBar(
-                const SnackBar(
-                    content: Text('Dados atualizados com sucesso!')),
-              );
+              if (context.mounted) {
+                Navigator.pop(dialogContext);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                      content: Text('Dados atualizados com sucesso!')),
+                );
+              }
             },
             style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF7B61FF)),
@@ -529,18 +529,18 @@ class InstitutionCollaboratorManagementScreen extends StatelessWidget {
                 return;
               }
               final service = context.read<FirebaseService>();
-              final messenger = ScaffoldMessenger.of(context);
-              final nav = Navigator.of(dialogContext);
               await service.addProfessorByEmail(
                 nameController.text.trim(),
                 emailController.text.trim(),
                 institution.id,
               );
-              nav.pop();
-              messenger.showSnackBar(
-                const SnackBar(
-                    content: Text('Colaborador adicionado com sucesso!')),
-              );
+              if (context.mounted) {
+                Navigator.pop(dialogContext);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                      content: Text('Colaborador adicionado com sucesso!')),
+                );
+              }
             },
             style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF7B61FF)),

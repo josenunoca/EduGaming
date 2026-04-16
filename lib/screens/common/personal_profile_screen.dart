@@ -87,24 +87,6 @@ class _PersonalProfileScreenState extends State<PersonalProfileScreen> {
     _cvOtherController.text = cv.otherInterests ?? '';
   }
 
-  @override
-  void dispose() {
-    _interestController.dispose();
-    _nameController.dispose();
-    _nifController.dispose();
-    _phoneController.dispose();
-    _addressController.dispose();
-    _postalCodeController.dispose();
-    _cvAcademicController.dispose();
-    _cvAreaController.dispose();
-    _cvProfController.dispose();
-    _cvAwardsController.dispose();
-    _cvExpController.dispose();
-    _cvPubController.dispose();
-    _cvOtherController.dispose();
-    super.dispose();
-  }
-
   void _updateCurriculumFromControllers() {
     _curriculum = CurriculumModel(
       cvFileUrl: _curriculum?.cvFileUrl,
@@ -140,7 +122,6 @@ class _PersonalProfileScreenState extends State<PersonalProfileScreen> {
     final image = await picker.pickImage(source: ImageSource.gallery);
     if (image != null) {
       final service = context.read<FirebaseService>();
-      final messenger = ScaffoldMessenger.of(context);
       setState(() => _isUploading = true);
       try {
         final bytes = await image.readAsBytes();
@@ -151,11 +132,12 @@ class _PersonalProfileScreenState extends State<PersonalProfileScreen> {
           _isUploading = false;
         });
       } catch (e) {
-        if (!mounted) return;
         setState(() => _isUploading = false);
-        messenger.showSnackBar(
-          SnackBar(content: Text('Erro ao carregar assinatura: $e')),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Erro ao carregar assinatura: $e')),
+          );
+        }
       }
     }
   }
@@ -169,14 +151,13 @@ class _PersonalProfileScreenState extends State<PersonalProfileScreen> {
     if (result != null && result.files.single.bytes != null) {
       setState(() => _isProcessingCv = true);
       final pdfBytes = result.files.single.bytes!;
-      // Capture context-dependent objects before any await
-      final service = context.read<FirebaseService>();
-      final messenger = ScaffoldMessenger.of(context);
-
+      
       try {
         final cvAiService = CvAiService(apiKey: AppConfig.geminiApiKey);
         final extractedCv = await cvAiService.parseCvPdf(pdfBytes);
-        final fileUrl = await service.uploadInstitutionLogo('${widget.user.id}_cv', pdfBytes);
+        
+        final service = context.read<FirebaseService>();
+        final fileUrl = await service.uploadInstitutionLogo(widget.user.id + '_cv', pdfBytes); // Reuse upload method or create new one
 
         if (!mounted) return;
         setState(() {
@@ -194,15 +175,17 @@ class _PersonalProfileScreenState extends State<PersonalProfileScreen> {
           );
           _isProcessingCv = false;
         });
-        messenger.showSnackBar(
+
+        ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('CV importado e processado com IA com sucesso! Reveja os dados abaixo.')),
         );
       } catch (e) {
-        if (!mounted) return;
         setState(() => _isProcessingCv = false);
-        messenger.showSnackBar(
-          SnackBar(content: Text('Erro ao processar o CV: $e')),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Erro ao processar o CV: $e')),
+          );
+        }
       }
     }
   }
@@ -218,8 +201,6 @@ class _PersonalProfileScreenState extends State<PersonalProfileScreen> {
 
   Future<void> _save() async {
     final service = context.read<FirebaseService>();
-    final messenger = ScaffoldMessenger.of(context);
-    final nav = Navigator.of(context);
 
     if (widget.user.role == UserRole.institution && _institution != null) {
       await service.updateInstitutionProfile(_institution!.id, {
@@ -243,11 +224,12 @@ class _PersonalProfileScreenState extends State<PersonalProfileScreen> {
       });
     }
 
-    if (!mounted) return;
-    messenger.showSnackBar(
-      const SnackBar(content: Text('Perfil atualizado com sucesso!')),
-    );
-    nav.pop();
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Perfil atualizado com sucesso!')),
+      );
+      Navigator.pop(context);
+    }
   }
 
   @override

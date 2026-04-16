@@ -25,7 +25,9 @@ import '../institution/institution_collaborator_management_screen.dart';
 import '../institution/credit_management_screen.dart';
 import '../institution/lifestyle_management_screen.dart';
 import '../institution/delegation_management_screen.dart';
-import '../institutional/institutional_organs_screen.dart';
+import '../institutional/meeting_list_screen.dart';
+import '../institution/facility_management_screen.dart';
+import '../institution/activity_management_screen.dart';
 
 class TeacherDashboard extends StatefulWidget {
   const TeacherDashboard({super.key});
@@ -332,16 +334,19 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
                             const SizedBox(height: 16),
                             Expanded(
                               child: DefaultTabController(
-                                length: 3,
+                                length: 4,
                                 child: Column(
                                   children: [
                                     const TabBar(
+                                      isScrollable: true,
+                                      tabAlignment: TabAlignment.start,
                                       indicatorColor: Color(0xFF7B61FF),
                                       labelColor: Colors.white,
                                       unselectedLabelColor: Colors.white54,
                                       tabs: [
                                         Tab(text: 'Minhas Turmas'),
                                         Tab(text: 'Minhas Atividades'),
+                                        Tab(text: 'Meus Órgãos'),
                                         Tab(text: 'Gestão Delegada'),
                                       ],
                                     ),
@@ -514,8 +519,56 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
                                               );
                                             },
                                           ),
+                                          
+                                          // TAB 3: Meus Órgãos
+                                          StreamBuilder<List<InstitutionOrgan>>(
+                                            stream: service.getInstitutionOrgans(teacher.institutionId ?? ''),
+                                            builder: (context, snapshot) {
+                                              if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
+                                              
+                                              final allOrgans = snapshot.data ?? [];
+                                              // Filter only organs where the user is a member/president/vice-president
+                                              final myOrgans = allOrgans.where((o) {
+                                                final memberMatch = o.memberIds.contains(teacher.id);
+                                                final presidentMatch = o.presidentEmail?.trim().toLowerCase() == teacher.email.trim().toLowerCase();
+                                                final vicePresidentMatch = o.vicePresidentEmail?.trim().toLowerCase() == teacher.email.trim().toLowerCase();
+                                                return memberMatch || presidentMatch || vicePresidentMatch;
+                                              }).toList();
 
-                                          // TAB 3: Delegated Management (SAP Style)
+                                              if (myOrgans.isEmpty) {
+                                                return const Center(child: AiTranslatedText('Não pertence a nenhum órgão.', style: TextStyle(color: Colors.white54)));
+                                              }
+
+                                              return ListView.builder(
+                                                itemCount: myOrgans.length,
+                                                itemBuilder: (context, index) {
+                                                  final organ = myOrgans[index];
+                                                  return Padding(
+                                                    padding: const EdgeInsets.only(bottom: 12.0),
+                                                    child: GlassCard(
+                                                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => MeetingListScreen(organ: organ))),
+                                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                                      child: ListTile(
+                                                        leading: Container(
+                                                          width: 40, height: 40,
+                                                          decoration: BoxDecoration(
+                                                            color: const Color(0xFF00D1FF).withValues(alpha: 0.2),
+                                                            borderRadius: BorderRadius.circular(12),
+                                                          ),
+                                                          child: const Icon(Icons.groups, color: Color(0xFF00D1FF)),
+                                                        ),
+                                                        title: Text(organ.name, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+                                                        subtitle: Text(organ.description, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white54, fontSize: 13)),
+                                                        trailing: const Icon(Icons.arrow_forward_ios, color: Colors.white24, size: 14),
+                                                      ),
+                                                    ),
+                                                  );
+                                                },
+                                              );
+                                            },
+                                          ),
+
+                                          // TAB 4: Delegated Management (SAP Style)
                                           _buildDelegatedTab(context, teacher, institution),
                                         ],
                                       ),
@@ -650,7 +703,7 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
               'label': 'Gestão Atividades',
               'icon': Icons.event,
               'color': const Color(0xFF7B61FF),
-              'page': InstitutionalManagementScreen(institution: institution, initialTab: 1), 
+              'page': ActivityManagementScreen(institution: institution),
             });
           }
           if (isAnyDelegated('global_360:spaces')) {
@@ -658,7 +711,7 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
               'label': 'Gestão Espaços',
               'icon': Icons.room,
               'color': const Color(0xFF7B61FF),
-              'page': InstitutionalManagementScreen(institution: institution, initialTab: 0),
+              'page': FacilityManagementScreen(institution: institution),
             });
           }
           if (isAnyDelegated('global_360:timetable')) {
@@ -666,7 +719,7 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
               'label': 'Gestão Horários',
               'icon': Icons.calendar_today,
               'color': const Color(0xFF7B61FF),
-              'page': InstitutionalManagementScreen(institution: institution, initialTab: 2),
+              'page': FacilityManagementScreen(institution: institution),
             });
           }
         }
@@ -715,7 +768,7 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
               'label': organ.name,
               'icon': Icons.account_balance,
               'color': Colors.tealAccent,
-              'page': InstitutionalOrgansScreen(institution: institution),
+              'page': MeetingListScreen(organ: organ),
             });
           }
         }

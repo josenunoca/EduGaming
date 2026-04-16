@@ -8,6 +8,8 @@ import '../../services/firebase_service.dart';
 import '../../widgets/custom_button.dart';
 import '../../widgets/ai_translated_text.dart';
 import '../../widgets/glass_card.dart';
+import 'package:image_picker/image_picker.dart';
+import '../../models/subject_model.dart';
 
 class FacilityManagementScreen extends StatefulWidget {
   final InstitutionModel institution;
@@ -38,24 +40,26 @@ class _FacilityManagementScreenState extends State<FacilityManagementScreen> {
               child: StreamBuilder<List<Classroom>>(
                 stream: service.getClassrooms(widget.institution.id),
                 builder: (context, snapshot) {
-                  if (!snapshot.hasData)
+                  if (!snapshot.hasData) {
                     return const Center(child: CircularProgressIndicator());
+                  }
                   final rooms = snapshot.data!;
-                  if (rooms.isEmpty)
+                  if (rooms.isEmpty) {
                     return const Center(
                         child: AiTranslatedText('Nenhuma sala cadastrada.',
                             style: TextStyle(color: Colors.white54)));
+                  }
 
                   return GridView.builder(
                     gridDelegate:
                         const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 3,
-                            crossAxisSpacing: 10,
-                            mainAxisSpacing: 10,
-                            childAspectRatio: 1.2),
+                            crossAxisCount: 2,
+                            crossAxisSpacing: 12,
+                            mainAxisSpacing: 12,
+                            childAspectRatio: 2.2), // Wider for activity list
                     itemCount: rooms.length,
                     itemBuilder: (context, index) =>
-                        _ClassroomCard(room: rooms[index]),
+                        _ClassroomCard(room: rooms[index], institutionId: widget.institution.id),
                   );
                 },
               ),
@@ -151,8 +155,9 @@ class _FacilityManagementScreenState extends State<FacilityManagementScreen> {
                 institutionId: widget.institution.id,
                 capacity: int.tryParse(capController.text) ?? 30,
               );
+              if (!context.mounted) return;
               await context.read<FirebaseService>().saveClassroom(room);
-              if (mounted) Navigator.pop(ctx);
+              if (ctx.mounted) Navigator.pop(ctx);
             },
             label: 'Salvar',
             height: 36,
@@ -175,39 +180,198 @@ class _FacilityManagementScreenState extends State<FacilityManagementScreen> {
 
 class _ClassroomCard extends StatelessWidget {
   final Classroom room;
-  const _ClassroomCard({required this.room});
+  final String institutionId;
+  const _ClassroomCard({required this.room, required this.institutionId});
+
+  Future<void> _pickAndUploadImage(BuildContext context) async {
+    final picker = ImagePicker();
+    final XFile? image = await picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
+    
+    if (image != null && context.mounted) {
+      final messenger = ScaffoldMessenger.of(context);
+      final bytes = await image.readAsBytes();
+      final service = context.read<FirebaseService>();
+      
+      messenger.showSnackBar(
+        const SnackBar(content: AiTranslatedText('A carregar imagem...'))
+      );
+      
+      final url = await service.uploadClassroomImage(room.id, bytes);
+      
+      if (url != null) {
+        messenger.showSnackBar(
+          const SnackBar(content: AiTranslatedText('Imagem atualizada com sucesso!'))
+        );
+      } else {
+        messenger.showSnackBar(
+          const SnackBar(content: AiTranslatedText('Erro ao carregar imagem.'))
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final service = context.read<FirebaseService>();
+    final weekday = DateTime.now().weekday;
+
     return GlassCard(
-      child: Padding(
-        padding: const EdgeInsets.all(12.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Row(
+      child: Stack(
+        children: [
+          // Background Image
+          if (room.imageUrl != null)
+            Positioned.fill(
+              child: Opacity(
+                opacity: 0.3,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: Image.network(
+                    room.imageUrl!,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+              ),
+            ),
+          
+          Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: Row(
               children: [
-                const Icon(Icons.room, color: Color(0xFFFFB800), size: 16),
-                const SizedBox(width: 4),
+                // Left Side: Name and Photo Button
                 Expanded(
-                    child: Text(room.name,
-                        style: const TextStyle(
-                            color: Colors.white, fontWeight: FontWeight.bold),
-                        overflow: TextOverflow.ellipsis)),
+                  flex: 3,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.room, color: Color(0xFFFFB800), size: 16),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              room.name,
+                              style: const TextStyle(
+                                  color: Colors.white, 
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Capacidade: ${room.capacity}',
+                        style: const TextStyle(color: Colors.white54, fontSize: 10),
+                      ),
+                      const SizedBox(height: 8),
+                      IconButton(
+                        onPressed: () => _pickAndUploadImage(context),
+                        icon: const Icon(Icons.camera_alt, color: Colors.white38, size: 20),
+                        tooltip: 'Carregar Foto',
+                        visualDensity: VisualDensity.compact,
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                      ),
+                    ],
+                  ),
+                ),
+                
+                const VerticalDivider(color: Colors.white10, width: 24),
+                
+                // Right Side: Today's Activities
+                Expanded(
+                  flex: 4,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Center(
+                        child: AiTranslatedText(
+                          'Atividades de Hoje',
+                          style: TextStyle(
+                              color: Color(0xFFFFB800), 
+                              fontSize: 9, 
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 0.5),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Expanded(
+                        child: StreamBuilder<List<TimetableEntry>>(
+                          stream: service.getTimetableEntriesStream(
+                            institutionId: institutionId,
+                            classroomId: room.id,
+                            weekday: weekday,
+                          ),
+                          builder: (context, snapshot) {
+                            if (!snapshot.hasData) return const SizedBox();
+                            final entries = snapshot.data!;
+                            
+                            if (entries.isEmpty) {
+                              return const Center(
+                                child: AiTranslatedText(
+                                  'Livre hoje',
+                                  style: TextStyle(color: Colors.white24, fontSize: 10),
+                                ),
+                              );
+                            }
+                            
+                            // Sort by time
+                            entries.sort((a, b) => a.startTime.compareTo(b.startTime));
+
+                            return ListView.builder(
+                              shrinkWrap: true,
+                              itemCount: entries.length,
+                              itemBuilder: (context, i) {
+                                final entry = entries[i];
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 2.0),
+                                  child: Row(
+                                    children: [
+                                      Text(
+                                        entry.startTime,
+                                        style: const TextStyle(
+                                            color: Colors.white70, 
+                                            fontSize: 9,
+                                            fontFamily: 'monospace'),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Expanded(
+                                        child: entry.customActivityName != null 
+                                          ? Text(
+                                              entry.customActivityName!,
+                                              style: const TextStyle(color: Colors.white, fontSize: 10),
+                                              overflow: TextOverflow.ellipsis,
+                                            )
+                                          : FutureBuilder<Subject?>(
+                                              future: entry.subjectId != null 
+                                                ? service.getSubject(entry.subjectId!)
+                                                : Future.value(null),
+                                              builder: (context, subSnap) {
+                                                return Text(
+                                                  subSnap.data?.name ?? 'Carregar...',
+                                                  style: const TextStyle(color: Colors.white, fontSize: 10),
+                                                  overflow: TextOverflow.ellipsis,
+                                                );
+                                              },
+                                            ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ],
             ),
-            const SizedBox(height: 4),
-            AiTranslatedText('Capacidade: ${room.capacity}',
-                style: const TextStyle(color: Colors.white54, fontSize: 10)),
-            const Spacer(),
-            Align(
-              alignment: Alignment.bottomRight,
-              child: Icon(Icons.calendar_today,
-                  size: 14, color: Colors.white.withValues(alpha: 0.1)),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

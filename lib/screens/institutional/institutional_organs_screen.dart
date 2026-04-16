@@ -26,226 +26,252 @@ class InstitutionalOrgansScreen extends StatelessWidget {
             userModel?.role == UserRole.admin ||
             (currentUser?.email?.startsWith('instituicao@') == true);
 
-        return Scaffold(
-          backgroundColor: const Color(0xFF0F172A),
-          appBar: AppBar(
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            title: const AiTranslatedText('Órgãos da Instituição',
-                style: TextStyle(
-                    color: Colors.white, fontWeight: FontWeight.bold)),
-          ),
-          body: StreamBuilder<List<InstitutionOrgan>>(
-            stream: institutionalService.getOrgansStream(institution.id),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-              }
-              if (snapshot.hasError) {
-                return Center(
-                    child: Text('Erro: ${snapshot.error}',
-                        style: const TextStyle(color: Colors.red)));
-              }
-              var organs = snapshot.data ?? [];
+        return StreamBuilder<InstitutionModel?>(
+          stream: userModel?.institutionId != null
+              ? firebaseService.getInstitutionStream(userModel!.institutionId!)
+              : Stream.value(null),
+          builder: (context, instSnapshot) {
+            final institution2 = instSnapshot.data ?? institution;
+            return Scaffold(
+              backgroundColor: const Color(0xFF0F172A),
+              appBar: AppBar(
+                backgroundColor: Colors.transparent,
+                elevation: 0,
+                title: const AiTranslatedText('Órgãos da Instituição',
+                    style: TextStyle(
+                        color: Colors.white, fontWeight: FontWeight.bold)),
+              ),
+              body: StreamBuilder<List<InstitutionOrgan>>(
+                stream: institutionalService.getOrgansStream(institution2.id),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  if (snapshot.hasError) {
+                    return Center(
+                        child: Text('Erro: ${snapshot.error}',
+                            style: const TextStyle(color: Colors.red)));
+                  }
+                  var organs = snapshot.data ?? [];
 
-              if (!isInstitution) {
-                organs = organs
-                    .where((o) =>
-                        o.isActive &&
-                        (o.memberIds.contains(currentUser?.uid) ||
-                            o.presidentEmail == currentUser?.email ||
-                            o.vicePresidentEmail == currentUser?.email))
-                    .toList();
-              }
+                  if (!isInstitution) {
+                    organs = organs
+                        .where((o) =>
+                            o.isActive &&
+                            (o.memberIds.contains(currentUser?.uid) ||
+                                o.presidentEmail?.trim().toLowerCase() ==
+                                    currentUser?.email?.trim().toLowerCase() ||
+                                o.vicePresidentEmail?.trim().toLowerCase() ==
+                                    currentUser?.email?.trim().toLowerCase() ||
+                                // Also include organs where this user has been delegated
+                                (userModel != null &&
+                                    institution2.delegatedRoles['organs:${o.id}']
+                                            ?.contains(userModel.id) ==
+                                        true)))
+                        .toList();
+                  }
 
-              if (organs.isEmpty) {
-                return Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.account_tree_outlined,
-                          color: Colors.white24, size: 64),
-                      const SizedBox(height: 16),
-                      const AiTranslatedText('Nenhum órgão registado',
-                          style: TextStyle(color: Colors.white54)),
-                      const SizedBox(height: 24),
-                      if (isInstitution)
-                        ElevatedButton.icon(
-                          onPressed: () => _showAddOrganDialog(context, userModel?.id ?? currentUser?.uid ?? ''),
-                          icon: const Icon(Icons.add),
-                          label: const AiTranslatedText('Adicionar Órgão'),
-                        ),
-                    ],
-                  ),
-                );
-              }
-
-              return ListView.builder(
-                padding: const EdgeInsets.all(16),
-                itemCount: organs.length,
-                itemBuilder: (context, index) {
-                  final organ = organs[index];
-                  return Card(
-                    color: Colors.white.withOpacity(0.05),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
-                    margin: const EdgeInsets.only(bottom: 12),
-                    child: Opacity(
-                      opacity: organ.isActive ? 1.0 : 0.5,
-                      child: ListTile(
-                        contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 20, vertical: 8),
-                        leading: CircleAvatar(
-                          backgroundColor: organ.isActive
-                              ? const Color(0xFF7B61FF)
-                              : Colors.grey,
-                          child: const Icon(Icons.groups, color: Colors.white),
-                        ),
-                        title: Row(
-                          children: [
-                            Expanded(
-                              child: Text(organ.name,
-                                  style: const TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold)),
+                  if (organs.isEmpty) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.account_tree_outlined,
+                              color: Colors.white24, size: 64),
+                          const SizedBox(height: 16),
+                          const AiTranslatedText('Nenhum órgão registado',
+                              style: TextStyle(color: Colors.white54)),
+                          const SizedBox(height: 24),
+                          if (isInstitution)
+                            ElevatedButton.icon(
+                              onPressed: () =>
+                                  _showAddOrganDialog(context, institution2.id),
+                              icon: const Icon(Icons.add),
+                              label: const AiTranslatedText('Adicionar Órgão'),
                             ),
-                            if (!organ.isActive)
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 2),
-                                margin: const EdgeInsets.only(left: 8),
-                                decoration: const BoxDecoration(
-                                  color: Colors.redAccent,
-                                  borderRadius:
-                                      BorderRadius.all(Radius.circular(4)),
+                        ],
+                      ),
+                    );
+                  }
+
+                  return ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: organs.length,
+                    itemBuilder: (context, index) {
+                      final organ = organs[index];
+                      return Card(
+                        color: Colors.white.withOpacity(0.05),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                        margin: const EdgeInsets.only(bottom: 12),
+                        child: Opacity(
+                          opacity: organ.isActive ? 1.0 : 0.5,
+                          child: ListTile(
+                            contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 20, vertical: 8),
+                            leading: CircleAvatar(
+                              backgroundColor: organ.isActive
+                                  ? const Color(0xFF7B61FF)
+                                  : Colors.grey,
+                              child:
+                                  const Icon(Icons.groups, color: Colors.white),
+                            ),
+                            title: Row(
+                              children: [
+                                Expanded(
+                                  child: Text(organ.name,
+                                      style: const TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold)),
                                 ),
-                                child: const Text('INATIVO',
-                                    style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.bold)),
-                              ),
-                          ],
-                        ),
-                        subtitle: Text(organ.description,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(color: Colors.white54)),
-                        trailing: isInstitution
-                            ? PopupMenuButton<String>(
-                                icon: const Icon(Icons.more_vert,
-                                    color: Colors.white54),
-                                onSelected: (value) async {
-                                  if (value == 'toggle') {
-                                    await institutionalService
-                                        .updateOrganActiveStatus(
-                                            organ.id, !organ.isActive);
-                                  } else if (value == 'delete') {
-                                    final count = await institutionalService
-                                        .getMeetingsForOrganCount(organ.id);
-                                    if (count > 0) {
-                                      if (context.mounted) {
-                                        ScaffoldMessenger.of(context)
-                                            .showSnackBar(
-                                          const SnackBar(
-                                            content: AiTranslatedText(
-                                                'Não é possível apagar órgãos com documentos associados.'),
-                                            backgroundColor: Colors.orange,
-                                          ),
-                                        );
+                                if (!organ.isActive)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 8, vertical: 2),
+                                    margin: const EdgeInsets.only(left: 8),
+                                    decoration: const BoxDecoration(
+                                      color: Colors.redAccent,
+                                      borderRadius:
+                                          BorderRadius.all(Radius.circular(4)),
+                                    ),
+                                    child: const Text('INATIVO',
+                                        style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.bold)),
+                                  ),
+                              ],
+                            ),
+                            subtitle: Text(organ.description,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(color: Colors.white54)),
+                            trailing: isInstitution
+                                ? PopupMenuButton<String>(
+                                    icon: const Icon(Icons.more_vert,
+                                        color: Colors.white54),
+                                    onSelected: (value) async {
+                                      if (value == 'toggle') {
+                                        await institutionalService
+                                            .updateOrganActiveStatus(
+                                                organ.id, !organ.isActive);
+                                      } else if (value == 'delete') {
+                                        final count =
+                                            await institutionalService
+                                                .getMeetingsForOrganCount(
+                                                    organ.id);
+                                        if (count > 0) {
+                                          if (context.mounted) {
+                                            ScaffoldMessenger.of(context)
+                                                .showSnackBar(
+                                              const SnackBar(
+                                                content: AiTranslatedText(
+                                                    'Não é possível apagar órgãos com documentos associados.'),
+                                                backgroundColor: Colors.orange,
+                                              ),
+                                            );
+                                          }
+                                        } else {
+                                          final confirm =
+                                              await showDialog<bool>(
+                                            context: context,
+                                            builder: (context) => AlertDialog(
+                                              backgroundColor:
+                                                  const Color(0xFF1E293B),
+                                              title: const AiTranslatedText(
+                                                  'Confirmar Exclusão',
+                                                  style: TextStyle(
+                                                      color: Colors.white)),
+                                              content: AiTranslatedText(
+                                                  'Deseja realmente apagar o órgão "${organ.name}"?',
+                                                  style: const TextStyle(
+                                                      color: Colors.white70)),
+                                              actions: [
+                                                TextButton(
+                                                    onPressed: () =>
+                                                        Navigator.pop(
+                                                            context, false),
+                                                    child:
+                                                        const AiTranslatedText(
+                                                            'Cancelar')),
+                                                TextButton(
+                                                    onPressed: () =>
+                                                        Navigator.pop(
+                                                            context, true),
+                                                    child:
+                                                        const AiTranslatedText(
+                                                            'Apagar',
+                                                            style: TextStyle(
+                                                                color: Colors
+                                                                    .red))),
+                                              ],
+                                            ),
+                                          );
+                                          if (confirm == true) {
+                                            await institutionalService
+                                                .deleteOrgan(organ.id);
+                                          }
+                                        }
                                       }
-                                    } else {
-                                      final confirm = await showDialog<bool>(
-                                        context: context,
-                                        builder: (context) => AlertDialog(
-                                          backgroundColor:
-                                              const Color(0xFF1E293B),
-                                          title: const AiTranslatedText(
-                                              'Confirmar Exclusão',
-                                              style: TextStyle(
-                                                  color: Colors.white)),
-                                          content: AiTranslatedText(
-                                              'Deseja realmente apagar o órgão "${organ.name}"?',
-                                              style: const TextStyle(
-                                                  color: Colors.white70)),
-                                          actions: [
-                                            TextButton(
-                                                onPressed: () => Navigator.pop(
-                                                    context, false),
-                                                child: const AiTranslatedText(
-                                                    'Cancelar')),
-                                            TextButton(
-                                                onPressed: () => Navigator.pop(
-                                                    context, true),
-                                                child: const AiTranslatedText(
-                                                    'Apagar',
-                                                    style: TextStyle(
-                                                        color: Colors.red))),
+                                    },
+                                    itemBuilder: (context) => [
+                                      PopupMenuItem(
+                                        value: 'toggle',
+                                        child: Row(
+                                          children: [
+                                            Icon(
+                                                organ.isActive
+                                                    ? Icons.visibility_off
+                                                    : Icons.visibility,
+                                                color: Colors.blueAccent),
+                                            const SizedBox(width: 8),
+                                            AiTranslatedText(organ.isActive
+                                                ? 'Marcar como Inativo'
+                                                : 'Marcar como Ativo'),
                                           ],
                                         ),
-                                      );
-                                      if (confirm == true) {
-                                        await institutionalService
-                                            .deleteOrgan(organ.id);
-                                      }
-                                    }
-                                  }
-                                },
-                                itemBuilder: (context) => [
-                                  PopupMenuItem(
-                                    value: 'toggle',
-                                    child: Row(
-                                      children: [
-                                        Icon(
-                                            organ.isActive
-                                                ? Icons.visibility_off
-                                                : Icons.visibility,
-                                            color: Colors.blueAccent),
-                                        const SizedBox(width: 8),
-                                        AiTranslatedText(organ.isActive
-                                            ? 'Marcar como Inativo'
-                                            : 'Marcar como Ativo'),
-                                      ],
-                                    ),
-                                  ),
-                                  const PopupMenuItem(
-                                    value: 'delete',
-                                    child: Row(
-                                      children: [
-                                        Icon(Icons.delete,
-                                            color: Colors.redAccent),
-                                        const SizedBox(width: 8),
-                                        AiTranslatedText('Apagar Órgão'),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              )
-                            : const Icon(Icons.chevron_right,
-                                color: Colors.white24),
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) =>
-                                  MeetingListScreen(organ: organ),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
+                                      ),
+                                      PopupMenuItem(
+                                        value: 'delete',
+                                        child: Row(
+                                          children: [
+                                            Icon(Icons.delete,
+                                                color: Colors.redAccent),
+                                            const SizedBox(width: 8),
+                                            AiTranslatedText('Apagar Órgão'),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  )
+                                : const Icon(Icons.chevron_right,
+                                    color: Colors.white24),
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      MeetingListScreen(organ: organ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      );
+                    },
                   );
                 },
-              );
-            },
-          ),
-          floatingActionButton: isInstitution
-              ? FloatingActionButton(
-                  backgroundColor: const Color(0xFF7B61FF),
-                  onPressed: () => _showAddOrganDialog(context, userModel?.id ?? currentUser?.uid ?? ''),
-                  child: const Icon(Icons.add, color: Colors.white),
-                )
-              : null,
+              ),
+              floatingActionButton: isInstitution
+                  ? FloatingActionButton(
+                      backgroundColor: const Color(0xFF7B61FF),
+                      onPressed: () =>
+                          _showAddOrganDialog(context, institution2.id),
+                      child: const Icon(Icons.add, color: Colors.white),
+                    )
+                  : null,
+            );
+          },
         );
       },
     );

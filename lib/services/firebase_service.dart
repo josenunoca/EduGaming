@@ -1525,6 +1525,19 @@ class FirebaseService {
         .map((s) => s.docs.map((d) => Classroom.fromMap(d.data())).toList());
   }
 
+  Future<String?> uploadClassroomImage(String roomId, Uint8List bytes) async {
+    try {
+      final ref = _storage.ref().child('classrooms').child('$roomId.jpg');
+      await ref.putData(bytes);
+      final url = await ref.getDownloadURL();
+      await _db.collection('classrooms').doc(roomId).update({'imageUrl': url});
+      return url;
+    } catch (e) {
+      debugPrint('Error uploading classroom image: $e');
+      return null;
+    }
+  }
+
   Stream<List<InstitutionOrgan>> getInstitutionOrgans(String institutionId) {
     return _db
         .collection('organs')

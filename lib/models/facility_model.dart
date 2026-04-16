@@ -11,7 +11,10 @@ class Classroom {
     required this.institutionId,
     this.capacity = 30,
     this.resources = const [],
+    this.imageUrl,
   });
+
+  final String? imageUrl;
 
   Map<String, dynamic> toMap() {
     return {
@@ -20,6 +23,7 @@ class Classroom {
       'institutionId': institutionId,
       'capacity': capacity,
       'resources': resources,
+      if (imageUrl != null) 'imageUrl': imageUrl,
     };
   }
 
@@ -30,6 +34,7 @@ class Classroom {
       institutionId: map['institutionId'] ?? '',
       capacity: map['capacity'] ?? 30,
       resources: List<String>.from(map['resources'] ?? []),
+      imageUrl: map['imageUrl'],
     );
   }
 }
