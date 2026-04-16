@@ -58,7 +58,7 @@ class _ActivityManagementScreenState extends State<ActivityManagementScreen> {
                             context,
                             MaterialPageRoute(
                               builder: (_) =>
-                                  ActivityReportScreen(activities: activities),
+                                  ActivityReportScreen(activities: activities, institution: widget.institution),
                             ),
                           );
                         },

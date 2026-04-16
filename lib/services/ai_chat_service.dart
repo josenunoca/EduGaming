@@ -4,6 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:google_generative_ai/google_generative_ai.dart';
 import '../models/subject_model.dart';
+import '../models/institution_model.dart';
+import '../models/activity_model.dart';
 
 class AiChatService {
   final String _apiKey;
@@ -22,6 +24,12 @@ class AiChatService {
     _model = GenerativeModel(
       model: 'gemini-flash-latest',
       apiKey: _apiKey,
+      safetySettings: [
+        SafetySetting(HarmCategory.harassment, HarmBlockThreshold.none),
+        SafetySetting(HarmCategory.hateSpeech, HarmBlockThreshold.none),
+        SafetySetting(HarmCategory.sexuallyExplicit, HarmBlockThreshold.none),
+        SafetySetting(HarmCategory.dangerousContent, HarmBlockThreshold.none),
+      ],
       systemInstruction: Content.system(_systemInstruction),
     );
   }
@@ -40,6 +48,12 @@ class AiChatService {
     _model = GenerativeModel(
       model: 'gemini-flash-latest',
       apiKey: _apiKey,
+      safetySettings: [
+        SafetySetting(HarmCategory.harassment, HarmBlockThreshold.none),
+        SafetySetting(HarmCategory.hateSpeech, HarmBlockThreshold.none),
+        SafetySetting(HarmCategory.sexuallyExplicit, HarmBlockThreshold.none),
+        SafetySetting(HarmCategory.dangerousContent, HarmBlockThreshold.none),
+      ],
       systemInstruction: Content.system(_systemPrompt),
     );
 
@@ -547,14 +561,52 @@ class AiChatService {
   }
 
   String _cleanJsonResponse(String text) {
-    // Robustly find the first { and last } to extract JSON even with intro text or markdown
-    final startIndex = text.indexOf('{');
-    final endIndex = text.lastIndexOf('}');
-    if (startIndex != -1 && endIndex != -1 && endIndex > startIndex) {
-      return text.substring(startIndex, endIndex + 1);
+    // 1. Try to extract JSON strictly from a markdown block: ```json ... ```
+    final RegExp jsonBlockRegex = RegExp(r'```(?:json)?\s*([\s\S]*?)```');
+    final match = jsonBlockRegex.firstMatch(text);
+    if (match != null && match.group(1) != null) {
+      return match.group(1)!.trim();
     }
-    return text.trim();
+    
+    // 2. Fallback: Find the first { or [ and just use that to the end.
+    // We avoid lastIndexOf '}' because conversational text at the end with a '}' 
+    // would capture garbage and cause 'Unexpected non-whitespace character' errors.
+    String cleaned = text.trim();
+    final firstBrace = cleaned.indexOf('{');
+    final firstBracket = cleaned.indexOf('[');
+    
+    int startIndex = -1;
+    if (firstBrace != -1 && (firstBracket == -1 || firstBrace < firstBracket)) {
+      startIndex = firstBrace;
+    } else if (firstBracket != -1) {
+      startIndex = firstBracket;
+    }
+    
+    if (startIndex != -1) {
+      // Return from the first '{' or '[' to the end.
+      // jsonDecode is forgiving if there's trailing whitespace, but we must
+      // hope there's no trailing garbage. If there is trailing garbage without a code block,
+      // it might still fail, but this handles 90% of model quirks.
+      String jsonPart = cleaned.substring(startIndex);
+      
+      // Let's also trim out common conversational endings if we see them after the last real bracket
+      // A safer approach: find the last '}' or ']' that makes sense, but since that caused the bug,
+      // we just return the substring and let jsonDecode try.
+      final lastBrace = jsonPart.lastIndexOf('}');
+      final lastBracket = jsonPart.lastIndexOf(']');
+      int endIndex = (lastBrace != -1 && lastBracket != -1) 
+          ? (lastBrace > lastBracket ? lastBrace : lastBracket)
+          : (lastBrace != -1 ? lastBrace : lastBracket);
+          
+      if (endIndex != -1 && endIndex > 0) {
+          return jsonPart.substring(0, endIndex + 1).trim();
+      }
+      return jsonPart;
+    }
+    
+    return cleaned;
   }
+
 
   /// Evaluates a student's multimodal response using IA
   Future<Map<String, dynamic>?> evaluateMultimodalResponse({
@@ -721,5 +773,65 @@ IMPORTANTE:
     }
 
     return list.map((e) => Map<String, String>.from(e as Map)).toList();
+  }
+
+  Future<Map<String, dynamic>> generateAnnualReportDraft({
+    required InstitutionModel institution,
+    required List<InstitutionalActivity> activities,
+  }) async {
+    final activitiesJson = jsonEncode(activities.map((a) => {
+      'title': a.title,
+      'type': a.activityGroup,
+      'description': a.description,
+      'participantsCount': a.participants.length,
+      'status': a.status,
+    }).toList());
+
+    final prompt = '''
+Como consultor sénior de estratégia educativa, gera um esboço profissional e inspirador para o Relatório Anual de Atividades da instituição "${institution.name}".
+
+DADOS DA INSTITUIÇÃO:
+- Nome: ${institution.name}
+- NIF: ${institution.nif}
+- Morada: ${institution.address}
+
+ATIVIDADES DO ANO (JSON):
+$activitiesJson
+
+INSTRUÇÕES:
+1. "introduction": Escreve uma introdução formal (aprox. 150 palavras) que destaque a resiliência e o sucesso educativo no último ano.
+2. "sections": Para cada tipo/categoria de atividade identificada, cria um resumo executivo sintetizando os principais ganhos e impactos (aprox. 100 palavras por categoria).
+3. "conclusion": Escreve uma conclusão visionária (aprox. 150 palavras) projetando o próximo ano letivo.
+
+RETORNA APENAS UM JSON COM ESTA ESTRUTURA:
+{
+  "introduction": "...",
+  "conclusion": "...",
+  "sections": {
+    "Categoria A": "Resumo...",
+    "Categoria B": "Resumo..."
+  }
+}
+''';
+
+    try {
+      final response = await _model.generateContent(
+        [Content.text(prompt)],
+        generationConfig: GenerationConfig(
+          temperature: 0.7,
+          responseMimeType: 'application/json',
+        ),
+      );
+      
+      final text = response.text ?? '{}';
+      return jsonDecode(_cleanJsonResponse(text));
+    } catch (e) {
+      debugPrint('Error generating annual report draft: $e');
+      return {
+        'introduction': 'Erro ao gerar introdução automática: $e',
+        'conclusion': 'Erro ao gerar conclusão automática: $e',
+        'sections': {}
+      };
+    }
   }
 }

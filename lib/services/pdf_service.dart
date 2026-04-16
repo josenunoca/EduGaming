@@ -1,4 +1,6 @@
 import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
@@ -9,6 +11,8 @@ import '../models/institution_model.dart';
 import '../models/questionnaire_model.dart';
 import '../models/user_model.dart';
 import '../models/institution_organ_model.dart';
+import '../models/activity_model.dart';
+import '../models/annual_report_draft.dart';
 
 class PdfService {
   static Future<pw.ImageProvider?> _fetchLogo(String? url) async {
@@ -26,44 +30,54 @@ class PdfService {
 
   static pw.Widget _buildHeader(pw.Context? context, String title,
       InstitutionModel? institution, pw.ImageProvider? logoImage) {
-    return pw.Column(
-      children: [
-        pw.Row(
-          mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-          children: [
-            logoImage != null
-                ? pw.Image(logoImage, width: 60, height: 60)
-                : pw.Container(
-                    width: 60,
-                    height: 60,
-                    decoration: const pw.BoxDecoration(
-                      color: PdfColors.grey300,
-                      shape: pw.BoxShape.circle,
-                    ),
-                    child: pw.Center(
-                        child: pw.Text('LOGO',
-                            style: pw.TextStyle(
-                                fontSize: 8,
-                                fontWeight: pw.FontWeight.bold,
-                                color: PdfColors.white))),
+    return pw.Container(
+      width: 485,
+      padding: const pw.EdgeInsets.only(bottom: 5),
+      decoration: const pw.BoxDecoration(border: pw.Border(bottom: pw.BorderSide(color: PdfColors.indigo900, width: 2))),
+      child: pw.Row(
+        mainAxisSize: pw.MainAxisSize.min,
+        mainAxisAlignment: pw.MainAxisAlignment.start,
+        children: [
+          pw.SizedBox(
+            width: 60,
+            height: 60,
+            child: logoImage != null
+              ? pw.Image(logoImage)
+              : pw.Container(
+                  decoration: const pw.BoxDecoration(
+                    color: PdfColors.grey300,
+                    shape: pw.BoxShape.circle,
                   ),
-            pw.Column(
+                  child: pw.Center(
+                    child: pw.Text('LOGO',
+                      style: pw.TextStyle(
+                        fontSize: 8,
+                        fontWeight: pw.FontWeight.bold,
+                        color: PdfColors.white))),
+                ),
+          ),
+          pw.SizedBox(width: 15), 
+          pw.SizedBox(
+            width: 410,
+            child: pw.Column(
+              mainAxisSize: pw.MainAxisSize.min,
               crossAxisAlignment: pw.CrossAxisAlignment.end,
               children: [
-                pw.Text(institution?.name ?? 'EduGaming',
-                    style: pw.TextStyle(
-                        fontSize: 14, fontWeight: pw.FontWeight.bold)),
-                pw.Text(title, style: const pw.TextStyle(fontSize: 12)),
-                pw.Text(
-                    'Data: ${DateFormat('dd/MM/yyyy').format(DateTime.now())}',
-                    style: const pw.TextStyle(fontSize: 10)),
+                pw.Text(institution?.name ?? 'EduGaming', 
+                  style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold, color: PdfColors.indigo900),
+                  textAlign: pw.TextAlign.right),
+                pw.Text(title, 
+                  style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey700),
+                  textAlign: pw.TextAlign.right),
+                if (context != null)
+                  pw.Text('Página ${context.pageNumber}', 
+                    style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey500),
+                    textAlign: pw.TextAlign.right),
               ],
             ),
-          ],
-        ),
-        pw.Divider(thickness: 1, color: PdfColors.grey300),
-        pw.SizedBox(height: 20),
-      ],
+          ),
+        ],
+      ),
     );
   }
 
@@ -1152,7 +1166,15 @@ class PdfService {
     required Meeting meeting,
     InstitutionModel? institution,
   }) async {
-    final pdf = pw.Document();
+    final fontRegular = await PdfGoogleFonts.robotoRegular();
+    final fontBold = await PdfGoogleFonts.robotoBold();
+
+    final pdf = pw.Document(
+      theme: pw.ThemeData.withFont(
+        base: fontRegular,
+        bold: fontBold,
+      ),
+    );
     final logoImage = await _fetchLogo(institution?.logoUrl);
 
     pdf.addPage(
@@ -1207,7 +1229,7 @@ class PdfService {
                 ),
               ],
             ),
-            pw.Spacer(),
+            pw.SizedBox(height: 50),
             pw.Align(
               alignment: pw.Alignment.centerRight,
               child: pw.Text('Gerado eletronicamente por EduGaming AI',
@@ -1231,7 +1253,15 @@ class PdfService {
     required Meeting meeting,
     InstitutionModel? institution,
   }) async {
-    final pdf = pw.Document();
+    final fontRegular = await PdfGoogleFonts.robotoRegular();
+    final fontBold = await PdfGoogleFonts.robotoBold();
+
+    final pdf = pw.Document(
+      theme: pw.ThemeData.withFont(
+        base: fontRegular,
+        bold: fontBold,
+      ),
+    );
     final logoImage = await _fetchLogo(institution?.logoUrl);
 
     pdf.addPage(
@@ -1278,7 +1308,7 @@ class PdfService {
                   const pw.BoxDecoration(color: PdfColors.grey200),
               cellHeight: 30,
             ),
-            pw.Spacer(),
+            pw.SizedBox(height: 30),
             pw.Align(
               alignment: pw.Alignment.centerRight,
               child: pw.Text('Gerado por EduGaming AI',
@@ -1385,4 +1415,644 @@ class PdfService {
           'Convocatoria_${organ.name}_${DateFormat('yyyyMMdd').format(meeting.date)}.pdf',
     );
   }
+  static Future<void> generateAnnualReportPDF(
+      InstitutionModel institution, List<InstitutionalActivity> activities, {AnnualReportDraft? draft}) async {
+    WidgetsFlutterBinding.ensureInitialized();
+    
+    pw.Font? fontRegular;
+    pw.Font? fontBold;
+    pw.Font? fontItalic;
+
+    try {
+      fontRegular = await PdfGoogleFonts.robotoRegular();
+      fontBold = await PdfGoogleFonts.robotoBold();
+      fontItalic = await PdfGoogleFonts.robotoItalic();
+    } catch (e) {
+      debugPrint('Error loading Google Fonts for PDF: $e');
+    }
+
+    final pdf = pw.Document(
+      theme: pw.ThemeData.withFont(
+        base: fontRegular,
+        bold: fontBold,
+        italic: fontItalic,
+      ),
+    );
+    final logoImage = await _fetchLogo(institution.logoUrl);
+    final signatureImage = await _fetchLogo(institution.signatureUrl);
+
+    // Pre-fetch all selected media images
+    final Map<String, pw.MemoryImage> preFetchedImages = {};
+    for (var a in activities) {
+      final selectedMedia = _getSelectedMedia(a.media);
+      for (var m in selectedMedia) {
+        try {
+          final response = await http.get(Uri.parse(m.url)).timeout(const Duration(seconds: 15));
+          if (response.statusCode == 200) {
+            preFetchedImages[m.id] = pw.MemoryImage(response.bodyBytes);
+          }
+        } catch (e) {
+          debugPrint('Error fetching media image for PDF: ${m.url} - $e');
+        }
+      }
+    }
+
+    // Group activities by type
+    final Map<String, List<InstitutionalActivity>> grouped = {};
+    for (var a in activities) {
+      grouped[a.activityGroup] = (grouped[a.activityGroup] ?? [])..add(a);
+    }
+
+    // Statistics
+    final totalParticipants = activities.fold(0, (sum, a) => sum + a.participants.length);
+    final completed = activities.where((a) => a.status == 'completed').length;
+    final financialImpact = activities.where((a) => a.hasFinancialImpact).length;
+
+    // 1. Cover Page
+    pdf.addPage(
+      pw.Page(
+        pageFormat: PdfPageFormat.a4,
+        build: (context) {
+          return pw.Column(
+            mainAxisAlignment: pw.MainAxisAlignment.center,
+            crossAxisAlignment: pw.CrossAxisAlignment.center,
+            children: [
+              pw.Header(level: 0, text: 'RELATÓRIO ANUAL DE ATIVIDADES'),
+              pw.SizedBox(height: 10),
+              pw.Text('Ano Letivo: ${DateTime.now().year - 1} / ${DateTime.now().year}', style: const pw.TextStyle(fontSize: 14)),
+              pw.SizedBox(height: 60),
+              if (logoImage != null)
+                pw.Center(child: pw.Image(logoImage, width: 200)),
+              pw.SizedBox(height: 60),
+              pw.Text('Instituição: ${institution.name}',
+                  style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
+              pw.SizedBox(height: 5),
+              pw.Text('NIF: ${institution.nif}', style: const pw.TextStyle(fontSize: 12)),
+              pw.Text(institution.address, textAlign: pw.TextAlign.center, style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey700)),
+              pw.SizedBox(height: 60),
+              pw.Container(
+                width: 200,
+                height: 2,
+                color: PdfColors.amber,
+              ),
+              pw.SizedBox(height: 20),
+              pw.Text('Ano Académico: 2024/2025',
+                  style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
+              pw.SizedBox(height: 100),
+              pw.Text('Gerado em ${DateFormat('dd/MM/yyyy').format(DateTime.now())}',
+                  style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey700)),
+            ],
+          );
+        },
+      ),
+    );
+
+    // 2. Introduction & Indicators
+    pdf.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        header: (context) => _buildHeader(context, 'Introdução e Indicadores', institution, logoImage),
+        footer: (context) => _buildFooter(context, institution),
+        build: (context) {
+          return [
+            pw.SizedBox(
+              width: 480,
+              child: pw.Column(
+                mainAxisSize: pw.MainAxisSize.min,
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Header(level: 0, text: 'Resumo Executivo'),
+                  pw.Paragraph(
+                    text: draft?.introduction ?? 'Durante o ano letivo, a dinâmica institucional foi marcada por um compromisso contínuo com a excelência educativa. Este relatório sintetiza as principais atividades e conquistas do período.',
+                    style: const pw.TextStyle(fontSize: 11, lineSpacing: 1.5),
+                  ),
+                ],
+              ),
+            ),
+            pw.SizedBox(height: 20),
+            pw.SizedBox(
+              width: 480,
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                   pw.Header(level: 1, text: 'Indicadores Globais'),
+                   pw.Row(
+                    mainAxisSize: pw.MainAxisSize.min,
+                    mainAxisAlignment: pw.MainAxisAlignment.start,
+                    children: [
+                      _buildModernStatBox('Atividades', activities.length.toString(), PdfColors.blue900),
+                      pw.SizedBox(width: 20),
+                      _buildModernStatBox('Participantes', _getParticipantsCount(activities).toString(), PdfColors.indigo900),
+                      pw.SizedBox(width: 20),
+                      _buildModernStatBox('Concluídas', _getCompletedCount(activities).toString(), PdfColors.green900),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            pw.SizedBox(height: 30),
+          ];
+        },
+      ),
+    );
+
+    // 3. Deep Dive for each group and activity
+    // 3. Deep Dive for each group and activity
+    for (var section in (draft?.sections ?? [])) {
+      final items = section.activities;
+      final summary = section.summary;
+      
+      pdf.addPage(
+        pw.MultiPage(
+          pageFormat: PdfPageFormat.a4,
+          header: (context) => _buildHeader(context, section.title, institution, logoImage),
+          footer: (context) => _buildFooter(context, institution),
+          build: (context) {
+            return [
+              pw.SizedBox(
+                width: 480,
+                child: pw.Column(
+                  mainAxisSize: pw.MainAxisSize.min,
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Header(level: 0, text: section.title.toUpperCase()),
+                    pw.Paragraph(text: summary, style: pw.TextStyle(fontStyle: pw.FontStyle.italic, color: PdfColors.grey700)),
+                  ],
+                ),
+              ),
+              pw.SizedBox(height: 15),
+              ...items.map((a) => pw.SizedBox(
+                width: 480,
+                child: pw.Container(
+                  margin: const pw.EdgeInsets.only(bottom: 25),
+                  child: pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Row(
+                        mainAxisAlignment: pw.MainAxisAlignment.start,
+                        children: [
+                          pw.SizedBox(
+                            width: 380, 
+                            child: pw.Text(a.title, style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold, color: PdfColors.indigo900)),
+                          ),
+                          pw.SizedBox(width: 20),
+                          pw.Text(DateFormat('dd/MM/yyyy').format(a.startDate), style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey700)),
+                        ],
+                      ),
+                      pw.SizedBox(height: 5),
+                      pw.Text(a.description, style: const pw.TextStyle(fontSize: 10)),
+                      pw.SizedBox(height: 10),
+                      pw.Row(
+                        mainAxisSize: pw.MainAxisSize.min,
+                        children: [
+                          pw.Row(
+                            mainAxisSize: pw.MainAxisSize.min,
+                            children: [
+                              pw.Text('• ', style: const pw.TextStyle(fontSize: 12)),
+                              pw.Text('Participantes: ${a.participants.length}', style: const pw.TextStyle(fontSize: 9)),
+                            ],
+                          ),
+                          pw.SizedBox(width: 15),
+                          if (a.responsibleName != null)
+                            pw.Row(
+                              mainAxisSize: pw.MainAxisSize.min,
+                              children: [
+                                pw.Text('• ', style: const pw.TextStyle(fontSize: 12)),
+                                pw.Text('Responsável: ${a.responsibleName}', style: const pw.TextStyle(fontSize: 9)),
+                              ],
+                            ),
+                        ],
+                      ),
+                      
+                      // Pictures section
+                      _buildActivityMediaSection(
+                        _getSelectedMedia(a.media),
+                        preFetchedImages,
+                      ),
+                      
+                      pw.Divider(color: PdfColors.grey200),
+                    ],
+                  ),
+                ),
+              )),
+            ];
+          },
+        ),
+      );
+    }
+
+    // 4. Conclusion & Signature
+    pdf.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        header: (context) => _buildHeader(context, 'Considerações Finais', institution, logoImage),
+        footer: (context) => _buildFooter(context, institution),
+        build: (context) {
+          return [
+            pw.SizedBox(
+              width: 480,
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Header(level: 0, text: 'Considerações Finais'),
+                  pw.Paragraph(
+                    text: draft?.conclusion ?? 'Este relatório demonstra o compromisso da ${institution.name} com a excelência educativa e o bem-estar da sua comunidade.',
+                    style: const pw.TextStyle(fontSize: 11, lineSpacing: 1.5),
+                  ),
+                  pw.SizedBox(height: 40),
+                  pw.Center(
+                    child: pw.Column(
+                      children: [
+                        pw.Text('VALIDAÇÃO INSTITUCIONAL', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: PdfColors.grey800)),
+                        pw.SizedBox(height: 15),
+                        if (signatureImage != null)
+                          pw.Container(
+                            height: 80,
+                            child: pw.Image(signatureImage),
+                          )
+                        else
+                          pw.Container(height: 80, child: pw.Center(child: pw.Text('(Assinatura em falta)', style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey400)))),
+                        pw.Container(width: 250, height: 1, color: PdfColors.black),
+                        pw.SizedBox(height: 5),
+                        pw.Text('O Responsável / A Direção', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+                        pw.Text(institution.name, style: const pw.TextStyle(fontSize: 9)),
+                        pw.Text('Data: ${DateFormat('dd/MM/yyyy').format(DateTime.now())}', style: const pw.TextStyle(fontSize: 8)),
+                      ],
+                    ),
+                  ),
+                  pw.SizedBox(height: 40),
+                ],
+              ),
+            ),
+          ];
+        },
+      ),
+    );
+
+    await Printing.layoutPdf(
+        onLayout: (PdfPageFormat format) async => pdf.save(),
+        name: 'Relatorio_Oficial_${institution.name.replaceAll(' ', '_')}.pdf');
+  }
+
+  static Future<void> generatePresentationPDF(
+      InstitutionModel institution, List<InstitutionalActivity> activities, {AnnualReportDraft? draft}) async {
+    WidgetsFlutterBinding.ensureInitialized();
+    
+    pw.Font? fontRegular;
+    pw.Font? fontBold;
+
+    try {
+      fontRegular = await PdfGoogleFonts.robotoRegular();
+      fontBold = await PdfGoogleFonts.robotoBold();
+    } catch (e) {
+      debugPrint('Error loading Google Fonts for Presentation: $e');
+    }
+
+    final pdf = pw.Document(
+      theme: pw.ThemeData.withFont(
+        base: fontRegular,
+        bold: fontBold,
+      ),
+    );
+    final logoImage = await _fetchLogo(institution.logoUrl);
+
+    // Pre-fetch images for presentation as well
+    final Map<String, pw.MemoryImage> preFetchedImages = {};
+    for (var a in activities) {
+      final highlights = _getSelectedMedia(a.media);
+      for (var m in highlights) {
+        try {
+          final response = await http.get(Uri.parse(m.url)).timeout(const Duration(seconds: 15));
+          if (response.statusCode == 200) {
+            preFetchedImages[m.id] = pw.MemoryImage(response.bodyBytes);
+          }
+        } catch (e) {
+          debugPrint('Error fetching presentation image: $e');
+        }
+      }
+    }
+    
+    // Slide master style
+    final slideFormat = PdfPageFormat.a4.landscape;
+
+    // 1. Title Slide
+    pdf.addPage(
+      pw.Page(
+        pageFormat: slideFormat,
+        build: (context) => pw.Container(
+          color: PdfColors.indigo900,
+          padding: const pw.EdgeInsets.all(50),
+          child: pw.Column(
+            mainAxisAlignment: pw.MainAxisAlignment.center,
+            children: [
+              if (logoImage != null) pw.Image(logoImage, width: 100),
+              pw.SizedBox(height: 30),
+              pw.Text('RELATÓRIO DE ATIVIDADES', style: pw.TextStyle(fontSize: 32, fontWeight: pw.FontWeight.bold, color: PdfColors.white)),
+              pw.SizedBox(height: 10),
+              pw.Text(institution.name, style: const pw.TextStyle(fontSize: 22, color: PdfColors.indigo100)),
+              pw.SizedBox(height: 30),
+              pw.Container(height: 2, color: PdfColors.amber, width: 400),
+              pw.SizedBox(height: 10),
+              pw.Text('Ano Letivo 2023/2024', style: const pw.TextStyle(color: PdfColors.white)),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    // 2. Intro Slide
+    pdf.addPage(
+      pw.Page(
+        pageFormat: slideFormat,
+        build: (context) => pw.Padding(
+          padding: const pw.EdgeInsets.all(40),
+          child: pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              pw.Text('VISÃO GERAL DO ANO', style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold, color: PdfColors.indigo900)),
+              pw.Divider(color: PdfColors.amber),
+              pw.SizedBox(height: 30),
+              pw.Text(draft?.introduction ?? '', style: const pw.TextStyle(fontSize: 16)),
+              pw.Spacer(),
+              pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceAround,
+                children: [
+                  _buildModernStatBox('Total Atividades', activities.length.toString(), PdfColors.indigo700),
+                  _buildModernStatBox('Alcance (Participantes)', activities.fold(0, (sum, a) => sum + a.participants.length).toString(), PdfColors.blue700),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    // 3. Category Summary & Activity Highlight Slides
+    for (var section in (draft?.sections ?? [])) {
+       // A. Category Summary Slide (Textual)
+       pdf.addPage(
+        pw.Page(
+          pageFormat: slideFormat,
+          build: (context) => pw.Padding(
+            padding: const pw.EdgeInsets.all(30),
+            child: pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  children: [
+                    pw.Text(section.title.toUpperCase(), style: pw.TextStyle(fontSize: 22, fontWeight: pw.FontWeight.bold, color: PdfColors.indigo900)),
+                    if (logoImage != null) pw.Image(logoImage, height: 30),
+                  ],
+                ),
+                pw.Divider(color: PdfColors.amber, thickness: 1.5),
+                pw.SizedBox(height: 20),
+                pw.Text('SUMÁRIO DA CATEGORIA', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10, color: PdfColors.grey700)),
+                pw.SizedBox(height: 10),
+                pw.Text(section.summary, style: const pw.TextStyle(fontSize: 14, lineSpacing: 1.3)),
+                pw.Spacer(),
+                pw.Text('ATIVIDADES NESTA CATEGORIA:', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10, color: PdfColors.indigo700)),
+                ...section.activities.take(8).map((a) => pw.Bullet(text: a.title, style: const pw.TextStyle(fontSize: 11))),
+                pw.Spacer(),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      // B. Individual Activity Slides (Only for those with selected photos)
+      for (var a in section.activities) {
+        final activityPhotos = _getSelectedMedia(a.media);
+        
+        if (activityPhotos.isNotEmpty) {
+          final List<pw.MemoryImage> highlightImages = [];
+          for (var m in activityPhotos) {
+            if (preFetchedImages.containsKey(m.id)) {
+              highlightImages.add(preFetchedImages[m.id]!);
+            }
+          }
+
+          if (highlightImages.isNotEmpty) {
+            pdf.addPage(
+              pw.Page(
+                pageFormat: slideFormat,
+                build: (context) => pw.Padding(
+                  padding: const pw.EdgeInsets.all(30),
+                  child: pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Row(
+                        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                        children: [
+                          pw.Column(
+                            crossAxisAlignment: pw.CrossAxisAlignment.start,
+                            children: [
+                              pw.Text(a.title, style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold, color: PdfColors.indigo900)),
+                              pw.Text('${section.title} | ${DateFormat('dd/MM/yyyy').format(a.startDate)}', style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey600)),
+                            ],
+                          ),
+                          if (logoImage != null) pw.Image(logoImage, height: 30),
+                        ],
+                      ),
+                      pw.Divider(color: PdfColors.amber),
+                      pw.SizedBox(height: 10),
+                      pw.Row(
+                        crossAxisAlignment: pw.CrossAxisAlignment.start,
+                        children: [
+                          pw.Expanded(
+                            flex: 1,
+                            child: pw.Text(a.description, style: const pw.TextStyle(fontSize: 10, lineSpacing: 1.2)),
+                          ),
+                          pw.SizedBox(width: 20),
+                          pw.Expanded(
+                            flex: 2,
+                            child: pw.Wrap(
+                              spacing: 15,
+                              runSpacing: 15,
+                              children: highlightImages.take(4).map((img) => pw.Container(
+                                width: 140,
+                                height: 105,
+                                decoration: pw.BoxDecoration(
+                                  border: pw.Border.all(color: PdfColors.white, width: 2),
+                                  borderRadius: const pw.BorderRadius.all(pw.Radius.circular(6)),
+                                  boxShadow: [
+                                    const pw.BoxShadow(
+                                      color: PdfColors.black,
+                                      blurRadius: 5,
+                                      offset: PdfPoint(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                child: pw.Image(img, fit: pw.BoxFit.cover),
+                              )).toList(),
+                            ),
+                          ),
+                        ],
+                      ),
+                      pw.SizedBox(height: 20),
+                      pw.Row(
+                        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                        children: [
+                          pw.Text('Destaque Individual: ${a.title}', style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey500)),
+                          pw.Text('Relatório Local 2024', style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey500)),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }
+        }
+      }
+    }
+
+    // 4. Closing Slide
+    pdf.addPage(
+      pw.Page(
+        pageFormat: slideFormat,
+        build: (context) => pw.Container(
+          color: PdfColors.indigo900,
+          child: pw.Center(
+            child: pw.Column(
+              mainAxisAlignment: pw.MainAxisAlignment.center,
+              children: [
+                pw.Text('OBRIGADO', style: pw.TextStyle(fontSize: 40, fontWeight: pw.FontWeight.bold, color: PdfColors.white)),
+                pw.SizedBox(height: 20),
+                pw.Text(institution.name, style: const pw.TextStyle(fontSize: 18, color: PdfColors.indigo100)),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await Printing.layoutPdf(
+        onLayout: (PdfPageFormat format) async => pdf.save(),
+        name: 'Apresentacao_${institution.name.replaceAll(' ', '_')}.pdf');
+  }
+
+  static pw.Widget _buildFooter(pw.Context context, InstitutionModel institution) {
+    return pw.Container(
+      width: 485,
+      alignment: pw.Alignment.centerRight,
+      margin: const pw.EdgeInsets.only(top: 10),
+      padding: const pw.EdgeInsets.only(top: 5),
+      decoration: const pw.BoxDecoration(border: pw.Border(top: pw.BorderSide(color: PdfColors.grey300, width: 0.5))),
+      child: pw.Row(
+        mainAxisSize: pw.MainAxisSize.min,
+        mainAxisAlignment: pw.MainAxisAlignment.start,
+        children: [
+          pw.SizedBox(
+            width: 400,
+            child: pw.Column(
+              mainAxisSize: pw.MainAxisSize.min,
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Text('${institution.name} | NIF: ${institution.nif}', style: const pw.TextStyle(fontSize: 7, color: PdfColors.grey600)),
+                pw.Text('${institution.address} | ${institution.email} | ${institution.phone}', style: const pw.TextStyle(fontSize: 7, color: PdfColors.grey600)),
+              ],
+            ),
+          ),
+          pw.SizedBox(width: 30),
+          pw.SizedBox(
+            width: 50,
+            child: pw.Text('Página ${context.pageNumber}',
+                style: const pw.TextStyle(fontSize: 7, color: PdfColors.grey600),
+                textAlign: pw.TextAlign.right),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static pw.Widget _buildModernStatBox(String label, String value, PdfColor color) {
+    return pw.Container(
+      width: 100,
+      padding: const pw.EdgeInsets.all(12),
+      decoration: pw.BoxDecoration(
+        color: color.shade(0.05),
+        borderRadius: const pw.BorderRadius.all(pw.Radius.circular(8)),
+        border: pw.Border.all(color: color.shade(0.1)),
+      ),
+      child: pw.Column(
+        children: [
+          pw.Text(label, style: pw.TextStyle(fontSize: 8, color: color)),
+          pw.SizedBox(height: 4),
+          pw.Text(value, style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold, color: color)),
+        ],
+      ),
+    );
+  }
+
+  static pw.Widget _buildActivityMediaSection(List<ActivityMedia> selectedMedia, Map<String, pw.MemoryImage> images) {
+    if (selectedMedia.isEmpty) return pw.SizedBox();
+    
+    return pw.Padding(
+      padding: const pw.EdgeInsets.symmetric(vertical: 10),
+      child: pw.Wrap(
+        spacing: 10,
+        runSpacing: 10,
+        children: selectedMedia.map((m) {
+          final img = images[m.id];
+          return pw.Container(
+            width: 160,
+            height: 120,
+            decoration: pw.BoxDecoration(
+              border: pw.Border.all(color: PdfColors.grey300),
+              borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4)),
+            ),
+            child: pw.Column(
+              children: [
+                pw.Container(
+                  height: 100,
+                  width: 160,
+                  child: img != null 
+                    ? pw.Image(img, fit: pw.BoxFit.cover)
+                    : pw.Center(
+                        child: pw.Text('[FOTO]', style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey500)),
+                      ),
+                ),
+                pw.Container(
+                  width: 160,
+                  padding: const pw.EdgeInsets.all(3),
+                  color: PdfColors.grey100,
+                  child: pw.Text(m.name, style: const pw.TextStyle(fontSize: 6), textAlign: pw.TextAlign.center),
+                ),
+              ],
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  static List<ActivityMedia> _getSelectedMedia(List<ActivityMedia> media) {
+    final List<ActivityMedia> selected = [];
+    for (var m in media) {
+      if (m.isAnnualReportSelected) {
+        selected.add(m);
+      }
+    }
+    return selected;
+  }
+
+  static int _getParticipantsCount(List<InstitutionalActivity> activities) {
+    int count = 0;
+    for (var a in activities) {
+      count += a.participants.length;
+    }
+    return count;
+  }
+
+  static int _getCompletedCount(List<InstitutionalActivity> activities) {
+    int count = 0;
+    for (var a in activities) {
+      if (a.status == 'completed') {
+        count++;
+      }
+    }
+    return count;
+  }
 }
+

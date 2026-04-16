@@ -17,6 +17,7 @@ class CustomButton extends StatelessWidget {
   final double? width;
   final double height;
   final bool isLoading;
+  final Color? color;
 
   const CustomButton({
     super.key,
@@ -28,6 +29,7 @@ class CustomButton extends StatelessWidget {
     this.width,
     this.height = 48,
     this.isLoading = false,
+    this.color,
   });
 
   @override
@@ -53,6 +55,8 @@ class CustomButton extends StatelessWidget {
         foregroundColor = Colors.white70;
         break;
     }
+    
+    if (color != null) backgroundColor = color!;
 
     final buttonStyle = ElevatedButton.styleFrom(
       backgroundColor: backgroundColor,
