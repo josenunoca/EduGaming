@@ -24,6 +24,7 @@ import '../models/council_request_model.dart';
 import '../models/invitation_model.dart';
 import '../models/organ_document_model.dart';
 import '../models/school_calendar_model.dart';
+import '../models/survey_response_summary_model.dart';
 
 class FirebaseService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -94,6 +95,18 @@ class FirebaseService {
     return _db.collection('users').doc(uid).snapshots().map((doc) {
       return doc.exists ? UserModel.fromMap(doc.data()!) : null;
     });
+  }
+
+  /// Returns a stream of all UserModels belonging to a given institution.
+  Stream<List<UserModel>> getUsersForInstitution(String institutionId) {
+    return _db
+        .collection('users')
+        .where('institutionId', isEqualTo: institutionId)
+        .snapshots()
+        .map((snap) => snap.docs
+            .map((d) => UserModel.fromMap(d.data()))
+            .toList()
+          ..sort((a, b) => a.name.compareTo(b.name)));
   }
 
   Future<void> saveUser(UserModel user) async {
@@ -2795,6 +2808,214 @@ Este documento foi gerado com assistência de IA.
         .map(
             (doc) => TimetableEntry.fromMap(doc.data() as Map<String, dynamic>))
         .toList());
+  }
+
+  // ─── Surveys ──────────────────────────────────────────────────────────────
+
+  /// Save (create or update) a survey. Supports draft saves.
+  Future<void> saveSurvey(Questionnaire survey) async {
+    final ref = _db
+        .collection('institutions')
+        .doc(survey.institutionId)
+        .collection('surveys')
+        .doc(survey.id);
+    await ref.set(survey.toMap());
+  }
+
+  /// Stream of all surveys for an institution (ordered by creation/startDate)
+  Stream<List<Questionnaire>> getSurveysForInstitution(String institutionId) {
+    return _db
+        .collection('institutions')
+        .doc(institutionId)
+        .collection('surveys')
+        .orderBy('startDate', descending: true)
+        .snapshots()
+        .map((snap) => snap.docs
+            .map((d) => Questionnaire.fromMap(d.data()))
+            .toList());
+  }
+
+  /// Stream of surveys created by a specific teacher (across the institution)
+  Stream<List<Questionnaire>> getSurveysForTeacher(
+      String institutionId, String teacherId) {
+    return _db
+        .collection('institutions')
+        .doc(institutionId)
+        .collection('surveys')
+        .where('creatorId', isEqualTo: teacherId)
+        .orderBy('startDate', descending: true)
+        .snapshots()
+        .map((snap) => snap.docs
+            .map((d) => Questionnaire.fromMap(d.data()))
+            .toList());
+  }
+
+  /// Stream of active surveys the current user should answer.
+  /// Matches by audience role or individual target IDs.
+  Stream<List<Questionnaire>> getActiveSurveysForUser(
+      String institutionId, String userId, String role) {
+    // Fetch active surveys for this institution and filter client-side
+    // (Firestore doesn't support OR queries across different array fields directly)
+    return _db
+        .collection('institutions')
+        .doc(institutionId)
+        .collection('surveys')
+        .where('status', isEqualTo: 'active')
+        .snapshots()
+        .map((snap) => snap.docs
+            .map((d) => Questionnaire.fromMap(d.data()))
+            .where((q) {
+              if (!q.isCurrentlyActive) return false;
+              // Check if user's role is in audiences
+              final audienceNames = q.audiences.map((a) => a.name).toList();
+              bool roleMatch = false;
+              if (role == 'student' && audienceNames.contains('students')) roleMatch = true;
+              if (role == 'teacher' && audienceNames.contains('teachers')) roleMatch = true;
+              if (role == 'parent' && audienceNames.contains('parents')) roleMatch = true;
+              if (role == 'nonTeachingStaff' && audienceNames.contains('nonTeachingStaff')) roleMatch = true;
+              // Check individual targeting
+              final individualMatch = q.individualTargetIds.contains(userId);
+              return roleMatch || individualMatch;
+            })
+            .toList());
+  }
+
+  /// Delete a survey (only drafts or closed ones should be deleted)
+  Future<void> deleteSurvey(String institutionId, String surveyId) async {
+    await _db
+        .collection('institutions')
+        .doc(institutionId)
+        .collection('surveys')
+        .doc(surveyId)
+        .delete();
+  }
+
+  /// Update the status of a survey (e.g., draft → active, active → closed)
+  Future<void> updateSurveyStatus(
+      String institutionId, String surveyId, SurveyStatus status) async {
+    await _db
+        .collection('institutions')
+        .doc(institutionId)
+        .collection('surveys')
+        .doc(surveyId)
+        .update({'status': status.name, 'isActive': status == SurveyStatus.active});
+  }
+
+  // --- Survey Responses ---
+
+  /// Submit a response from a user.
+  Future<void> submitSurveyResponse(
+      String institutionId, QuestionnaireResponse response) async {
+    await _db
+        .collection('institutions')
+        .doc(institutionId)
+        .collection('surveys')
+        .doc(response.questionnaireId)
+        .collection('responses')
+        .doc(response.id)
+        .set(response.toMap());
+  }
+
+  /// Stream of all responses for a given survey.
+  Stream<List<QuestionnaireResponse>> getSurveyResponses(
+      String institutionId, String surveyId) {
+    return _db
+        .collection('institutions')
+        .doc(institutionId)
+        .collection('surveys')
+        .doc(surveyId)
+        .collection('responses')
+        .snapshots()
+        .map((snap) => snap.docs
+            .map((d) => QuestionnaireResponse.fromMap(d.data()))
+            .toList());
+  }
+
+  /// Check whether a specific user has already responded to a survey.
+  Future<bool> hasUserRespondedToSurvey(
+      String institutionId, String surveyId, String userId) async {
+    final snap = await _db
+        .collection('institutions')
+        .doc(institutionId)
+        .collection('surveys')
+        .doc(surveyId)
+        .collection('responses')
+        .where('userId', isEqualTo: userId)
+        .limit(1)
+        .get();
+    return snap.docs.isNotEmpty;
+  }
+
+  // --- Survey Analysis & Summary ---
+
+  /// Save or update the AI-generated summary for a survey.
+  Future<void> saveSurveySummary(
+      String institutionId, SurveyResponseSummary summary) async {
+    await _db
+        .collection('institutions')
+        .doc(institutionId)
+        .collection('surveys')
+        .doc(summary.questionnaireId)
+        .collection('analysis')
+        .doc('summary')
+        .set(summary.toMap());
+  }
+
+  /// Stream of the analysis summary document for a survey.
+  Stream<SurveyResponseSummary?> getSurveySummary(
+      String institutionId, String surveyId) {
+    return _db
+        .collection('institutions')
+        .doc(institutionId)
+        .collection('surveys')
+        .doc(surveyId)
+        .collection('analysis')
+        .doc('summary')
+        .snapshots()
+        .map((snap) =>
+            snap.exists ? SurveyResponseSummary.fromMap(snap.data()!) : null);
+  }
+
+  /// Lock the survey report to prevent further editing.
+  Future<void> lockSurveyReport(
+      String institutionId, String surveyId) async {
+    await _db
+        .collection('institutions')
+        .doc(institutionId)
+        .collection('surveys')
+        .doc(surveyId)
+        .collection('analysis')
+        .doc('summary')
+        .update({
+      'isLocked': true,
+      'lockedAt': DateTime.now().toIso8601String(),
+    });
+  }
+
+  /// Update the human notes on a survey summary.
+  Future<void> updateSurveyHumanNotes(
+      String institutionId, String surveyId, String notes) async {
+    await _db
+        .collection('institutions')
+        .doc(institutionId)
+        .collection('surveys')
+        .doc(surveyId)
+        .collection('analysis')
+        .doc('summary')
+        .update({'humanNotes': notes});
+  }
+
+  /// Update survey visibility settings.
+  Future<void> updateSurveyVisibility(
+      String institutionId,
+      String surveyId,
+      SurveyVisibility visibility) async {
+    await _db
+        .collection('institutions')
+        .doc(institutionId)
+        .collection('surveys')
+        .doc(surveyId)
+        .update({'visibility': visibility.name});
   }
 
 }

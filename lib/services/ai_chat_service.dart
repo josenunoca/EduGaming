@@ -6,6 +6,7 @@ import 'package:google_generative_ai/google_generative_ai.dart';
 import '../models/subject_model.dart';
 import '../models/institution_model.dart';
 import '../models/activity_model.dart';
+import '../models/questionnaire_model.dart';
 
 class AiChatService {
   final String _apiKey;
@@ -832,6 +833,67 @@ RETORNA APENAS UM JSON COM ESTA ESTRUTURA:
         'conclusion': 'Erro ao gerar conclusão automática: $e',
         'sections': {}
       };
+    }
+  }
+
+  /// Analyzes survey responses and returns quantitative + qualitative insights.
+  Future<Map<String, dynamic>> analyzeSurveyResponses({
+    required Questionnaire survey,
+    required List<QuestionnaireResponse> responses,
+    required Map<String, List<String>> openTextAnswers,
+  }) async {
+    if (responses.isEmpty) {
+      return {'qualitativeInsights': {}, 'keyTrends': [], 'overallScore': null};
+    }
+
+    // Build qualitative analysis prompt for open-text answers
+    final qualBuffer = StringBuffer();
+    qualBuffer.writeln('Analisa as seguintes respostas abertas de um inquérito institucional.');
+    qualBuffer.writeln('Para cada pergunta, identifica os temas recorrentes e sintetiza em 2-3 frases.');
+    qualBuffer.writeln('Também calcula um score global de satisfação de 0 a 10 se aplicável.');
+    qualBuffer.writeln('Identifica 3-5 tendências chave de todas as respostas.');
+    qualBuffer.writeln('');
+    qualBuffer.writeln('NOME DO INQUÉRITO: ${survey.title}');
+    qualBuffer.writeln('');
+
+    for (final entry in openTextAnswers.entries) {
+      final question = survey.questions.firstWhere(
+          (q) => q.id == entry.key, orElse: () => Question(
+              id: entry.key, text: 'Pergunta desconhecida', type: QuestionType.openText));
+      if (entry.value.isNotEmpty) {
+        qualBuffer.writeln('PERGUNTA: "${question.text}"');
+        qualBuffer.writeln('RESPOSTAS:');
+        for (final ans in entry.value.take(20)) {
+          qualBuffer.writeln('- $ans');
+        }
+        qualBuffer.writeln('');
+      }
+    }
+
+    qualBuffer.writeln('RETORNA APENAS UM JSON COM ESTA ESTRUTURA:');
+    qualBuffer.writeln('{');
+    qualBuffer.writeln('  "qualitativeInsights": {');
+    qualBuffer.writeln('    "questionId1": "Síntese da análise qualitativa...",');
+    qualBuffer.writeln('    "questionId2": "Síntese..."');
+    qualBuffer.writeln('  },');
+    qualBuffer.writeln('  "keyTrends": ["Tendência 1", "Tendência 2", "Tendência 3"],');
+    qualBuffer.writeln('  "overallScore": 7.5');
+    qualBuffer.writeln('}');
+
+    try {
+      final response = await _model.generateContent(
+        [Content.text(qualBuffer.toString())],
+        generationConfig: GenerationConfig(
+          temperature: 0.4,
+          maxOutputTokens: 2048,
+          responseMimeType: 'application/json',
+        ),
+      );
+      final text = response.text ?? '{}';
+      return jsonDecode(_cleanJsonResponse(text));
+    } catch (e) {
+      debugPrint('Survey analysis exception: $e');
+      return {'qualitativeInsights': {}, 'keyTrends': [], 'overallScore': null};
     }
   }
 }

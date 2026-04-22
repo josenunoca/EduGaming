@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../models/institution_model.dart';
+import '../../models/user_model.dart';
 import '../../widgets/ai_translated_text.dart';
 import '../../widgets/glass_card.dart';
 import 'academic_management_screen.dart';
@@ -7,15 +8,18 @@ import '../institutional/institutional_organs_screen.dart';
 import 'facility_management_screen.dart';
 import 'document_repository_screen.dart';
 import 'activity_management_screen.dart';
+import 'surveys/survey_list_screen.dart';
 
 import 'erp/erp_dashboard.dart';
 
 class InstitutionalManagementScreen extends StatelessWidget {
   final InstitutionModel institution;
+  final UserModel? currentUser;
   final int? initialTab;
   const InstitutionalManagementScreen({
     super.key,
     required this.institution,
+    this.currentUser,
     this.initialTab,
   });
 
@@ -120,6 +124,21 @@ class InstitutionalManagementScreen extends StatelessWidget {
                     ),
                   ),
                   _ManagementCard(
+                    title: 'Inquéritos e Avaliação',
+                    subtitle: 'Satisfação e Desempenho',
+                    icon: Icons.poll,
+                    color: const Color(0xFF00BFA5),
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => SurveyListScreen(
+                          institution: institution,
+                          currentUser: currentUser ?? _defaultUser(),
+                        ),
+                      ),
+                    ),
+                  ),
+                  _ManagementCard(
                     title: 'Administração ERP 360º',
                     subtitle: 'RH, Finanças e Operações',
                     icon: Icons.business,
@@ -139,6 +158,15 @@ class InstitutionalManagementScreen extends StatelessWidget {
       ),
     );
   }
+
+  UserModel _defaultUser() => UserModel(
+        id: institution.id,
+        email: institution.email,
+        name: institution.name,
+        role: UserRole.institution,
+        adConsent: false,
+        dataConsent: false,
+      );
 }
 
 class _ManagementCard extends StatelessWidget {
