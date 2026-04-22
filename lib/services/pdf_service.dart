@@ -13,6 +13,7 @@ import '../models/user_model.dart';
 import '../models/institution_organ_model.dart';
 import '../models/activity_model.dart';
 import '../models/annual_report_draft.dart';
+import '../models/survey_response_summary_model.dart';
 
 class PdfService {
   static Future<pw.ImageProvider?> _fetchLogo(String? url) async {
@@ -2053,6 +2054,250 @@ class PdfService {
       }
     }
     return count;
+  }
+
+  static Future<void> generateSurveyReport(
+      Questionnaire survey,
+      SurveyResponseSummary summary,
+      {InstitutionModel? institution}) async {
+    final pdf = pw.Document();
+    final logoImage = await _fetchLogo(institution?.logoUrl);
+
+    final fmt = DateFormat('dd/MM/yyyy HH:mm');
+    final startDateStr = DateFormat('dd/MM/yyyy').format(survey.startDate);
+    final endDateStr = DateFormat('dd/MM/yyyy').format(survey.endDate);
+
+    String docTitle = 'Relatório de Avaliação';
+    if (survey.linkedToAnnualReport) {
+      docTitle = 'Relatório Institucional Anual';
+    } else if (survey.audiences.contains(SurveyAudience.students) && survey.subjectId != null) {
+      docTitle = 'Relatório Contínuo de Disciplina';
+    }
+
+    pdf.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        margin: const pw.EdgeInsets.all(32),
+        header: (context) => _buildHeader(context, docTitle, institution, logoImage),
+        footer: (context) {
+          if (institution != null) {
+            return _buildFooter(context, institution);
+          }
+          return pw.SizedBox();
+        },
+        build: (pw.Context context) {
+          return [
+            // Title
+            pw.Text(survey.title,
+                style: pw.TextStyle(
+                    fontSize: 20,
+                    fontWeight: pw.FontWeight.bold,
+                    color: PdfColors.indigo900)),
+            pw.SizedBox(height: 8),
+            if (survey.description.trim().isNotEmpty) ...[
+              pw.Text(survey.description,
+                  style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey700)),
+              pw.SizedBox(height: 12),
+            ],
+            
+            // Classification Disclaimer
+            if (survey.linkedToAnnualReport || survey.audiences.contains(SurveyAudience.students)) ...[
+              pw.Container(
+                padding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: pw.BoxDecoration(
+                  color: survey.linkedToAnnualReport ? PdfColors.green100 : PdfColors.amber100,
+                  borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4)),
+                ),
+                child: pw.Text(
+                  survey.linkedToAnnualReport 
+                      ? 'Integrado no Relatório Institucional de Atividades'
+                      : 'Relatório Contínuo de Avaliação Letiva',
+                  style: pw.TextStyle(
+                    fontSize: 8, 
+                    fontWeight: pw.FontWeight.bold,
+                    color: survey.linkedToAnnualReport ? PdfColors.green900 : PdfColors.amber900
+                  ),
+                )
+              ),
+              pw.SizedBox(height: 12),
+            ],
+            
+            // Meta info
+            pw.Container(
+              padding: const pw.EdgeInsets.all(12),
+              decoration: pw.BoxDecoration(
+                color: PdfColors.indigo50,
+                borderRadius: const pw.BorderRadius.all(pw.Radius.circular(8)),
+              ),
+              child: pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Text('Período', style: const pw.TextStyle(fontSize: 8, color: PdfColors.indigo900)),
+                      pw.Text('$startDateStr a $endDateStr', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: PdfColors.indigo900)),
+                    ]
+                  ),
+                  pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Text('Respostas', style: const pw.TextStyle(fontSize: 8, color: PdfColors.indigo900)),
+                      pw.Text('${summary.totalResponses}', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: PdfColors.indigo900)),
+                    ]
+                  ),
+                  pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Text('Gerado em', style: const pw.TextStyle(fontSize: 8, color: PdfColors.indigo900)),
+                      pw.Text(fmt.format(summary.generatedAt), style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: PdfColors.indigo900)),
+                    ]
+                  ),
+                ]
+              )
+            ),
+            pw.SizedBox(height: 24),
+
+            // AI Insights
+            if (summary.qualitativeInsights.isNotEmpty) ...[
+              _sectionTitle('Síntese Qualitativa (IA)'),
+              ...summary.qualitativeInsights.entries.map((e) {
+                final question = survey.questions.firstWhere((q) => q.id == e.key, orElse: () => Question(id: '', text: 'Pergunta', type: QuestionType.openText));
+                return pw.Padding(
+                  padding: const pw.EdgeInsets.only(bottom: 8),
+                  child: pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Text(question.text, style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+                      pw.SizedBox(height: 2),
+                      pw.Text(e.value, style: const pw.TextStyle(fontSize: 10, lineSpacing: 1.5)),
+                    ]
+                  )
+                );
+              }),
+              pw.SizedBox(height: 20),
+            ],
+
+            if (summary.keyTrends.isNotEmpty) ...[
+              _sectionTitle('Principais Tendências'),
+              ...summary.keyTrends.map((trend) => pw.Padding(
+                padding: const pw.EdgeInsets.only(bottom: 6),
+                child: pw.Row(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Text('• ', style: const pw.TextStyle(color: PdfColors.indigo900)),
+                    pw.Expanded(child: pw.Text(trend, style: const pw.TextStyle(fontSize: 10))),
+                  ]
+                )
+              )),
+              pw.SizedBox(height: 20),
+            ],
+
+            // Satisfaction Score if available
+            if (summary.overallSatisfactionScore != null) ...[
+               _sectionTitle('Índice Global de Satisfação'),
+               pw.Row(
+                 children: [
+                   pw.Text('${summary.overallSatisfactionScore!.toStringAsFixed(1)}', style: pw.TextStyle(fontSize: 32, fontWeight: pw.FontWeight.bold, color: PdfColors.green700)),
+                   pw.Text(' / 5.0', style: pw.TextStyle(fontSize: 14, color: PdfColors.grey600)),
+                 ]
+               ),
+               pw.SizedBox(height: 24),
+            ],
+
+            // Human Notes
+            if (summary.humanNotes != null && summary.humanNotes!.trim().isNotEmpty) ...[
+              _sectionTitle('Notas da Direção / Responsável'),
+              pw.Container(
+                padding: const pw.EdgeInsets.all(12),
+                width: double.infinity,
+                decoration: pw.BoxDecoration(
+                  color: PdfColors.grey100,
+                  border: pw.Border(left: pw.BorderSide(color: PdfColors.indigo900, width: 3)),
+                ),
+                child: pw.Text(summary.humanNotes!, style: pw.TextStyle(fontSize: 10, fontStyle: pw.FontStyle.italic, color: PdfColors.grey800)),
+              ),
+              pw.SizedBox(height: 20),
+            ],
+
+            // Quantitative Data
+            _sectionTitle('Análise Quantitativa'),
+            ...summary.quantitativeData.entries.map((entry) {
+              final questionId = entry.key;
+              final data = entry.value;
+              final question = survey.questions.firstWhere((q) => q.id == questionId, orElse: () => Question(id: '', text: 'Pergunta não encontrada', type: QuestionType.openText));
+              
+              if (question.type == QuestionType.openText) return pw.SizedBox();
+
+              return pw.Container(
+                margin: const pw.EdgeInsets.only(bottom: 16),
+                child: pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Text(question.text, style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
+                    pw.SizedBox(height: 6),
+                    ...data.entries.map((choice) {
+                       final option = choice.key.toString();
+                       final count = (choice.value as num).toInt();
+                       final percentage = summary.totalResponses > 0 ? (count / summary.totalResponses) : 0.0;
+                       
+                       return pw.Padding(
+                         padding: const pw.EdgeInsets.only(bottom: 4),
+                         child: pw.Row(
+                           children: [
+                             pw.SizedBox(
+                               width: 150,
+                               child: pw.Text(option, style: const pw.TextStyle(fontSize: 9)),
+                             ),
+                             pw.Expanded(
+                               child: pw.Stack(
+                                 children: [
+                                   pw.Container(
+                                     height: 12,
+                                     decoration: pw.BoxDecoration(
+                                       color: PdfColors.grey300,
+                                       borderRadius: const pw.BorderRadius.all(pw.Radius.circular(2)),
+                                     )
+                                   ),
+                                   pw.Container(
+                                     height: 12,
+                                     width: 200 * percentage, // Approximated
+                                     decoration: pw.BoxDecoration(
+                                       color: PdfColors.indigo400,
+                                       borderRadius: const pw.BorderRadius.all(pw.Radius.circular(2)),
+                                     )
+                                   ),
+                                 ]
+                               )
+                             ),
+                             pw.SizedBox(
+                               width: 80,
+                               child: pw.Text(' $count (${(percentage * 100).toStringAsFixed(1)}%)', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold), textAlign: pw.TextAlign.right),
+                             ),
+                           ]
+                         )
+                       );
+                    }),
+                  ]
+                )
+              );
+            }),
+          ];
+        },
+      ),
+    );
+
+    await Printing.sharePdf(
+      bytes: await pdf.save(),
+      filename: 'Relatorio_Inquerito_${survey.title.replaceAll(' ', '_')}.pdf',
+    );
+  }
+
+  static pw.Widget _sectionTitle(String title) {
+    return pw.Padding(
+      padding: const pw.EdgeInsets.only(bottom: 8),
+      child: pw.Text(title, style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, color: PdfColors.indigo700)),
+    );
   }
 }
 

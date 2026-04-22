@@ -24,6 +24,7 @@ enum SurveyAudience {
   parents,
   teachers,
   nonTeachingStaff,
+  organMembers,
   externalEmail,
 }
 
@@ -70,6 +71,8 @@ extension SurveyAudienceLabel on SurveyAudience {
         return 'Pessoal Docente';
       case SurveyAudience.nonTeachingStaff:
         return 'Pessoal Não Docente';
+      case SurveyAudience.organMembers:
+        return 'Membros de Orgãos';
       case SurveyAudience.externalEmail:
         return 'Emails Externos';
     }
@@ -191,12 +194,14 @@ class Questionnaire {
   // Creator info
   final String creatorId;
   final String creatorRole; // 'institution' or 'teacher'
-  final String? subjectId; // when created by a teacher for a subject
+  final String? subjectId; 
+  final String? courseId;
 
   // Targeting
   final List<String> targetRoles; // legacy + ['student', 'teacher', 'parent', 'nonTeachingStaff']
   final List<SurveyAudience> audiences;
   final List<String> individualTargetIds;
+  final List<String> excludedTargetIds;
   final List<String> externalEmails; // external email addresses
 
   // Configuration
@@ -216,9 +221,10 @@ class Questionnaire {
   final bool isReportLocked;
   final String? humanNotes;
 
-  // Other
-  final bool isSensitive;
+  final bool isAnonymous;
   final List<ReopenLog> reopenHistory;
+  final bool includeInReports;
+  final bool isSensitive;
 
   Questionnaire({
     required this.id,
@@ -232,6 +238,7 @@ class Questionnaire {
     this.targetRoles = const [],
     this.audiences = const [],
     this.individualTargetIds = const [],
+    this.excludedTargetIds = const [],
     this.externalEmails = const [],
     this.objectives = const [],
     this.customObjective,
@@ -245,7 +252,10 @@ class Questionnaire {
     this.isReportLocked = false,
     this.humanNotes,
     this.isSensitive = false,
+    this.isAnonymous = false,
     this.reopenHistory = const [],
+    this.includeInReports = false,
+    this.courseId,
   });
 
   bool get isCurrentlyActive {
@@ -265,9 +275,11 @@ class Questionnaire {
       'creatorId': creatorId,
       'creatorRole': creatorRole,
       if (subjectId != null) 'subjectId': subjectId,
+      if (courseId != null) 'courseId': courseId,
       'targetRoles': targetRoles,
       'audiences': audiences.map((a) => a.name).toList(),
       'individualTargetIds': individualTargetIds,
+      'excludedTargetIds': excludedTargetIds,
       'externalEmails': externalEmails,
       'objectives': objectives.map((o) => o.name).toList(),
       if (customObjective != null) 'customObjective': customObjective,
@@ -281,7 +293,9 @@ class Questionnaire {
       'isReportLocked': isReportLocked,
       if (humanNotes != null) 'humanNotes': humanNotes,
       'isSensitive': isSensitive,
+      'isAnonymous': isAnonymous,
       'reopenHistory': reopenHistory.map((h) => h.toMap()).toList(),
+      'includeInReports': includeInReports,
     };
   }
 
@@ -298,6 +312,7 @@ class Questionnaire {
       creatorId: map['creatorId'] ?? '',
       creatorRole: map['creatorRole'] ?? 'institution',
       subjectId: map['subjectId'],
+      courseId: map['courseId'],
       targetRoles: List<String>.from(map['targetRoles'] ?? []),
       audiences: (map['audiences'] as List?)
               ?.map((a) => SurveyAudience.values.firstWhere(
@@ -307,6 +322,8 @@ class Questionnaire {
           [],
       individualTargetIds:
           List<String>.from(map['individualTargetIds'] ?? []),
+      excludedTargetIds:
+          List<String>.from(map['excludedTargetIds'] ?? []),
       externalEmails: List<String>.from(map['externalEmails'] ?? []),
       objectives: (map['objectives'] as List?)
               ?.map((o) => SurveyObjective.values.firstWhere(
@@ -331,10 +348,12 @@ class Questionnaire {
       isReportLocked: map['isReportLocked'] ?? false,
       humanNotes: map['humanNotes'],
       isSensitive: map['isSensitive'] ?? false,
+      isAnonymous: map['isAnonymous'] ?? false,
       reopenHistory: (map['reopenHistory'] as List?)
               ?.map((h) => ReopenLog.fromMap(h))
               .toList() ??
           [],
+      includeInReports: map['includeInReports'] ?? false,
     );
   }
 
@@ -347,9 +366,11 @@ class Questionnaire {
     String? creatorId,
     String? creatorRole,
     String? subjectId,
+    String? courseId,
     List<String>? targetRoles,
     List<SurveyAudience>? audiences,
     List<String>? individualTargetIds,
+    List<String>? excludedTargetIds,
     List<String>? externalEmails,
     List<SurveyObjective>? objectives,
     String? customObjective,
@@ -363,7 +384,9 @@ class Questionnaire {
     bool? isReportLocked,
     String? humanNotes,
     bool? isSensitive,
+    bool? isAnonymous,
     List<ReopenLog>? reopenHistory,
+    bool? includeInReports,
   }) {
     return Questionnaire(
       id: id ?? this.id,
@@ -374,9 +397,11 @@ class Questionnaire {
       creatorId: creatorId ?? this.creatorId,
       creatorRole: creatorRole ?? this.creatorRole,
       subjectId: subjectId ?? this.subjectId,
+      courseId: courseId ?? this.courseId,
       targetRoles: targetRoles ?? this.targetRoles,
       audiences: audiences ?? this.audiences,
       individualTargetIds: individualTargetIds ?? this.individualTargetIds,
+      excludedTargetIds: excludedTargetIds ?? this.excludedTargetIds,
       externalEmails: externalEmails ?? this.externalEmails,
       objectives: objectives ?? this.objectives,
       customObjective: customObjective ?? this.customObjective,
@@ -390,7 +415,9 @@ class Questionnaire {
       isReportLocked: isReportLocked ?? this.isReportLocked,
       humanNotes: humanNotes ?? this.humanNotes,
       isSensitive: isSensitive ?? this.isSensitive,
+      isAnonymous: isAnonymous ?? this.isAnonymous,
       reopenHistory: reopenHistory ?? this.reopenHistory,
+      includeInReports: includeInReports ?? this.includeInReports,
     );
   }
 }

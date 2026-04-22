@@ -443,7 +443,8 @@ enum SyllabusStatus {
   provisional,
   inValidationScientific,
   inValidationPedagogical,
-  approved
+  approved,
+  rejected
 }
 
 class Subject {

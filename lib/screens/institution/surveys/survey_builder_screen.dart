@@ -5,8 +5,10 @@ import '../../../services/firebase_service.dart';
 import '../../../models/questionnaire_model.dart';
 import '../../../models/institution_model.dart';
 import '../../../models/user_model.dart';
+import '../../../models/course_model.dart';
 import '../../../widgets/ai_translated_text.dart';
 import '../../../widgets/glass_card.dart';
+import '../../../widgets/participant_selector_dialog.dart';
 
 class SurveyBuilderScreen extends StatefulWidget {
   final InstitutionModel institution;
@@ -35,6 +37,8 @@ class _SurveyBuilderScreenState extends State<SurveyBuilderScreen> {
   DateTime _startDate = DateTime.now();
   DateTime _endDate = DateTime.now().add(const Duration(days: 30));
   bool _linkedToAnnualReport = false;
+  bool _includeInReports = false;
+  String? _selectedCourseId;
 
   // Step 2 - Objectives
   final Set<SurveyObjective> _selectedObjectives = {};
@@ -42,6 +46,7 @@ class _SurveyBuilderScreenState extends State<SurveyBuilderScreen> {
 
   // Step 3 - Audiences
   final Set<SurveyAudience> _selectedAudiences = {};
+  final Set<String> _excludedUserIds = {};
   final _externalEmailCtrl = TextEditingController();
   final List<String> _externalEmails = [];
 
@@ -59,9 +64,12 @@ class _SurveyBuilderScreenState extends State<SurveyBuilderScreen> {
       _startDate = s.startDate;
       _endDate = s.endDate;
       _linkedToAnnualReport = s.linkedToAnnualReport;
+      _includeInReports = s.includeInReports;
+      _selectedCourseId = s.courseId;
       _selectedObjectives.addAll(s.objectives);
       _customObjectiveCtrl.text = s.customObjective ?? '';
       _selectedAudiences.addAll(s.audiences);
+      _excludedUserIds.addAll(s.excludedTargetIds);
       _externalEmails.addAll(s.externalEmails);
       _questions.addAll(s.questions);
     }
@@ -92,12 +100,15 @@ class _SurveyBuilderScreenState extends State<SurveyBuilderScreen> {
           : null,
       legalBasis: _legalBasisCtrl.text.trim().isNotEmpty ? _legalBasisCtrl.text.trim() : null,
       audiences: _selectedAudiences.toList(),
+      excludedTargetIds: _excludedUserIds.toList(),
       externalEmails: _externalEmails,
       linkedToAnnualReport: _linkedToAnnualReport,
+      includeInReports: _includeInReports,
       startDate: _startDate,
       endDate: _endDate,
       status: status,
       isActive: status == SurveyStatus.active,
+      courseId: _selectedCourseId,
     );
   }
 
@@ -319,20 +330,58 @@ class _SurveyBuilderScreenState extends State<SurveyBuilderScreen> {
         ),
         const SizedBox(height: 16),
         GlassCard(
-          child: SwitchListTile(
-            dense: true,
-            activeColor: const Color(0xFF00BFA5),
-            title: const AiTranslatedText(
-              'Vincular ao Relatório Anual de Atividades',
-              style: TextStyle(color: Colors.white, fontSize: 13),
-            ),
-            subtitle: const AiTranslatedText(
-              'Os dados serão exportados automaticamente para o relatório final.',
-              style: TextStyle(color: Colors.white54, fontSize: 11),
-            ),
-            value: _linkedToAnnualReport,
-            onChanged: (v) => setState(() => _linkedToAnnualReport = v),
+          child: Column(
+            children: [
+              SwitchListTile(
+                dense: true,
+                activeColor: const Color(0xFF00BFA5),
+                title: const AiTranslatedText(
+                  'Vincular ao Relatório Anual de Atividades',
+                  style: TextStyle(color: Colors.white, fontSize: 13),
+                ),
+                subtitle: const AiTranslatedText(
+                  'Os dados serão exportados automaticamente para o relatório final.',
+                  style: TextStyle(color: Colors.white54, fontSize: 11),
+                ),
+                value: _linkedToAnnualReport,
+                onChanged: (v) => setState(() => _linkedToAnnualReport = v),
+              ),
+              const Divider(color: Colors.white10, height: 1),
+              SwitchListTile(
+                dense: true,
+                activeColor: const Color(0xFF00BFA5),
+                title: const AiTranslatedText(
+                  'Incluir na Análise Estatística de Relatórios',
+                  style: TextStyle(color: Colors.white, fontSize: 13),
+                ),
+                subtitle: const AiTranslatedText(
+                  'Permite integrar métricas deste inquérito em relatórios institucionais/de curso.',
+                  style: TextStyle(color: Colors.white54, fontSize: 11),
+                ),
+                value: _includeInReports,
+                onChanged: (v) => setState(() => _includeInReports = v),
+              ),
+            ],
           ),
+        ),
+        const SizedBox(height: 16),
+        _buildLabel('Associar a um Curso (Opcional)'),
+        StreamBuilder<List<Course>>(
+          stream: context.read<FirebaseService>().getCoursesStream(widget.institution.id),
+          builder: (context, snapshot) {
+            final courses = snapshot.data ?? [];
+            return DropdownButtonFormField<String?>(
+              value: _selectedCourseId,
+              dropdownColor: const Color(0xFF1E293B),
+              style: const TextStyle(color: Colors.white),
+              decoration: _inputDecoration('Selecione o curso...'),
+              items: [
+                const DropdownMenuItem(value: null, child: Text('Nenhum / Institucional')),
+                ...courses.map((c) => DropdownMenuItem(value: c.id, child: Text(c.name))),
+              ],
+              onChanged: (v) => setState(() => _selectedCourseId = v),
+            );
+          },
         ),
       ],
     );
@@ -388,6 +437,10 @@ class _SurveyBuilderScreenState extends State<SurveyBuilderScreen> {
             checkColor: Colors.white,
             title: AiTranslatedText(aud.label,
                 style: const TextStyle(color: Colors.white, fontSize: 13)),
+            subtitle: _selectedAudiences.contains(aud) ? TextButton(
+              onPressed: () => _manageAudienceParticipants(aud),
+              child: const Text('Gerir/Excluir Participantes', style: TextStyle(color: Color(0xFF00BFA5), fontSize: 11)),
+            ) : null,
             value: _selectedAudiences.contains(aud),
             onChanged: (v) => setState(() {
               if (v == true) _selectedAudiences.add(aud);
@@ -438,6 +491,75 @@ class _SurveyBuilderScreenState extends State<SurveyBuilderScreen> {
         ],
       ],
     );
+  }
+
+  void _manageAudienceParticipants(SurveyAudience audience) async {
+    final groupType = _mapAudienceToGroup(audience);
+    final List<String>? selectedEmails = await showDialog<List<String>>(
+      context: context,
+      builder: (ctx) => ParticipantSelectorDialog(
+        institutionId: widget.institution.id,
+        // We initialize with what is NOT excluded? 
+        // Actually, ParticipantSelectorDialog usually shows the WHOLE group.
+        // If we want to manage exclusions, we should know who is currently excluded.
+        // For simplicity, let's treat the dialog as "these are the people who WILL receive it".
+      ),
+    );
+
+    if (selectedEmails != null) {
+      final service = context.read<FirebaseService>();
+      final groupUsers = await _getGroupUsers(audience, service);
+      final groupEmails = groupUsers.map((u) => u.email).toList();
+      
+      // Those NOT in selectedEmails but IN groupEmails are excluded
+      final excluded = groupEmails.where((e) => !selectedEmails.contains(e)).toList();
+      
+      setState(() {
+        // We might want to filter only for this audience, but _excludedUserIds is global for the survey.
+        // It's fine since we check if the user is in the audience AND not excluded.
+        _excludedUserIds.addAll(excluded);
+        // Also remove those who were previously excluded but now selected
+        for (var email in selectedEmails) {
+          _excludedUserIds.remove(email);
+        }
+      });
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Participantes atualizados: ${_excludedUserIds.length} exclusões totais.'),
+        ));
+      }
+    }
+  }
+
+  ParticipantGroupType _mapAudienceToGroup(SurveyAudience audience) {
+    switch (audience) {
+      case SurveyAudience.students: return ParticipantGroupType.alunos;
+      case SurveyAudience.parents: return ParticipantGroupType.encarregados;
+      case SurveyAudience.teachers: return ParticipantGroupType.docentes;
+      case SurveyAudience.nonTeachingStaff: return ParticipantGroupType.naoDocentes;
+      case SurveyAudience.organMembers: return ParticipantGroupType.orgaos;
+      case SurveyAudience.externalEmail: return ParticipantGroupType.manual;
+    }
+  }
+
+  Future<List<UserModel>> _getGroupUsers(SurveyAudience audience, FirebaseService service) async {
+    switch (audience) {
+      case SurveyAudience.teachers: return service.getInstitutionDocentes(widget.institution.id);
+      case SurveyAudience.nonTeachingStaff: return service.getInstitutionNaoDocentes(widget.institution.id);
+      case SurveyAudience.students: 
+        final all = await service.getAllInstitutionMembers(widget.institution.id);
+        return all.where((u) => u.role == UserRole.student).toList();
+      case SurveyAudience.parents:
+        final all = await service.getAllInstitutionMembers(widget.institution.id);
+        return all.where((u) => u.role == UserRole.parent).toList();
+      case SurveyAudience.organMembers:
+        // This is tricky because there are multiple organs. 
+        // For now, let's just return all members of all organs? 
+        // Or maybe let the user select the organ in the dialog.
+        return []; 
+      default: return [];
+    }
   }
 
   // ─── Step 4: Questions ─────────────────────────────────────────────────────

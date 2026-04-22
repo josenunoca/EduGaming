@@ -1,8 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
+import 'package:rxdart/rxdart.dart' hide Subject;
+import '../models/agenda_item_model.dart';
 import '../models/user_model.dart';
 import '../models/erp_record_model.dart';
 import '../models/management_document_model.dart';
@@ -18,13 +21,18 @@ import '../models/institution_organ_model.dart';
 import '../models/facility_model.dart';
 import '../models/document_model.dart';
 import '../models/activity_model.dart';
+import '../models/school_calendar_model.dart';
+import '../models/survey_response_summary_model.dart';
+import '../models/course_report_model.dart';
+import '../models/assignment_model.dart';
+import '../models/curriculum_model.dart';
+import '../models/annual_report_draft.dart';
+import '../models/invitation_model.dart';
+import '../models/organ_document_model.dart';
 import '../models/credit_transaction.dart';
 import '../models/meeting_model.dart';
 import '../models/council_request_model.dart';
-import '../models/invitation_model.dart';
-import '../models/organ_document_model.dart';
-import '../models/school_calendar_model.dart';
-import '../models/survey_response_summary_model.dart';
+import '../models/assignment_model.dart';
 
 class FirebaseService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -1280,6 +1288,19 @@ class FirebaseService {
           ..sort((a, b) => b.timestamp.compareTo(a.timestamp)));
   }
 
+  Stream<List<InternalMessage>> getMessagesByCategory(String userId, String category) {
+    return _db
+        .collection('internal_messages')
+        .where('recipientIds', arrayContains: userId)
+        .where('category', isEqualTo: category)
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => InternalMessage.fromMap(doc.data()))
+            .where((msg) => !msg.deletedBy.contains(userId))
+            .toList()
+          ..sort((a, b) => b.timestamp.compareTo(a.timestamp)));
+  }
+
   Future<void> markMessageRead(String userId, String messageId) async {
     await _db.collection('internal_messages').doc(messageId).update({
       'readBy': FieldValue.arrayUnion([userId])
@@ -1990,26 +2011,19 @@ class FirebaseService {
     });
   }
 
-  Stream<List<InternalMessage>> getMessagesByCategory(
-      String userId, String category) {
-    return _db
-        .collection('internal_messages')
-        .where('category', isEqualTo: category)
-        .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => InternalMessage.fromMap(doc.data()))
-            .where((msg) =>
-                (msg.recipientIds.contains(userId) ||
-                    msg.ccIds.contains(userId)) &&
-                !msg.deletedBy.contains(userId))
-            .toList()
-          ..sort((a, b) => b.timestamp.compareTo(a.timestamp)));
-  }
 
   // --- Academic Management (Cursos e Programas) ---
   Future<Course?> getCourse(String courseId) async {
     final doc = await _db.collection('courses').doc(courseId).get();
     return doc.exists ? Course.fromMap(doc.data()!) : null;
+  }
+
+  Stream<List<Course>> getCoursesStream(String institutionId) {
+    return _db
+        .collection('courses')
+        .where('institutionId', isEqualTo: institutionId)
+        .snapshots()
+        .map((snap) => snap.docs.map((d) => Course.fromMap(d.data())).toList());
   }
 
   Future<void> ensureAcademicYear(String courseId) async {
@@ -2534,16 +2548,56 @@ Este documento foi gerado com assistência de IA.
 
   // --- Questionnaire System ---
 
+  /// Legacy alias for saveSurvey — ensures both root and institution sub-collections are synced.
   Future<void> saveQuestionnaire(Questionnaire questionnaire) async {
-    await _db
-        .collection('questionnaires')
-        .doc(questionnaire.id)
-        .set(questionnaire.toMap());
-
-    // In a real app, logic to send push notifications to targetRoles would go here.
-    // We'll simulate by adding to a 'notifications' collection if needed.
+    await saveSurvey(questionnaire);
   }
 
+  Future<void> _notifyParticipantsOfNewSurvey(Questionnaire survey) async {
+    final members = await getAllInstitutionMembers(survey.institutionId);
+    final recipients = <String>{};
+
+    for (var audience in survey.audiences) {
+      if (audience == SurveyAudience.students) {
+        recipients.addAll(members.where((u) => u.role == UserRole.student).map((u) => u.id));
+      } else if (audience == SurveyAudience.teachers) {
+        recipients.addAll(members.where((u) => u.role == UserRole.teacher).map((u) => u.id));
+      } else if (audience == SurveyAudience.parents) {
+        recipients.addAll(members.where((u) => u.role == UserRole.parent).map((u) => u.id));
+      } else if (audience == SurveyAudience.nonTeachingStaff) {
+        recipients.addAll(members.where((u) => u.role == UserRole.other).map((u) => u.id));
+      }
+    }
+
+    // Add individual targets (if they are IDs)
+    for (var target in survey.individualTargetIds) {
+      if (!target.contains('@')) recipients.add(target);
+      else {
+        final resolved = members.where((u) => u.email == target).firstOrNull;
+        if (resolved != null) recipients.add(resolved.id);
+      }
+    }
+
+    // Remove excluded
+    for (var excl in survey.excludedTargetIds) {
+      if (!excl.contains('@')) recipients.remove(excl);
+      else {
+        final resolved = members.where((u) => u.email == excl).firstOrNull;
+        if (resolved != null) recipients.remove(resolved.id);
+      }
+    }
+
+    if (recipients.isNotEmpty) {
+      await sendInstitutionalNotification(
+        recipientIds: recipients.toList(),
+        title: 'Novo Inquérito: ${survey.title}',
+        body: 'Tem um novo inquérito disponível para resposta. O prazo termina em ${DateFormat('dd/MM/yyyy').format(survey.endDate)}.',
+        senderName: 'Sistema Institucional',
+        category: 'academic_alert',
+        relatedEntityId: survey.id,
+      );
+    }
+  }
   Stream<List<Questionnaire>> getQuestionnaires(String institutionId) {
     return _db
         .collection('questionnaires')
@@ -2555,32 +2609,85 @@ Este documento foi gerado com assistência de IA.
   }
 
   Stream<List<Questionnaire>> getAvailableQuestionnaires(
-      String userId, String userRole) {
-    // This is a simplified filter. In production, we'd use complex queries or composite indexes.
+    String userId,
+    String? userEmail,
+    UserRole? role,
+    String institutionId,
+  ) {
     return _db
         .collection('questionnaires')
-        .where('isActive', isEqualTo: true)
+        .where('institutionId', isEqualTo: institutionId)
+        .where('status', isEqualTo: SurveyStatus.active.name)
         .snapshots()
         .map((snapshot) {
+      final now = DateTime.now();
       return snapshot.docs
           .map((doc) => Questionnaire.fromMap(doc.data()))
           .where((q) {
-        final now = DateTime.now();
-        final isWithinDate =
-            now.isAfter(q.startDate) && now.isBefore(q.endDate);
-        final isTargetRole = q.targetRoles.contains(userRole);
-        final isIndividualTarget = q.individualTargetIds.contains(userId);
-        return isWithinDate && (isTargetRole || isIndividualTarget);
+        // Broad date check
+        if (now.isAfter(q.endDate.add(const Duration(days: 1))) || 
+            now.isBefore(q.startDate.subtract(const Duration(hours: 1)))) return false;
+
+        final teacherKeywords = ['teachers', 'teacher', 'docente', 'pessoal docente', 'professor', 'professores'];
+        final studentKeywords = ['students', 'student', 'aluno', 'alunos'];
+
+        final roleMatches = q.targetRoles.contains('all') ||
+            (role != null && q.targetRoles.contains(role.name)) ||
+            (role == UserRole.teacher && q.targetRoles.any((r) => teacherKeywords.contains(r.toLowerCase()))) ||
+            (role == UserRole.student && q.targetRoles.any((r) => studentKeywords.contains(r.toLowerCase())));
+        
+        final audienceMatches = (role == UserRole.teacher && q.audiences.contains(SurveyAudience.teachers)) ||
+                                (role == UserRole.student && q.audiences.contains(SurveyAudience.students)) ||
+                                (role == UserRole.parent && q.audiences.contains(SurveyAudience.parents)) ||
+                                (role == UserRole.other && q.audiences.contains(SurveyAudience.nonTeachingStaff)) ||
+                                (q.audiences.contains(SurveyAudience.organMembers));
+        
+        final isTargeted = q.individualTargetIds.contains(userId) || (userEmail != null && q.individualTargetIds.contains(userEmail));
+        final isExcluded = q.excludedTargetIds.contains(userId) || (userEmail != null && q.excludedTargetIds.contains(userEmail));
+
+        return (roleMatches || audienceMatches || isTargeted) && !isExcluded;
       }).toList();
     });
   }
 
+  Stream<Set<String>> getUserAnsweredSurveysStream(String userId) {
+    return _db
+        .collection('questionnaire_participations')
+        .where('userId', isEqualTo: userId)
+        .snapshots()
+        .map((snap) => snap.docs.map((d) => d.data()['questionnaireId'] as String).toSet());
+  }
+
   Future<void> submitQuestionnaireResponse(
-      QuestionnaireResponse response) async {
-    await _db
-        .collection('questionnaire_responses')
-        .doc(response.id)
-        .set(response.toMap());
+      QuestionnaireResponse response, String realUserId, {String? institutionId}) async {
+    final batch = _db.batch();
+
+    // 1. Save the actual response data to global collection
+    batch.set(_db.collection('questionnaire_responses').doc(response.id), response.toMap());
+
+    // 2. Save to institutional sub-collection for monitoring if institutionId is available
+    if (institutionId != null) {
+      batch.set(
+        _db.collection('institutions')
+           .doc(institutionId)
+           .collection('surveys')
+           .doc(response.questionnaireId)
+           .collection('responses')
+           .doc(response.id),
+        response.toMap()
+      );
+    }
+
+    // 3. Save a participation record with the real user ID for tracking/agenda
+    final partId = "${realUserId}_${response.questionnaireId}";
+    batch.set(_db.collection('questionnaire_participations').doc(partId), {
+      'userId': realUserId,
+      'questionnaireId': response.questionnaireId,
+      'timestamp': FieldValue.serverTimestamp(),
+      'isAnonymous': response.isAnonymous,
+    });
+
+    await batch.commit();
   }
 
   Stream<List<QuestionnaireResponse>> getQuestionnaireResponses(
@@ -2812,14 +2919,81 @@ Este documento foi gerado com assistência de IA.
 
   // ─── Surveys ──────────────────────────────────────────────────────────────
 
-  /// Save (create or update) a survey. Supports draft saves.
+  // --- Group Retrieval Helpers ---
+
+  Future<List<UserModel>> getInstitutionDocentes(String institutionId) async {
+    final members = await getAllInstitutionMembers(institutionId);
+    return members.where((u) => u.role == UserRole.teacher || u.role == UserRole.courseCoordinator).toList();
+  }
+
+  Future<List<UserModel>> getInstitutionNaoDocentes(String institutionId) async {
+    final members = await getAllInstitutionMembers(institutionId);
+    final docenteRoles = [UserRole.teacher, UserRole.courseCoordinator];
+    return members.where((u) => !docenteRoles.contains(u.role) && u.role != UserRole.student && u.role != UserRole.parent).toList();
+  }
+
+  Future<List<UserModel>> getOrganMembers(String institutionId, String organId) async {
+    final doc = await _db.collection('institutional_organs').doc(organId).get();
+    if (!doc.exists) return [];
+    final organ = InstitutionalOrgan.fromMap(doc.data()!);
+    
+    // We need to fetch the actual UserModels for these members if they have userId
+    final userIds = organ.members.map((m) => m.userId).whereType<String>().toList();
+    if (userIds.isEmpty) {
+      // Return mock users if no actual user accounts linked yet? 
+      // User said "add/remove emails", so we might need user models or just emails.
+      // For consistency, let's return a list where name/email match the organ member.
+      return organ.members.map((m) => UserModel(
+        id: m.userId ?? m.email,
+        email: m.email,
+        name: m.name,
+        role: UserRole.other,
+        adConsent: false,
+        dataConsent: false,
+      )).toList();
+    }
+    
+    final users = <UserModel>[];
+    // Fetch in chunks of 30 for whereIn
+    for (var i = 0; i < userIds.length; i += 30) {
+      final end = (i + 30 < userIds.length) ? i + 30 : userIds.length;
+      final chunk = userIds.sublist(i, end);
+      final snap = await _db.collection('users').where(FieldPath.documentId, whereIn: chunk).get();
+      users.addAll(snap.docs.map((d) => UserModel.fromMap(d.data())));
+    }
+    return users;
+  }
+
+  /// Consistently save surveys to the root collection for global agenda/personal area tracking,
+  /// AND to the institution specific sub-collection for administrative monitoring.
   Future<void> saveSurvey(Questionnaire survey) async {
-    final ref = _db
-        .collection('institutions')
-        .doc(survey.institutionId)
-        .collection('surveys')
-        .doc(survey.id);
-    await ref.set(survey.toMap());
+    final batch = _db.batch();
+    
+    // 1. Root collection (for user agenda and targeting)
+    batch.set(_db.collection('questionnaires').doc(survey.id), survey.toMap());
+    
+    // 2. Institution sub-collection (for administrative monitoring)
+    batch.set(
+      _db.collection('institutions')
+         .doc(survey.institutionId)
+         .collection('surveys')
+         .doc(survey.id), 
+      survey.toMap()
+    );
+
+    await batch.commit();
+
+    // 3. Notify participants if published as active
+    if (survey.status == SurveyStatus.active) {
+      _notifyParticipantsOfNewSurvey(survey);
+    }
+  }
+
+  /// Get a single questionnaire by its ID.
+  Future<Questionnaire?> getQuestionnaireById(String id) async {
+    final doc = await _db.collection('questionnaires').doc(id).get();
+    if (!doc.exists) return null;
+    return Questionnaire.fromMap(doc.data()!);
   }
 
   /// Stream of all surveys for an institution (ordered by creation/startDate)
@@ -2875,7 +3049,10 @@ Este documento foi gerado com assistência de IA.
               if (role == 'nonTeachingStaff' && audienceNames.contains('nonTeachingStaff')) roleMatch = true;
               // Check individual targeting
               final individualMatch = q.individualTargetIds.contains(userId);
-              return roleMatch || individualMatch;
+              // Check exclusions
+              final isExcluded = q.excludedTargetIds.contains(userId);
+
+              return (roleMatch || individualMatch) && !isExcluded;
             })
             .toList());
   }
@@ -2893,12 +3070,22 @@ Este documento foi gerado com assistência de IA.
   /// Update the status of a survey (e.g., draft → active, active → closed)
   Future<void> updateSurveyStatus(
       String institutionId, String surveyId, SurveyStatus status) async {
-    await _db
-        .collection('institutions')
-        .doc(institutionId)
-        .collection('surveys')
-        .doc(surveyId)
-        .update({'status': status.name, 'isActive': status == SurveyStatus.active});
+    final batch = _db.batch();
+    final statusUpdate = {'status': status.name, 'isActive': status == SurveyStatus.active};
+
+    // 1. Update in institution sub-collection (monitoring dashboard)
+    batch.update(
+      _db.collection('institutions').doc(institutionId).collection('surveys').doc(surveyId),
+      statusUpdate,
+    );
+
+    // 2. Update in root collection (user personal area / agenda visibility)
+    batch.update(
+      _db.collection('questionnaires').doc(surveyId),
+      statusUpdate,
+    );
+
+    await batch.commit();
   }
 
   // --- Survey Responses ---
@@ -3005,7 +3192,6 @@ Este documento foi gerado com assistência de IA.
         .update({'humanNotes': notes});
   }
 
-  /// Update survey visibility settings.
   Future<void> updateSurveyVisibility(
       String institutionId,
       String surveyId,
@@ -3018,4 +3204,350 @@ Este documento foi gerado com assistência de IA.
         .update({'visibility': visibility.name});
   }
 
+
+  // --- Course Reports ---
+
+  Future<void> saveCourseReport(CourseReport report) async {
+    await _db
+        .collection('course_reports')
+        .doc(report.id)
+        .set(report.toMap());
+  }
+
+  Stream<List<CourseReport>> getCourseReportsStream(String courseId) {
+    return _db
+        .collection('course_reports')
+        .where('courseId', isEqualTo: courseId)
+        .snapshots()
+        .map((snap) => snap.docs
+            .map((d) => CourseReport.fromMap(d.data()))
+            .toList()
+          ..sort((a, b) => b.academicYear.compareTo(a.academicYear)));
+  }
+
+  // --- Assignments (Trabalhos / Submissões) ---
+
+  Future<void> createAssignment(String institutionId, Assignment assignment) async {
+    await _db
+        .collection('institutions')
+        .doc(institutionId)
+        .collection('assignments')
+        .doc(assignment.id)
+        .set(assignment.toMap());
+  }
+
+  Stream<List<Assignment>> getAssignmentsForSubject(String institutionId, String subjectId) {
+    return _db
+        .collection('institutions')
+        .doc(institutionId)
+        .collection('assignments')
+        .where('subjectId', isEqualTo: subjectId)
+        .snapshots()
+        .map((snapshot) =>
+            snapshot.docs.map((doc) => Assignment.fromMap(doc.data())).toList());
+  }
+
+  Future<void> updateAssignment(String institutionId, Assignment assignment) async {
+    await _db
+        .collection('institutions')
+        .doc(institutionId)
+        .collection('assignments')
+        .doc(assignment.id)
+        .update(assignment.toMap());
+  }
+
+  Future<void> deleteAssignment(String institutionId, String assignmentId) async {
+    await _db
+        .collection('institutions')
+        .doc(institutionId)
+        .collection('assignments')
+        .doc(assignmentId)
+        .delete();
+  }
+
+  Future<void> submitAssignmentWork(String institutionId, String assignmentId, AssignmentSubmission submission) async {
+    final ref = _db.collection('institutions').doc(institutionId).collection('assignments').doc(assignmentId);
+    return _db.runTransaction((transaction) async {
+      final snapshot = await transaction.get(ref);
+      if (!snapshot.exists) throw Exception("Assignment does not exist!");
+      
+      final assignment = Assignment.fromMap(snapshot.data()!);
+      final submissionsList = List<AssignmentSubmission>.from(assignment.submissions);
+      
+      final index = submissionsList.indexWhere((s) => s.id == submission.id);
+      if (index != -1) {
+        submissionsList[index] = submission;
+      } else {
+        submissionsList.add(submission);
+      }
+      
+      transaction.update(ref, {'submissions': submissionsList.map((x) => x.toMap()).toList()});
+    });
+  }
+
+  // --- Monitoring & Coordinator Actions ---
+
+  Stream<SchoolCalendar?> getSchoolCalendarStream(
+      String institutionId, String academicYear) {
+    return _db
+        .collection('school_calendars')
+        .where('institutionId', isEqualTo: institutionId)
+        .where('academicYear', isEqualTo: academicYear)
+        .snapshots()
+        .map((snapshot) {
+      if (snapshot.docs.isEmpty) return null;
+      return SchoolCalendar.fromMap(snapshot.docs.first.data());
+    });
+  }
+
+  Future<void> duplicateAcademicYearSettings(String institutionId,
+      String sourceYear, String targetYear, String userId) async {
+    final calendarSnap = await _db
+        .collection('school_calendars')
+        .where('institutionId', isEqualTo: institutionId)
+        .where('academicYear', isEqualTo: sourceYear)
+        .get();
+
+    if (calendarSnap.docs.isNotEmpty) {
+      final sourceCalendar = SchoolCalendar.fromMap(calendarSnap.docs.first.data());
+      final newCalendar = SchoolCalendar(
+        id: const Uuid().v4(),
+        institutionId: institutionId,
+        academicYear: targetYear,
+        terms: sourceCalendar.terms,
+        holidays: sourceCalendar.holidays,
+        vacations: sourceCalendar.vacations,
+        deadlines: sourceCalendar.deadlines,
+      );
+      await saveSchoolCalendar(newCalendar);
+    }
+  }
+
+  Future<String> getCurrentAcademicYear(String institutionId) async {
+    try {
+      final snap = await _db
+          .collection('school_calendars')
+          .where('institutionId', isEqualTo: institutionId)
+          .orderBy('academicYear', descending: true)
+          .limit(1)
+          .get();
+      if (snap.docs.isNotEmpty) {
+        return snap.docs.first.data()['academicYear'] ?? '2024/2025';
+      }
+    } catch (e) {
+      debugPrint('Error fetching academic year: $e');
+    }
+    return '2024/2025'; // Fallback
+  }
+
+  Future<void> sendInstitutionalNotification({
+    required List<String> recipientIds,
+    required String title,
+    required String body,
+    required String senderName,
+    String category = 'academic_alert',
+    String? relatedEntityId,
+  }) async {
+    final msgId = const Uuid().v4();
+    final message = InternalMessage(
+      id: msgId,
+      senderId: 'system',
+      senderName: senderName,
+      recipientIds: recipientIds,
+      subject: title,
+      body: body,
+      timestamp: DateTime.now(),
+      category: category,
+      relatedEntityId: relatedEntityId,
+    );
+    await _db.collection('messages').doc(msgId).set(message.toMap());
+  }
+
+  Future<void> sendCoordinatorWarning({
+    required String teacherId,
+    required String subjectId,
+    required String subjectName,
+    required String message,
+    required String coordinatorName,
+  }) async {
+    final msgId = const Uuid().v4();
+    final internalMsg = InternalMessage(
+      id: msgId,
+      senderId: 'SYSTEM_COORDINATOR',
+      senderName: 'Coordenador: $coordinatorName',
+      recipientIds: [teacherId],
+      subject: 'Aviso Académico: $subjectName',
+      body: message,
+      timestamp: DateTime.now(),
+      category: 'academic_alert',
+    );
+    await sendInternalMessage(internalMsg);
+  }
+
+  // --- Fixed Questionnaire Visibility ---
+
+  Stream<List<Questionnaire>> getPendingSurveysForUser(
+      String userId, String? userEmail, UserRole role, String institutionId) {
+    return _db
+        .collection('questionnaires')
+        .where('institutionId', isEqualTo: institutionId)
+        .where('status', isEqualTo: SurveyStatus.active.name)
+        .snapshots()
+        .map((snapshot) {
+      final now = DateTime.now();
+      return snapshot.docs
+          .map((doc) => Questionnaire.fromMap(doc.data()))
+          .where((q) {
+        // Broad date check (today included)
+        if (now.isAfter(q.endDate.add(const Duration(days: 1))) || 
+            now.isBefore(q.startDate.subtract(const Duration(hours: 1)))) return false;
+
+        final teacherKeywords = ['teachers', 'teacher', 'docente', 'pessoal docente', 'professor', 'professores'];
+        final studentKeywords = ['students', 'student', 'aluno', 'alunos'];
+
+        final roleMatches = q.targetRoles.contains('all') ||
+            q.targetRoles.contains(role.name) ||
+            (role == UserRole.teacher && q.targetRoles.any((r) => teacherKeywords.contains(r.toLowerCase()))) ||
+            (role == UserRole.student && q.targetRoles.any((r) => studentKeywords.contains(r.toLowerCase())));
+        
+        final audienceMatches = (role == UserRole.teacher && q.audiences.contains(SurveyAudience.teachers)) ||
+                                (role == UserRole.student && q.audiences.contains(SurveyAudience.students)) ||
+                                (role == UserRole.parent && q.audiences.contains(SurveyAudience.parents)) ||
+                                (role == UserRole.other && q.audiences.contains(SurveyAudience.nonTeachingStaff)) ||
+                                (q.audiences.contains(SurveyAudience.organMembers)); // We'll assume if it's organMembers, we check individualTargetIds or member list
+        
+        final isTargeted = q.individualTargetIds.contains(userId) || (userEmail != null && q.individualTargetIds.contains(userEmail));
+        final isExcluded = q.excludedTargetIds.contains(userId) || (userEmail != null && q.excludedTargetIds.contains(userEmail));
+
+        return (roleMatches || audienceMatches || isTargeted) && !isExcluded;
+      }).toList();
+    });
+  }
+
+  // --- Unified Agenda System ---
+
+  Stream<List<AgendaItem>> getUnifiedAgendaStream(
+      String userId, String? userEmail, UserRole role, String institutionId) {
+    // 0. Responses helper (to mark surveys as completed)
+    final responsesStream = _db
+        .collection('questionnaire_participations')
+        .where('userId', isEqualTo: userId)
+        .snapshots()
+        .map((snap) => snap.docs.map((d) => d.data()['questionnaireId'] as String).toSet());
+
+    // 1. Assignments
+    final assignmentsStream = _db
+        .collection('institutions')
+        .doc(institutionId)
+        .collection('assignments')
+        .snapshots()
+        .map((snapshot) {
+          final list = snapshot.docs.map((doc) => Assignment.fromMap(doc.data())).toList();
+          return list.where((a) {
+            if (role == UserRole.institution) return true;
+            // For now, show all for the institution, but filter by relevance if possible
+            return true; 
+          }).map((a) => AgendaItem(
+            title: a.title,
+            description: a.description,
+            type: AgendaItemType.assignment,
+            startDate: a.createdAt,
+            dueDate: a.dueDate,
+            status: _calculateAssignmentStatus(a, userId, role),
+            relatedId: a.id,
+          )).toList();
+        });
+
+    // 2. Questionnaires (Surveys)
+    final questionnairesStream = Rx.combineLatest2(
+      getPendingSurveysForUser(userId, userEmail, role, institutionId),
+      responsesStream,
+      (List<Questionnaire> surveys, Set<String> answeredIds) {
+        return surveys.map((q) => AgendaItem(
+          title: q.title,
+          description: q.description,
+          type: AgendaItemType.questionnaire,
+          startDate: q.startDate,
+          dueDate: q.endDate,
+          status: answeredIds.contains(q.id) ? AgendaItemStatus.completed : AgendaItemStatus.pending,
+          relatedId: q.id,
+        )).toList();
+      },
+    );
+
+    // 3. Calendar Deadlines
+    final calendarStream = getSchoolCalendarStream(institutionId, '2024/2025')
+        .map((cal) {
+          if (cal == null) return <AgendaItem>[];
+          final d = cal.deadlines;
+          final items = <AgendaItem>[];
+          
+          if (role == UserRole.teacher || role == UserRole.institution) {
+            if (d?.programSubmissionDeadline != null) {
+              items.add(AgendaItem(
+                title: 'Submissão de Programas',
+                type: AgendaItemType.deadline,
+                startDate: d!.programSubmissionDeadline!.subtract(const Duration(days: 7)),
+                dueDate: d.programSubmissionDeadline!,
+                relatedId: cal.id,
+              ));
+            }
+            if (d?.gradingDeadline != null) {
+              items.add(AgendaItem(
+                title: 'Lançamento de Notas',
+                type: AgendaItemType.deadline,
+                startDate: d!.gradingDeadline!.subtract(const Duration(days: 7)),
+                dueDate: d.gradingDeadline!,
+                relatedId: cal.id,
+              ));
+            }
+          }
+          return items;
+        });
+
+    // 4. Institutional Activities
+    final activitiesStream = _db
+        .collection('activities')
+        .where('institutionId', isEqualTo: institutionId)
+        .snapshots()
+        .map((snapshot) {
+          final all = snapshot.docs
+              .map((doc) => InstitutionalActivity.fromMap(
+                  doc.data() as Map<String, dynamic>))
+              .toList();
+          return all.where((act) {
+            final isParticipant = act.participants.any((p) => p.email.toLowerCase() == (userEmail?.toLowerCase() ?? '') || p.id == userId);
+            final isResponsible = act.responsibleUserId == userId;
+            final isDirection = role == UserRole.institution;
+            return isParticipant || isResponsible || isDirection;
+          }).map((act) => AgendaItem(
+            title: act.title,
+            description: act.description,
+            type: AgendaItemType.activity,
+            startDate: act.startDate,
+            dueDate: act.endDate,
+            status: act.status == 'completed' ? AgendaItemStatus.completed : AgendaItemStatus.pending,
+            relatedId: act.id,
+          )).toList();
+        });
+
+    // Combine all
+    return Rx.combineLatest4(
+      assignmentsStream,
+      questionnairesStream,
+      calendarStream,
+      activitiesStream,
+      (List<AgendaItem> a, List<AgendaItem> q, List<AgendaItem> c, List<AgendaItem> act) => 
+          [...a, ...q, ...c, ...act]..sort((i1, i2) => i1.dueDate.compareTo(i2.dueDate)),
+    );
+  }
+
+  AgendaItemStatus _calculateAssignmentStatus(Assignment a, String userId, UserRole role) {
+    if (role == UserRole.student) {
+      final sub = a.submissions.where((s) => s.studentId == userId).firstOrNull;
+      if (sub != null) return AgendaItemStatus.completed;
+    }
+    if (DateTime.now().isAfter(a.dueDate)) return AgendaItemStatus.overdue;
+    return AgendaItemStatus.pending;
+  }
 }

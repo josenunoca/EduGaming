@@ -242,6 +242,9 @@ class InstitutionalActivity {
   final String? responsiblePhone;
   final String? responsibleUserId;
   final Map<String, dynamic> socialMediaImpact;
+  final bool includeInAnnualReport;
+  final String? targetCourseId;
+  final bool isControlActivity;
 
   InstitutionalActivity({
     required this.id,
@@ -267,6 +270,9 @@ class InstitutionalActivity {
     this.responsiblePhone,
     this.responsibleUserId,
     this.socialMediaImpact = const {},
+    this.includeInAnnualReport = false,
+    this.targetCourseId,
+    this.isControlActivity = false,
   });
 
   Map<String, dynamic> toMap() {
@@ -294,6 +300,9 @@ class InstitutionalActivity {
       if (responsiblePhone != null) 'responsiblePhone': responsiblePhone,
       if (responsibleUserId != null) 'responsibleUserId': responsibleUserId,
       'socialMediaImpact': socialMediaImpact,
+      'includeInAnnualReport': includeInAnnualReport,
+      if (targetCourseId != null) 'targetCourseId': targetCourseId,
+      'isControlActivity': isControlActivity,
     };
   }
 
@@ -336,6 +345,9 @@ class InstitutionalActivity {
       socialMediaImpact: map['socialMediaImpact'] != null
           ? Map<String, dynamic>.from(map['socialMediaImpact'])
           : {},
+      includeInAnnualReport: map['includeInAnnualReport'] ?? false,
+      targetCourseId: map['targetCourseId'],
+      isControlActivity: map['isControlActivity'] ?? false,
     );
   }
 }

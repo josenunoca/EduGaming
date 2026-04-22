@@ -8,6 +8,7 @@ import '../../../models/survey_response_summary_model.dart';
 import '../../../models/institution_model.dart';
 import '../../../widgets/glass_card.dart';
 import '../../../widgets/ai_translated_text.dart';
+import '../../../services/pdf_service.dart';
 
 class SurveyAnalysisScreen extends StatefulWidget {
   final Questionnaire survey;
@@ -75,26 +76,56 @@ class _SurveyAnalysisScreenState extends State<SurveyAnalysisScreen> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Generate / Regenerate analysis button
-                  if (!widget.survey.isReportLocked)
-                    ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF7B61FF),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                        minimumSize: const Size(double.infinity, 0),
-                      ),
-                      onPressed: responses.isEmpty || _isGenerating
-                          ? null
-                          : () => _generateAnalysis(context, service, responses),
-                      icon: _isGenerating
-                          ? const SizedBox(width: 18, height: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                          : const Icon(Icons.auto_awesome, color: Colors.white),
-                      label: AiTranslatedText(
-                        summary == null ? 'Gerar Análise com IA' : 'Regenerar Análise',
-                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                      ),
+                  // Buttons: Generate / PDF
+                  if (summary != null || !widget.survey.isReportLocked)
+                    Row(
+                      children: [
+                        if (!widget.survey.isReportLocked)
+                          Expanded(
+                            flex: summary != null ? 1 : 2,
+                            child: ElevatedButton.icon(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF7B61FF),
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              ),
+                              onPressed: responses.isEmpty || _isGenerating
+                                  ? null
+                                  : () => _generateAnalysis(context, service, responses),
+                              icon: _isGenerating
+                                  ? const SizedBox(width: 18, height: 18,
+                                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                                  : Icon(summary == null ? Icons.auto_awesome : Icons.refresh, color: Colors.white),
+                              label: AiTranslatedText(
+                                summary == null ? 'Gerar Análise' : 'Regenerar',
+                                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ),
+                        if (summary != null) ...[
+                          if (!widget.survey.isReportLocked) const SizedBox(width: 12),
+                          Expanded(
+                            flex: 1,
+                            child: ElevatedButton.icon(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF00BFA5),
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              ),
+                              onPressed: () {
+                                PdfService.generateSurveyReport(
+                                  widget.survey,
+                                  summary,
+                                  institution: widget.institution,
+                                );
+                              },
+                              icon: const Icon(Icons.picture_as_pdf, color: Colors.white),
+                              label: const AiTranslatedText('Exportar PDF',
+                                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
 
                   const SizedBox(height: 16),

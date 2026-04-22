@@ -13,6 +13,7 @@ import '../../widgets/custom_button.dart';
 import '../../widgets/glass_card.dart';
 import '../../services/firebase_service.dart';
 import '../../widgets/ai_translated_text.dart';
+import '../coordinator/course_report_screen.dart';
 
 class AcademicManagementScreen extends StatefulWidget {
   final InstitutionModel institution;
@@ -191,6 +192,19 @@ class _AcademicManagementScreenState extends State<AcademicManagementScreen>
                           leading:
                               const Icon(Icons.book, color: Color(0xFF00D1FF)),
                           title: const Text('Gerir Disciplinas',
+                              style: TextStyle(color: Colors.white)),
+                          trailing: const Icon(Icons.chevron_right,
+                              color: Colors.white54),
+                        ),
+                        ListTile(
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => CourseReportScreen(course: course),
+                            ),
+                          ),
+                          leading: const Icon(Icons.analytics, color: Color(0xFFEC4899)),
+                          title: const AiTranslatedText('Relatório de Curso',
                               style: TextStyle(color: Colors.white)),
                           trailing: const Icon(Icons.chevron_right,
                               color: Colors.white54),

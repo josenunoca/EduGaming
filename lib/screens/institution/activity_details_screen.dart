@@ -13,6 +13,8 @@ import '../../services/firebase_service.dart';
 import '../../services/ai_chat_service.dart';
 import '../../widgets/ai_translated_text.dart';
 import '../../widgets/glass_card.dart';
+import '../../widgets/participant_selector_dialog.dart';
+import '../../models/user_model.dart';
 import '../../widgets/ai_text_field.dart';
 import '../../utils/marketing_export_helper.dart';
 import '../../models/facility_model.dart';
@@ -1455,16 +1457,57 @@ class _ActivityDetailsScreenState extends State<ActivityDetailsScreen>
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            _buildInviteOption(Icons.person, 'Pessoal Docente',
+                () => _showSpecializedSelector(ParticipantGroupType.docentes)),
+            _buildInviteOption(Icons.people_outline, 'Pessoal Não Docente',
+                () => _showSpecializedSelector(ParticipantGroupType.naoDocentes)),
+            _buildInviteOption(Icons.groups, 'Membros de Orgãos',
+                () => _showSpecializedSelector(ParticipantGroupType.orgaos)),
+            _buildInviteOption(Icons.school, 'Alunos',
+                () => _showSpecializedSelector(ParticipantGroupType.alunos)),
+            _buildInviteOption(Icons.family_restroom, 'Encarregados',
+                () => _showSpecializedSelector(ParticipantGroupType.encarregados)),
             _buildInviteOption(Icons.business, 'Toda a Instituição',
                 () => _inviteAllInstitution()),
             _buildInviteOption(
-                Icons.school, 'Por Curso', () => _showCourseSelector()),
+                Icons.school, 'Por Curso (Legacy)', () => _showCourseSelector()),
             _buildInviteOption(
-                Icons.book, 'Por Disciplina', () => _showSubjectSelector()),
+                Icons.book, 'Por Disciplina (Legacy)', () => _showSubjectSelector()),
           ],
         ),
       ),
     );
+  }
+
+  void _showSpecializedSelector(ParticipantGroupType type) async {
+    final List<String>? selectedEmails = await showDialog<List<String>>(
+      context: context,
+      builder: (ctx) => ParticipantSelectorDialog(
+        institutionId: widget.institution.id,
+        initialSelectedEmails: _currentActivity.participants.map((p) => p.email).toList(),
+      ),
+    );
+
+    if (selectedEmails != null && selectedEmails.isNotEmpty) {
+      final service = context.read<FirebaseService>();
+      // We need to fetch the UserModels for these emails to invite them properly
+      // Or we can add a service method that accepts emails
+      final allMembers = await service.getAllInstitutionMembers(widget.institution.id);
+      final selectedUsers = allMembers.where((u) => selectedEmails.contains(u.email)).toList();
+      
+      await service.inviteGroupToActivity(
+        _currentActivity.id, 
+        'group_${type.name}', 
+        type.name, 
+        selectedUsers
+      );
+      _refreshActivity();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: AiTranslatedText(
+                'Convidados ${selectedUsers.length} participantes.')));
+      }
+    }
   }
 
   Widget _buildInviteOption(IconData icon, String label, VoidCallback onTap) {

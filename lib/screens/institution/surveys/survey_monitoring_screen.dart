@@ -51,9 +51,15 @@ class SurveyMonitoringScreen extends StatelessWidget {
           final total = responses.length;
 
           return StreamBuilder<List<UserModel>>(
-            stream: _buildTargetedUsersStream(service),
-            builder: (context, usersSnap) {
-              final targetedUsers = usersSnap.data ?? [];
+            stream: service.getUsersForInstitution(institution.id),
+            builder: (context, allUsersSnap) {
+              final allUsers = allUsersSnap.data ?? [];
+
+              // Name lookup map: userId → name
+              final nameMap = {for (final u in allUsers) u.id: u.name};
+
+              // Targeted users (filtered by audience/individual IDs)
+              final targetedUsers = _filterTargetedUsers(allUsers);
               final pendingUsers = targetedUsers
                   .where((u) => !respondedIds.contains(u.id))
                   .toList();
@@ -217,19 +223,48 @@ class SurveyMonitoringScreen extends StatelessWidget {
                                   style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
                             ]),
                             const SizedBox(height: 12),
-                            ...responses.take(5).map((r) => Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 4),
-                              child: Row(
-                                children: [
-                                  const Icon(Icons.check_circle, size: 14, color: Color(0xFF00C853)),
-                                  const SizedBox(width: 8),
-                                  Expanded(child: Text(r.isAnonymous ? 'Anónimo' : r.userId,
-                                      style: const TextStyle(color: Colors.white70, fontSize: 12))),
-                                  Text(fmt.format(r.timestamp),
-                                      style: const TextStyle(color: Colors.white38, fontSize: 11)),
-                                ],
-                              ),
-                            )),
+                            ...responses.take(10).map((r) {
+                              final isAnon = r.isAnonymous || r.userId.startsWith('anonymous_');
+                              final name = isAnon
+                                  ? 'Resposta Anónima'
+                                  : (nameMap[r.userId] ?? 'Utilizador desconhecido');
+                              final avatarLabel = isAnon ? '?' : name[0].toUpperCase();
+                              final avatarColor = isAnon ? Colors.white24 : const Color(0xFF00C853);
+                              return Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 5),
+                                child: Row(
+                                  children: [
+                                    CircleAvatar(
+                                      radius: 14,
+                                      backgroundColor: avatarColor.withValues(alpha: 0.2),
+                                      child: Text(
+                                        avatarLabel,
+                                        style: TextStyle(
+                                          color: isAnon ? Colors.white38 : const Color(0xFF00C853),
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Text(
+                                        name,
+                                        style: TextStyle(
+                                          color: isAnon ? Colors.white38 : Colors.white70,
+                                          fontSize: 12,
+                                          fontStyle: isAnon ? FontStyle.italic : FontStyle.normal,
+                                        ),
+                                      ),
+                                    ),
+                                    Text(
+                                      fmt.format(r.timestamp),
+                                      style: const TextStyle(color: Colors.white38, fontSize: 11),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }),
                           ],
                         ),
                       ),
@@ -268,9 +303,31 @@ class SurveyMonitoringScreen extends StatelessWidget {
     );
   }
 
-  Stream<List<UserModel>> _buildTargetedUsersStream(FirebaseService service) {
-    // Return users matching the audience roles for this institution
-    return service.getUsersForInstitution(institution.id);
+  List<UserModel> _filterTargetedUsers(List<UserModel> allUsers) {
+    // If there are specific individual targets, use those exclusively.
+    if (survey.individualTargetIds.isNotEmpty) {
+      return allUsers.where((u) {
+        final notExcluded = !survey.excludedTargetIds.contains(u.id) &&
+            !survey.excludedTargetIds.contains(u.email);
+        final isTargeted = survey.individualTargetIds.contains(u.id) ||
+            survey.individualTargetIds.contains(u.email);
+        return isTargeted && notExcluded;
+      }).toList();
+    }
+
+    // Otherwise filter by broad audience roles.
+    return allUsers.where((u) {
+      final notExcluded = !survey.excludedTargetIds.contains(u.id) &&
+          !survey.excludedTargetIds.contains(u.email);
+      bool roleMatch = false;
+      for (final audience in survey.audiences) {
+        if (audience == SurveyAudience.teachers && u.role == UserRole.teacher) roleMatch = true;
+        if (audience == SurveyAudience.students && u.role == UserRole.student) roleMatch = true;
+        if (audience == SurveyAudience.parents && u.role == UserRole.parent) roleMatch = true;
+        if (audience == SurveyAudience.nonTeachingStaff && u.role == UserRole.other) roleMatch = true;
+      }
+      return roleMatch && notExcluded;
+    }).toList();
   }
 
   Widget _buildStatCard(String label, String value, IconData icon, Color color) {

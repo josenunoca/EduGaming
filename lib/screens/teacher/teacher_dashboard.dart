@@ -28,6 +28,7 @@ import '../institution/delegation_management_screen.dart';
 import '../institutional/meeting_list_screen.dart';
 import '../institution/facility_management_screen.dart';
 import '../institution/activity_management_screen.dart';
+import 'surveys/teacher_survey_list_screen.dart';
 
 class TeacherDashboard extends StatefulWidget {
   const TeacherDashboard({super.key});
@@ -171,7 +172,7 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
                   appBar: AppBar(
                     title: BrandedTitle(
                       logoUrl: institution?.logoUrl,
-                      institutionName: institution?.name,
+                      institutionName: institution?.name ?? 'EduGaming',
                       defaultTitle: 'Painel do Professor',
                     ),
                     actions: [
@@ -334,7 +335,7 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
                             const SizedBox(height: 16),
                             Expanded(
                               child: DefaultTabController(
-                                length: 4,
+                                length: 5,
                                 child: Column(
                                   children: [
                                     const TabBar(
@@ -348,6 +349,7 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
                                         Tab(text: 'Minhas Atividades'),
                                         Tab(text: 'Meus Órgãos'),
                                         Tab(text: 'Gestão Delegada'),
+                                        Tab(text: 'Inquéritos'),
                                       ],
                                     ),
                                     const SizedBox(height: 12),
@@ -570,6 +572,12 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
 
                                           // TAB 4: Delegated Management (SAP Style)
                                           _buildDelegatedTab(context, teacher, institution),
+
+                                          // TAB 5: Surveys
+                                          if (institution != null)
+                                            TeacherSurveyListScreen(teacher: teacher, institution: institution)
+                                          else
+                                            const Center(child: CircularProgressIndicator()),
                                         ],
                                       ),
                                     ),

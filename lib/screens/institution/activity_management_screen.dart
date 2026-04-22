@@ -4,6 +4,7 @@ import 'package:uuid/uuid.dart';
 import '../../models/activity_model.dart';
 import '../../models/institution_model.dart';
 import '../../models/user_model.dart';
+import '../../models/course_model.dart';
 import '../../services/firebase_service.dart';
 import '../../widgets/ai_translated_text.dart';
 import '../../widgets/glass_card.dart';
@@ -521,6 +522,9 @@ class _ActivityManagementScreenState extends State<ActivityManagementScreen> {
     DateTime startDate = activity?.startDate ?? DateTime.now();
     DateTime endDate = activity?.endDate ?? DateTime.now();
     bool hasFinancialImpact = activity?.hasFinancialImpact ?? false;
+    bool includeInAnnualReport = activity?.includeInAnnualReport ?? false;
+    String? targetCourseId = activity?.targetCourseId;
+    bool isControlActivity = activity?.isControlActivity ?? false;
 
     showDialog(
       context: context,
@@ -592,6 +596,50 @@ class _ActivityManagementScreenState extends State<ActivityManagementScreen> {
                       lastDate: DateTime(2030),
                     );
                     if (date != null) setDialogState(() => endDate = date);
+                  },
+                ),
+                const SizedBox(height: 16),
+                const Divider(color: Colors.white24),
+                const SizedBox(height: 8),
+                const Align(
+                  alignment: Alignment.centerLeft,
+                  child: AiTranslatedText('Configurações de Relatório',
+                      style: TextStyle(color: Colors.white70, fontWeight: FontWeight.bold)),
+                ),
+                const SizedBox(height: 12),
+                SwitchListTile(
+                  title: const AiTranslatedText('Incluir no Relatório Anual',
+                      style: TextStyle(color: Colors.white70, fontSize: 13)),
+                  value: includeInAnnualReport,
+                  onChanged: (val) => setDialogState(() => includeInAnnualReport = val),
+                  activeColor: const Color(0xFF7B61FF),
+                ),
+                SwitchListTile(
+                  title: const AiTranslatedText('Atividade de Controlo (Prazos)',
+                      style: TextStyle(color: Colors.white70, fontSize: 13)),
+                  value: isControlActivity,
+                  onChanged: (val) => setDialogState(() => isControlActivity = val),
+                  activeColor: const Color(0xFF7B61FF),
+                ),
+                const SizedBox(height: 8),
+                StreamBuilder<List<Course>>(
+                  stream: context.read<FirebaseService>().getCoursesStream(widget.institution.id),
+                  builder: (context, snapshot) {
+                    final courses = snapshot.data ?? [];
+                    return DropdownButtonFormField<String?>(
+                      value: targetCourseId,
+                      dropdownColor: const Color(0xFF1E293B),
+                      style: const TextStyle(color: Colors.white),
+                      decoration: const InputDecoration(
+                        labelText: 'Associar a um Curso',
+                        labelStyle: TextStyle(color: Colors.white70),
+                      ),
+                      items: [
+                        const DropdownMenuItem(value: null, child: Text('Nenhum (Institucional)')),
+                        ...courses.map((c) => DropdownMenuItem(value: c.id, child: Text(c.name))),
+                      ],
+                      onChanged: (val) => setDialogState(() => targetCourseId = val),
+                    );
                   },
                 ),
                 const SizedBox(height: 16),
@@ -707,6 +755,9 @@ class _ActivityManagementScreenState extends State<ActivityManagementScreen> {
                   startTime: activity?.startTime ?? '09:00',
                   endTime: activity?.endTime ?? '17:00',
                   hasFinancialImpact: hasFinancialImpact,
+                  includeInAnnualReport: includeInAnnualReport,
+                  targetCourseId: targetCourseId,
+                  isControlActivity: isControlActivity,
                   responsibleName: respNameController.text.trim().isEmpty ? null : respNameController.text.trim(),
                   responsibleEmail: respEmailController.text.trim().isEmpty ? null : respEmailController.text.trim(),
                   responsiblePhone: respPhoneController.text.trim().isEmpty ? null : respPhoneController.text.trim(),

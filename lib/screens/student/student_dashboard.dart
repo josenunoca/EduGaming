@@ -16,6 +16,7 @@ import '../common/communication_center_screen.dart';
 import '../../widgets/messaging_badge.dart';
 import 'student_subject_screen.dart';
 import '../../widgets/user_notices_widget.dart';
+import 'student_surveys_screen.dart';
 
 class StudentDashboard extends StatelessWidget {
   final String? studentId;
@@ -206,6 +207,28 @@ class StudentDashboard extends StatelessWidget {
                     ),
                     const SizedBox(height: 12),
                     UserNoticesWidget(user: student),
+                    const SizedBox(height: 12),
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: double.infinity),
+                      child: OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.white,
+                          side: const BorderSide(color: Color(0xFF7B61FF)),
+                          minimumSize: const Size(double.infinity, 36),
+                          backgroundColor: const Color(0xFF7B61FF).withOpacity(0.1),
+                        ),
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => StudentSurveysScreen(student: student),
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.assignment_outlined),
+                        label: const AiTranslatedText('Inquéritos e Avaliações'),
+                      ),
+                    ),
                     const SizedBox(height: 32),
                     const AiTranslatedText('Inscrições e Acesso',
                         style: TextStyle(

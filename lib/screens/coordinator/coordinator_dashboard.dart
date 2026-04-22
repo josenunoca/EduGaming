@@ -7,6 +7,8 @@ import '../../models/course_model.dart';
 import '../../models/subject_model.dart';
 import '../../widgets/ai_translated_text.dart';
 import '../common/communication_center_screen.dart';
+import 'course_coordinator_monitor_screen.dart';
+import 'course_report_screen.dart';
 
 class CoordinatorDashboard extends StatefulWidget {
   const CoordinatorDashboard({super.key});
@@ -72,12 +74,31 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
                   crossAxisSpacing: 16,
                   mainAxisSpacing: 16,
                   children: [
-                    _MenuCard(
-                      icon: Icons.subject,
-                      title: 'Disciplinas & Sumários',
-                      subtitle: 'Monitorização de conteúdos',
-                      color: const Color(0xFF7B61FF),
-                      onTap: () {},
+                    StreamBuilder<List<Course>>(
+                      stream: service.getCoordinatorCourses(user!.uid),
+                      builder: (context, snapshot) {
+                        final courses = snapshot.data ?? [];
+                        return _MenuCard(
+                          icon: Icons.subject,
+                          title: 'Disciplinas & Sumários',
+                          subtitle: 'Monitorização de conteúdos',
+                          color: const Color(0xFF7B61FF),
+                          onTap: () {
+                            if (courses.isNotEmpty) {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => CourseCoordinatorMonitorScreen(course: courses.first),
+                                ),
+                              );
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Nenhum curso associado.')),
+                              );
+                            }
+                          },
+                        );
+                      },
                     ),
                     _MenuCard(
                       icon: Icons.people,
@@ -99,6 +120,32 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
                       subtitle: 'Audit académico',
                       color: const Color(0xFFF59E0B),
                       onTap: () => _showAuditLogDialog(),
+                    ),
+                    StreamBuilder<List<Course>>(
+                      stream: service.getCoordinatorCourses(user.uid),
+                      builder: (context, snapshot) {
+                        final courses = snapshot.data ?? [];
+                        return _MenuCard(
+                          icon: Icons.analytics,
+                          title: 'Relatórios de Curso',
+                          subtitle: 'Estatísticas e fotos',
+                          color: const Color(0xFFEC4899),
+                          onTap: () {
+                            if (courses.isNotEmpty) {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => CourseReportScreen(course: courses.first),
+                                ),
+                              );
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Nenhum curso associado.')),
+                              );
+                            }
+                          },
+                        );
+                      },
                     ),
                   ],
                 ),

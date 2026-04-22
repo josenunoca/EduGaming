@@ -6,6 +6,8 @@ class SchoolCalendar {
   final List<Holiday> holidays;
   final List<VacationPeriod> vacations;
 
+  final AcademicDeadlines? deadlines;
+
   SchoolCalendar({
     required this.id,
     required this.institutionId,
@@ -13,6 +15,7 @@ class SchoolCalendar {
     this.terms = const [],
     this.holidays = const [],
     this.vacations = const [],
+    this.deadlines,
   });
 
   Map<String, dynamic> toMap() {
@@ -23,6 +26,7 @@ class SchoolCalendar {
       'terms': terms.map((t) => t.toMap()).toList(),
       'holidays': holidays.map((h) => h.toMap()).toList(),
       'vacations': vacations.map((v) => v.toMap()).toList(),
+      if (deadlines != null) 'deadlines': deadlines!.toMap(),
     };
   }
 
@@ -40,6 +44,47 @@ class SchoolCalendar {
       vacations: (map['vacations'] as List? ?? [])
           .map((v) => VacationPeriod.fromMap(v))
           .toList(),
+      deadlines: map['deadlines'] != null
+          ? AcademicDeadlines.fromMap(map['deadlines'])
+          : null,
+    );
+  }
+}
+
+class AcademicDeadlines {
+  final DateTime? programSubmissionDeadline;
+  final DateTime? gradingDeadline; // Final pauta seal deadline
+  final DateTime? surveyDeadline;
+
+  AcademicDeadlines({
+    this.programSubmissionDeadline,
+    this.gradingDeadline,
+    this.surveyDeadline,
+  });
+
+  Map<String, dynamic> toMap() {
+    return {
+      if (programSubmissionDeadline != null)
+        'programSubmissionDeadline':
+            programSubmissionDeadline!.toIso8601String(),
+      if (gradingDeadline != null)
+        'gradingDeadline': gradingDeadline!.toIso8601String(),
+      if (surveyDeadline != null)
+        'surveyDeadline': surveyDeadline!.toIso8601String(),
+    };
+  }
+
+  factory AcademicDeadlines.fromMap(Map<String, dynamic> map) {
+    return AcademicDeadlines(
+      programSubmissionDeadline: map['programSubmissionDeadline'] != null
+          ? DateTime.parse(map['programSubmissionDeadline'])
+          : null,
+      gradingDeadline: map['gradingDeadline'] != null
+          ? DateTime.parse(map['gradingDeadline'])
+          : null,
+      surveyDeadline: map['surveyDeadline'] != null
+          ? DateTime.parse(map['surveyDeadline'])
+          : null,
     );
   }
 }

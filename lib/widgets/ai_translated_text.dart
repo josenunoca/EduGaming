@@ -9,6 +9,8 @@ class AiTranslatedText extends StatelessWidget {
   final TextStyle? style;
   final TextAlign? textAlign;
   final String? contextOverride;
+  final int? maxLines;
+  final TextOverflow? overflow;
 
   const AiTranslatedText(
     this.text, {
@@ -16,6 +18,8 @@ class AiTranslatedText extends StatelessWidget {
     this.style,
     this.textAlign,
     this.contextOverride,
+    this.maxLines,
+    this.overflow,
   });
 
   @override
@@ -25,13 +29,13 @@ class AiTranslatedText extends StatelessWidget {
 
     // Portuguese → no translation needed
     if (targetLang == 'pt') {
-      return Text(text, style: style, textAlign: textAlign);
+      return Text(text, style: style, textAlign: textAlign, maxLines: maxLines, overflow: overflow);
     }
 
     // Static dictionary lookup → zero API calls, instant result
     final staticResult = getStaticTranslation(text, targetLang);
     if (staticResult != null) {
-      return Text(staticResult, style: style, textAlign: textAlign);
+      return Text(staticResult, style: style, textAlign: textAlign, maxLines: maxLines, overflow: overflow);
     }
 
     // Only reach here for dynamic/user-generated content → call AI API
@@ -52,6 +56,8 @@ class AiTranslatedText extends StatelessWidget {
             key: ValueKey(displayedText),
             style: style,
             textAlign: textAlign,
+            maxLines: maxLines,
+            overflow: overflow,
           ),
         );
       },

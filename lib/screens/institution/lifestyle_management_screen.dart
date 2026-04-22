@@ -159,6 +159,8 @@ class _LifestyleManagementScreenState extends State<LifestyleManagementScreen> {
                           type: QuestionType.audio),
                     ],
                     institutionId: 'inst_default',
+                    creatorId: context.read<FirebaseService>().currentUser?.uid ?? 'inst_default',
+                    creatorRole: 'admin',
                     targetRoles: targetRoles,
                     startDate: startDate,
                     endDate: endDate,
