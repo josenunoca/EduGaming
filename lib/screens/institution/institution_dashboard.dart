@@ -20,6 +20,8 @@ import '../common/personal_profile_screen.dart';
 import 'lifestyle_management_screen.dart';
 import '../login_screen.dart';
 import 'delegation_management_screen.dart';
+import 'knowledge/knowledge_management_screen.dart';
+import '../../widgets/app_tile.dart';
 
 class InstitutionDashboard extends StatelessWidget {
   const InstitutionDashboard({super.key});
@@ -177,15 +179,15 @@ class InstitutionDashboard extends StatelessWidget {
                             shrinkWrap: true,
                             physics: const NeverScrollableScrollPhysics(),
                             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 4,
-                              crossAxisSpacing: 8,
-                              mainAxisSpacing: 8,
+                              crossAxisCount: 3,
+                              crossAxisSpacing: 12,
+                              mainAxisSpacing: 12,
                               mainAxisExtent: 160,
                             ),
                             children: [
-                              _DashboardActionCard(
+                              AppTile(
                                 icon: Icons.people,
-                                label: 'Gerir Colaboradores',
+                                label: 'Colaboradores',
                                 color: const Color(0xFF00D1FF),
                                 onTap: () => Navigator.push(
                                   context,
@@ -195,9 +197,9 @@ class InstitutionDashboard extends StatelessWidget {
                                               institution: institution)),
                                 ),
                               ),
-                              _DashboardActionCard(
+                              AppTile(
                                 icon: Icons.admin_panel_settings,
-                                label: 'Gestão Global 360º',
+                                label: 'Gestão Global',
                                 color: const Color(0xFF7B61FF),
                                 onTap: () => Navigator.push(
                                   context,
@@ -207,9 +209,9 @@ class InstitutionDashboard extends StatelessWidget {
                                               institution: institution)),
                                 ),
                               ),
-                              _DashboardActionCard(
+                              AppTile(
                                 icon: Icons.token,
-                                label: 'Gestão de Créditos',
+                                label: 'Créditos',
                                 color: Colors.amber,
                                 onTap: () => Navigator.push(
                                   context,
@@ -219,9 +221,9 @@ class InstitutionDashboard extends StatelessWidget {
                                               institution: institution)),
                                 ),
                               ),
-                              _DashboardActionCard(
+                              AppTile(
                                 icon: Icons.school,
-                                label: 'Gestão Académica',
+                                label: 'Académica',
                                 color: Colors.indigo,
                                 onTap: () => Navigator.push(
                                   context,
@@ -230,7 +232,7 @@ class InstitutionDashboard extends StatelessWidget {
                                           institution: institution)),
                                 ),
                               ),
-                              _DashboardActionCard(
+                              AppTile(
                                   icon: Icons.favorite,
                                   label: 'Estilo de Vida',
                                   color: Colors.pinkAccent,
@@ -240,14 +242,25 @@ class InstitutionDashboard extends StatelessWidget {
                                             builder: (_) =>
                                                 const LifestyleManagementScreen()),
                                       )),
-                              _DashboardActionCard(
+                              AppTile(
                                 icon: Icons.assignment_ind,
-                                label: 'Delegações de Gestão',
+                                label: 'Delegações',
                                 color: Colors.greenAccent,
                                 onTap: () => Navigator.push(
                                   context,
                                   MaterialPageRoute(
                                       builder: (_) => DelegationManagementScreen(
+                                          institution: institution)),
+                                ),
+                              ),
+                              AppTile(
+                                icon: Icons.folder_shared,
+                                label: 'Repositório',
+                                color: Colors.cyanAccent,
+                                onTap: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (_) => KnowledgeManagementScreen(
                                           institution: institution)),
                                 ),
                               ),
@@ -345,42 +358,6 @@ class InstitutionDashboard extends StatelessWidget {
               'Contacte a administração para mais informações.',
               style: TextStyle(color: Colors.white54)),
         ],
-      ),
-    );
-  }
-}
-
-class _DashboardActionCard extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color color;
-  final VoidCallback onTap;
-
-  const _DashboardActionCard({
-    required this.icon,
-    required this.label,
-    required this.color,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      child: GlassCard(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 28, color: color),
-            const SizedBox(height: 2),
-            AiTranslatedText(label,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13)),
-          ],
-        ),
       ),
     );
   }

@@ -13,6 +13,7 @@ class InstitutionModel {
   final String? mbwayPhone;
   final String? paymentEntity;
   final String? paymentReference;
+  final String? iban;
   final String? signatureUrl;
 
   // Monetization & SaaS
@@ -44,6 +45,7 @@ class InstitutionModel {
     this.mbwayPhone,
     this.paymentEntity,
     this.paymentReference,
+    this.iban,
     this.isVerified = false,
     this.isSuspended = false,
     this.signatureUrl,
@@ -71,6 +73,7 @@ class InstitutionModel {
     String? mbwayPhone,
     String? paymentEntity,
     String? paymentReference,
+    String? iban,
     String? signatureUrl,
     String? subscriptionPlan,
     int? aiCredits,
@@ -97,6 +100,7 @@ class InstitutionModel {
       mbwayPhone: mbwayPhone ?? this.mbwayPhone,
       paymentEntity: paymentEntity ?? this.paymentEntity,
       paymentReference: paymentReference ?? this.paymentReference,
+      iban: iban ?? this.iban,
       signatureUrl: signatureUrl ?? this.signatureUrl,
       subscriptionPlan: subscriptionPlan ?? this.subscriptionPlan,
       aiCredits: aiCredits ?? this.aiCredits,
@@ -126,6 +130,7 @@ class InstitutionModel {
       'mbwayPhone': mbwayPhone,
       'paymentEntity': paymentEntity,
       'paymentReference': paymentReference,
+      'iban': iban,
       'isVerified': isVerified,
       'isSuspended': isSuspended,
       if (signatureUrl != null) 'signatureUrl': signatureUrl,
@@ -156,6 +161,7 @@ class InstitutionModel {
       mbwayPhone: map['mbwayPhone'],
       paymentEntity: map['paymentEntity'],
       paymentReference: map['paymentReference'],
+      iban: map['iban'],
       isVerified: map['isVerified'] ?? false,
       isSuspended: map['isSuspended'] ?? false,
       signatureUrl: map['signatureUrl'],

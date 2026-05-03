@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:io';
 import 'package:intl/intl.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
@@ -21,6 +22,11 @@ import '../models/institution_organ_model.dart';
 import '../models/facility_model.dart';
 import '../models/document_model.dart';
 import '../models/activity_model.dart';
+import '../models/hr/hr_schedule_model.dart';
+import '../models/hr/hr_attendance_model.dart';
+import '../models/hr/hr_absence_model.dart';
+import '../models/hr/hr_evaluation_model.dart';
+import '../models/finance/finance_models.dart';
 import '../models/school_calendar_model.dart';
 import '../models/survey_response_summary_model.dart';
 import '../models/course_report_model.dart';
@@ -29,7 +35,7 @@ import '../models/curriculum_model.dart';
 import '../models/annual_report_draft.dart';
 import '../models/invitation_model.dart';
 import '../models/organ_document_model.dart';
-import '../models/credit_transaction.dart';
+import '../models/credit_transaction.dart' as ai;
 import '../models/meeting_model.dart';
 import '../models/council_request_model.dart';
 import '../models/assignment_model.dart';
@@ -37,7 +43,26 @@ import '../models/assignment_model.dart';
 class FirebaseService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _db = FirebaseFirestore.instance;
+  FirebaseFirestore get db => _db;
   final FirebaseStorage _storage = FirebaseStorage.instance;
+
+  UserModel? _cachedUserModel;
+  UserModel? get currentUserModel => _cachedUserModel;
+
+  FirebaseService() {
+    _auth.authStateChanges().listen((user) async {
+      if (user != null) {
+        _cachedUserModel = await getUserModel(user.uid);
+        _db.collection('users').doc(user.uid).snapshots().listen((doc) {
+          if (doc.exists) {
+            _cachedUserModel = UserModel.fromMap(doc.data()!);
+          }
+        });
+      } else {
+        _cachedUserModel = null;
+      }
+    });
+  }
 
   // --- Auth ---
   Stream<User?> get user => _auth.authStateChanges();
@@ -153,6 +178,21 @@ class FirebaseService {
     await ref.putData(fileBytes);
     return await ref.getDownloadURL();
   }
+  
+  Future<String> uploadProfilePhoto(String uid, Uint8List fileBytes) async {
+    final ref = _storage.ref().child('profile_photos').child('$uid.png');
+    await ref.putData(fileBytes);
+    final url = await ref.getDownloadURL();
+    await _db.collection('users').doc(uid).update({'photoUrl': url});
+    return url;
+  }
+
+  Future<String> uploadUserDocument(String uid, Uint8List fileBytes, String fileName) async {
+    final ref = _storage.ref().child('user_documents').child(uid).child(fileName);
+    await ref.putData(fileBytes);
+    return await ref.getDownloadURL();
+  }
+
 
   Stream<List<UserModel>> getChildrenByParent(String parentId) {
     return _db
@@ -339,6 +379,19 @@ class FirebaseService {
     return url;
   }
 
+  Future<String> uploadFile(String filePath, String destination) async {
+    final file = File(filePath);
+    final ref = _storage.ref().child(destination);
+    await ref.putFile(file);
+    return await ref.getDownloadURL();
+  }
+
+  Future<String> uploadFileBytes(Uint8List bytes, String destination) async {
+    final ref = _storage.ref().child(destination);
+    await ref.putData(bytes);
+    return await ref.getDownloadURL();
+  }
+
   // --- File Storage ---
   Future<String?> uploadContentFile(Uint8List bytes, String fileName) async {
     try {
@@ -380,6 +433,28 @@ class FirebaseService {
     }
   }
 
+  /// Logs user feedback on AI responses for institutional knowledge base metrics.
+  Future<void> saveAiFeedback({
+    required String institutionId,
+    required String userId,
+    required String userRole,
+    required String prompt,
+    required String response,
+    required int rating,
+    Map<String, dynamic>? extraData,
+  }) async {
+    await _db.collection('ai_feedback').add({
+      'institutionId': institutionId,
+      'userId': userId,
+      'userRole': userRole,
+      'prompt': prompt,
+      'response': response,
+      'rating': rating,
+      if (extraData != null) 'extraData': extraData,
+      'timestamp': FieldValue.serverTimestamp(),
+    });
+  }
+
   // --- Subject Management ---
   Stream<List<UserModel>> getTeachersByInstitution(String institutionId) {
     return _db
@@ -404,7 +479,7 @@ class FirebaseService {
         .snapshots()
         .map((snapshot) {
       final users = snapshot.docs.map((doc) => UserModel.fromMap(doc.data())).toList();
-      return users.where((u) => u.role != UserRole.student && u.role != UserRole.parent && u.role != UserRole.admin).toList();
+      return users.where((u) => u.role != UserRole.student && u.role != UserRole.parent).toList();
     });
   }
 
@@ -1057,6 +1132,16 @@ class FirebaseService {
     return _db
         .collection('exam_sessions')
         .where('subjectId', isEqualTo: subjectId)
+        .snapshots()
+        .map((s) => s.docs.map((d) => ExamSession.fromMap(d.data())).toList());
+  }
+
+  Stream<List<ExamSession>> streamStudentExamSessions(String studentId, String subjectId) {
+    return _db
+        .collection('exam_sessions')
+        .where('studentId', isEqualTo: studentId)
+        .where('subjectId', isEqualTo: subjectId)
+        .where('status', isEqualTo: 'active')
         .snapshots()
         .map((s) => s.docs.map((d) => ExamSession.fromMap(d.data())).toList());
   }
@@ -1836,12 +1921,12 @@ class FirebaseService {
   }
 
   // --- Credit Management ---
-  Future<void> logCreditTransaction(CreditTransaction tx) async {
+  Future<void> logCreditTransaction(ai.CreditTransaction tx) async {
     // 1. Save transaction
     await _db.collection('credit_transactions').doc(tx.id).set(tx.toMap());
 
     // 2. Update institution balance if it's a recharge
-    if (tx.type == TransactionType.recharge) {
+    if (tx.type == ai.TransactionType.recharge) {
       await _db.collection('institutions').doc(tx.institutionId).update({
         'aiCredits': FieldValue.increment(tx.amount),
         'totalCreditsRecharged': FieldValue.increment(tx.amount),
@@ -1849,7 +1934,7 @@ class FirebaseService {
     }
 
     // 3. Update user consumed credits if it's usage
-    if (tx.type == TransactionType.usage) {
+    if (tx.type == ai.TransactionType.usage) {
       await _db.collection('users').doc(tx.userId).update({
         'totalCreditsConsumed': FieldValue.increment(tx.amount),
       });
@@ -1887,15 +1972,15 @@ class FirebaseService {
     await batch.commit();
   }
 
-  Stream<List<CreditTransaction>> getInstitutionTransactions(
+  Stream<List<ai.CreditTransaction>> getInstitutionTransactions(
       String institutionId) {
     return _db
-        .collection('credit_transactions')
+        .collection('ai_credit_transactions')
         .where('institutionId', isEqualTo: institutionId)
-        .orderBy('timestamp', descending: true)
+        .orderBy('date', descending: true)
         .snapshots()
         .map((s) =>
-            s.docs.map((d) => CreditTransaction.fromMap(d.data())).toList());
+            s.docs.map((d) => ai.CreditTransaction.fromMap(d.data())).toList());
   }
 
   Future<Map<String, List<UserModel>>> getTopConsumptionStats(
@@ -2870,7 +2955,93 @@ Este documento foi gerado com assistência de IA.
     await _db.collection('erp_records').doc(recordId).delete();
   }
 
-  // --- Attendance Management ---
+  // --- HR Specialized Methods ---
+
+  Stream<List<HRShift>> getHRShifts(String institutionId) {
+    return _db.collection('institutions').doc(institutionId).collection('hr_shifts')
+        .snapshots().map((s) => s.docs.map((d) => HRShift.fromMap(d.data())).toList());
+  }
+
+  Future<void> saveHRShift(String institutionId, HRShift shift) async {
+    await _db.collection('institutions').doc(institutionId).collection('hr_shifts')
+        .doc(shift.id).set(shift.toMap());
+  }
+
+  Stream<List<HRScheduleEntry>> getHRSchedule(String institutionId, {DateTime? start, DateTime? end}) {
+    var query = _db.collection('institutions').doc(institutionId).collection('hr_schedule');
+    // Simple way to filter by month/date if needed
+    return query.snapshots().map((s) => s.docs.map((d) => HRScheduleEntry.fromMap(d.data())).toList());
+  }
+
+  Future<void> saveHRScheduleEntries(String institutionId, List<HRScheduleEntry> entries) async {
+    final batch = _db.batch();
+    final coll = _db.collection('institutions').doc(institutionId).collection('hr_schedule');
+    for (var entry in entries) {
+      final id = "${entry.employeeId}_${DateFormat('yyyyMMdd').format(entry.date)}";
+      batch.set(coll.doc(id), entry.toMap());
+    }
+    await batch.commit();
+  }
+
+  Stream<List<HRAttendanceRecord>> getHRAttendance(String institutionId, {DateTime? date, String? employeeId, DateTime? month}) {
+    Query<Map<String, dynamic>> query = _db.collection('institutions').doc(institutionId).collection('hr_attendance');
+    
+    if (employeeId != null) {
+      query = query.where('employeeId', isEqualTo: employeeId);
+    }
+
+    if (date != null) {
+      final dateStr = DateFormat('yyyy-MM-dd').format(date);
+      query = query.where('dateStr', isEqualTo: dateStr);
+    } else if (month != null) {
+      final start = DateTime(month.year, month.month, 1);
+      final end = DateTime(month.year, month.month + 1, 0, 23, 59, 59);
+      query = query.where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(start))
+                   .where('date', isLessThanOrEqualTo: Timestamp.fromDate(end));
+    }
+    
+    return query.snapshots().map((s) => s.docs.map((d) => HRAttendanceRecord.fromMap(d.data())).toList());
+  }
+
+  Future<void> saveHRAttendance(HRAttendanceRecord record) async {
+    final dateStr = DateFormat('yyyy-MM-dd').format(record.date);
+    await _db.collection('institutions').doc(record.institutionId).collection('hr_attendance')
+        .doc(record.id).set({
+          ...record.toMap(),
+          'dateStr': dateStr,
+        });
+  }
+
+  Stream<List<HRAbsence>> getHRAbsences(String institutionId) {
+    return _db.collection('institutions').doc(institutionId).collection('hr_absences')
+        .snapshots().map((s) => s.docs.map((d) => HRAbsence.fromMap(d.data())).toList());
+  }
+
+  Future<void> saveHRAbsence(HRAbsence absence) async {
+    await _db.collection('institutions').doc(absence.institutionId).collection('hr_absences')
+        .doc(absence.id).set(absence.toMap());
+  }
+
+  Stream<List<HRPerformanceEvaluation>> getHRPerformanceEvaluations(String institutionId, String employeeId) {
+    return _db.collection('institutions').doc(institutionId).collection('hr_evaluations')
+        .where('employeeId', isEqualTo: employeeId)
+        .snapshots().map((s) => s.docs.map((d) => HRPerformanceEvaluation.fromMap(d.data())).toList());
+  }
+
+  Future<void> saveHRPerformanceEvaluation(HRPerformanceEvaluation eval) async {
+    await _db.collection('institutions').doc(eval.institutionId).collection('hr_evaluations')
+        .doc(eval.id).set(eval.toMap());
+  }
+
+  Stream<List<HRTraining>> getHRTrainings(String institutionId) {
+    return _db.collection('institutions').doc(institutionId).collection('hr_trainings')
+        .snapshots().map((s) => s.docs.map((d) => HRTraining.fromMap(d.data())).toList());
+  }
+
+  Future<void> saveHRTraining(HRTraining training) async {
+    await _db.collection('institutions').doc(training.institutionId).collection('hr_trainings')
+        .doc(training.id).set(training.toMap());
+  }
   Future<void> saveAttendance(Attendance attendance) async {
     await _db
         .collection('attendance')
@@ -3549,5 +3720,106 @@ Este documento foi gerado com assistência de IA.
     }
     if (DateTime.now().isAfter(a.dueDate)) return AgendaItemStatus.overdue;
     return AgendaItemStatus.pending;
+  }
+
+  Future<void> updateDelegatedRole(String institutionId, String userId, String module, bool add) async {
+    final docRef = _db.collection('institutions').doc(institutionId);
+    final doc = await docRef.get();
+    if (!doc.exists) return;
+
+    final institution = InstitutionModel.fromMap(doc.data()!);
+    final roles = Map<String, List<String>>.from(institution.delegatedRoles);
+    final list = List<String>.from(roles[module] ?? []);
+
+    if (add) {
+      if (!list.contains(userId)) list.add(userId);
+    } else {
+      list.remove(userId);
+    }
+
+    roles[module] = list;
+    await docRef.update({'delegatedRoles': roles});
+  }
+  // --- Finance 360 ---
+  Stream<List<FinanceTransaction>> getFinanceTransactions(String institutionId) {
+    return _db
+        .collection('institutions')
+        .doc(institutionId)
+        .collection('finance_transactions')
+        .orderBy('date', descending: true)
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => FinanceTransaction.fromMap(doc.id, doc.data()))
+            .toList());
+  }
+
+  Future<void> saveFinanceTransaction(FinanceTransaction transaction) async {
+    final batch = _db.batch();
+    final docRef = _db
+        .collection('institutions')
+        .doc(transaction.institutionId)
+        .collection('finance_transactions')
+        .doc();
+    
+    batch.set(docRef, transaction.toMap());
+    
+    // Update budget if applicable
+    final budgets = await _db
+        .collection('institutions')
+        .doc(transaction.institutionId)
+        .collection('finance_budgets')
+        .where('year', isEqualTo: transaction.date.year)
+        .where('category', isEqualTo: transaction.category.name)
+        .get();
+        
+    for (var doc in budgets.docs) {
+      batch.update(doc.reference, {
+        'spentAmount': FieldValue.increment(transaction.type == TransactionType.expense ? transaction.amount : -transaction.amount)
+      });
+    }
+
+    await batch.commit();
+  }
+
+  Stream<List<FinanceInvoice>> getFinanceInvoices(String institutionId) {
+    return _db
+        .collection('institutions')
+        .doc(institutionId)
+        .collection('finance_invoices')
+        .orderBy('issueDate', descending: true)
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => FinanceInvoice.fromMap(doc.id, doc.data()))
+            .toList());
+  }
+
+  Future<void> saveFinanceInvoice(FinanceInvoice invoice) async {
+    await _db
+        .collection('institutions')
+        .doc(invoice.institutionId)
+        .collection('finance_invoices')
+        .doc(invoice.id.isEmpty ? null : invoice.id)
+        .set(invoice.toMap(), SetOptions(merge: true));
+  }
+
+  Stream<List<FinanceBudget>> getFinanceBudgets(String institutionId, int year) {
+    return _db
+        .collection('institutions')
+        .doc(institutionId)
+        .collection('finance_budgets')
+        .where('year', isEqualTo: year)
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => FinanceBudget.fromMap(doc.id, doc.data()))
+            .toList());
+  }
+
+  Future<void> saveFinanceBudget(FinanceBudget budget) async {
+    await _db
+        .collection('institutions')
+        .doc(budget.institutionId)
+        .collection('finance_budgets')
+        .doc(budget.id.isEmpty ? null : budget.id)
+        .set(budget.toMap(), SetOptions(merge: true));
   }
 }

@@ -14,6 +14,11 @@ import '../models/institution_organ_model.dart';
 import '../models/activity_model.dart';
 import '../models/annual_report_draft.dart';
 import '../models/survey_response_summary_model.dart';
+import '../models/hr/hr_attendance_model.dart';
+import '../models/finance/finance_models.dart';
+import '../models/hr/hr_absence_model.dart';
+import '../models/hr/hr_schedule_model.dart';
+import '../models/procurement/procurement_models.dart';
 
 class PdfService {
   static Future<pw.ImageProvider?> _fetchLogo(String? url) async {
@@ -2298,6 +2303,148 @@ class PdfService {
       padding: const pw.EdgeInsets.only(bottom: 8),
       child: pw.Text(title, style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, color: PdfColors.indigo700)),
     );
+  }
+
+  static Future<void> generateHRAttendanceMapPDF({
+    required InstitutionModel institution,
+    required DateTime month,
+    required List<UserModel> employees,
+    required List<HRAttendanceRecord> records,
+    required List<HRAbsence> absences,
+  }) async {
+    final pdf = pw.Document();
+    final logoImage = await _fetchLogo(institution.logoUrl);
+    final monthName = DateFormat('MMMM yyyy').format(month);
+
+    pdf.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4.landscape,
+        header: (context) => _buildHeader(context, 'Mapa de Assiduidade Mensal - $monthName', institution, logoImage),
+        build: (pw.Context context) {
+          return [
+            pw.TableHelper.fromTextArray(
+              headers: ['Colaborador', 'Previsto (h)', 'Real (h)', 'Férias', 'Baixas', 'Faltas', 'Obs'],
+              data: employees.map((emp) {
+                final empRecords = records.where((r) => r.employeeId == emp.id).toList();
+                final empAbsences = absences.where((a) => a.employeeId == emp.id).toList();
+                
+                final vacationDays = empAbsences.where((a) => a.type == AbsenceType.vacation).length;
+                final sickDays = empAbsences.where((a) => a.type == AbsenceType.sickLeave).length;
+                final unjustified = empAbsences.where((a) => a.type == AbsenceType.unjustified).length;
+
+                return [
+                  emp.name,
+                  '160', // Placeholder
+                  '152', // Placeholder
+                  vacationDays.toString(),
+                  sickDays.toString(),
+                  unjustified.toString(),
+                  '',
+                ];
+              }).toList(),
+              headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10),
+              cellStyle: const pw.TextStyle(fontSize: 9),
+              headerDecoration: const pw.BoxDecoration(color: PdfColors.grey200),
+            ),
+          ];
+        },
+      ),
+    );
+
+    await Printing.layoutPdf(onLayout: (format) async => pdf.save(), name: 'Mapa_Assiduidade_${monthName.replaceAll(' ', '_')}.pdf');
+  }
+
+  Future<void> generateFinancialReportPDF({
+    required InstitutionModel institution,
+    required List<FinanceTransaction> transactions,
+    required double balance,
+  }) async {
+    final pdf = pw.Document();
+    final income = transactions.where((t) => t.type == TransactionType.income).fold(0.0, (sum, t) => sum + t.amount);
+    final expense = transactions.where((t) => t.type == TransactionType.expense).fold(0.0, (sum, t) => sum + t.amount);
+
+    pdf.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        build: (pw.Context context) => [
+          pw.Header(
+            level: 0,
+            child: pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              children: [
+                pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Text('Relatorio Financeiro Institucional', style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold)),
+                    pw.Text(institution.name, style: pw.TextStyle(fontSize: 14)),
+                  ],
+                ),
+                pw.Text('Data: ${DateFormat('dd/MM/yyyy').format(DateTime.now())}'),
+              ],
+            ),
+          ),
+          pw.SizedBox(height: 20),
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceAround,
+            children: [
+              _buildStatBox('Receita Total', 'EUR ${income.toStringAsFixed(2)}'),
+              _buildStatBox('Despesa Total', 'EUR ${expense.toStringAsFixed(2)}'),
+              _buildStatBox('Saldo', 'EUR ${balance.toStringAsFixed(2)}'),
+            ],
+          ),
+          pw.SizedBox(height: 30),
+          pw.Text('Historico de Transacoes', style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
+          pw.SizedBox(height: 10),
+          pw.TableHelper.fromTextArray(
+            headers: ['Data', 'Descricao', 'Categoria', 'Tipo', 'Montante'],
+            data: transactions.map((tx) => [
+              DateFormat('dd/MM/yyyy').format(tx.date),
+              tx.description,
+              tx.category.name.toUpperCase(),
+              tx.type.name.toUpperCase(),
+              'EUR ${tx.amount.toStringAsFixed(2)}',
+            ]).toList(),
+            headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+            cellAlignment: pw.Alignment.centerLeft,
+            headerDecoration: const pw.BoxDecoration(color: PdfColors.grey300),
+          ),
+          pw.Footer(
+            trailing: pw.Text('Gerado automaticamente por EduGaming 360 - Pag. ${context.pageNumber} de ${context.pagesCount}'),
+          ),
+        ],
+      ),
+    );
+
+    await Printing.layoutPdf(onLayout: (format) async => pdf.save(), name: 'Relatorio_Financeiro_${institution.name}.pdf');
+  }
+
+
+  static Future<void> printPurchaseOrder(InstitutionModel institution, PurchaseOrder order) async {
+    final pdf = pw.Document();
+    final logoImage = await _fetchLogo(institution.logoUrl);
+
+    pdf.addPage(
+      pw.Page(
+        build: (context) => pw.Column(
+          crossAxisAlignment: pw.CrossAxisAlignment.start,
+          children: [
+            _buildHeader(null, 'Nota de Encomenda #${order.id.substring(0, 8)}', institution, logoImage),
+            pw.SizedBox(height: 20),
+            pw.Text('Fornecedor: ${order.supplierName}', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 14)),
+            pw.Text('Data: ${DateFormat('dd/MM/yyyy HH:mm').format(order.orderDate)}'),
+            pw.SizedBox(height: 20),
+            pw.TableHelper.fromTextArray(
+              headers: ['Artigo', 'Tamanho', 'Quantidade'],
+              data: order.items.map((it) => [it.itemName, it.size, it.quantity.toString()]).toList(),
+            ),
+            pw.Spacer(),
+            pw.Divider(),
+            pw.Text('Documento gerado institucionalmente - ERP EduGaming 360', style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey)),
+          ],
+        ),
+      ),
+    );
+    await Printing.layoutPdf(onLayout: (format) async => pdf.save(), name: 'PO_${order.id}.pdf');
   }
 }
 

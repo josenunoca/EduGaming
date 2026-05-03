@@ -29,6 +29,9 @@ import '../institutional/meeting_list_screen.dart';
 import '../institution/facility_management_screen.dart';
 import '../institution/activity_management_screen.dart';
 import 'surveys/teacher_survey_list_screen.dart';
+import '../user/institutional_ai_chat_screen.dart';
+import '../institution/procurement/procurement_management_screen.dart';
+import '../institution/finance/finance_management_screen.dart';
 
 class TeacherDashboard extends StatefulWidget {
   const TeacherDashboard({super.key});
@@ -208,6 +211,24 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
                         ),
                         tooltip: 'Ver o meu horário escolar',
                       ),
+                      if (teacher.institutionId != null)
+                        IconButton(
+                          icon: const Icon(Icons.psychology, color: Color(0xFF00D1FF)),
+                          onPressed: () {
+                            if (institution != null) {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => InstitutionalAiChatScreen(
+                                    institution: institution,
+                                    user: teacher,
+                                  ),
+                                ),
+                              );
+                            }
+                          },
+                          tooltip: 'Assistente de Apoio Institucional IA',
+                        ),
                       Tooltip(
                         message: 'Sair da conta e voltar ao ecrã de login',
                         child: IconButton(
@@ -676,10 +697,16 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
         final organs = organSnapshot.data ?? [];
         final delegated = <Map<String, dynamic>>[];
         
-        // Helper to check if a specific key OR its parent is delegated
+        // Helper to check if a specific key OR its parent OR its sub-modules are delegated
         bool isAnyDelegated(String key) {
+          // Direct match
           if (institution.delegatedRoles[key]?.contains(teacher.id) ?? false) return true;
-          // Check parent if applicable
+          
+          // Check if any sub-module is delegated (downwards)
+          final hasSubModule = institution.delegatedRoles.keys.any((k) => k.startsWith('$key:') && (institution.delegatedRoles[k]?.contains(teacher.id) ?? false));
+          if (hasSubModule) return true;
+
+          // Check parent if applicable (upwards)
           if (key.contains(':')) {
             final parent = key.split(':').first;
             if (institution.delegatedRoles[parent]?.contains(teacher.id) ?? false) return true;
@@ -765,6 +792,24 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
             'icon': Icons.supervised_user_circle,
             'color': Colors.tealAccent,
             'page': DelegationManagementScreen(institution: institution),
+          });
+        }
+
+        if (isAnyDelegated('procurement')) {
+          delegated.add({
+            'label': 'Aprovisionamento e Stocks',
+            'icon': Icons.inventory_2,
+            'color': Colors.orange,
+            'page': ProcurementManagementScreen(institution: institution),
+          });
+        }
+
+        if (isAnyDelegated('finance')) {
+          delegated.add({
+            'label': 'Gestão Financeira',
+            'icon': Icons.account_balance_wallet,
+            'color': Colors.greenAccent,
+            'page': FinanceManagementScreen(institution: institution),
           });
         }
 

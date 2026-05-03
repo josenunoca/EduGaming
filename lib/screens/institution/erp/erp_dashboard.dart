@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import '../../../models/institution_model.dart';
 import '../../../models/erp_record_model.dart';
-import '../../../widgets/glass_card.dart';
+import '../../../widgets/app_tile.dart';
 import '../../../widgets/ai_translated_text.dart';
 import 'erp_module_screen.dart';
+import '../hr/hr_management_screen.dart';
+import '../finance/finance_management_screen.dart';
+import '../procurement/procurement_management_screen.dart';
 
 class ErpDashboard extends StatelessWidget {
   final InstitutionModel institution;
@@ -47,42 +50,42 @@ class ErpDashboard extends StatelessWidget {
     final modules = [
       _ModuleConfig(
         title: 'Recursos Humanos',
-        subtitle: 'Carreiras, Colaboradores e Salários',
+        subtitle: 'Colaboradores',
         icon: Icons.people_outline,
         color: const Color(0xFF00D1FF),
         module: ErpModule.hr,
       ),
       _ModuleConfig(
         title: 'Financeiro & Contas',
-        subtitle: 'Faturação, Cobranças e Tesouraria',
+        subtitle: 'Contabilidade',
         icon: Icons.account_balance_wallet_outlined,
         color: const Color(0xFF00FF85),
         module: ErpModule.finance,
       ),
       _ModuleConfig(
         title: 'Aprovisionamento',
-        subtitle: 'Compras, Inventário e Manutenção',
+        subtitle: 'Inventário',
         icon: Icons.inventory_2_outlined,
         color: const Color(0xFFFFB800),
         module: ErpModule.procurement,
       ),
       _ModuleConfig(
-        title: 'Marketing & Expansão',
-        subtitle: 'Campanhas e Internacionalização',
+        title: 'Marketing',
+        subtitle: 'Expansão',
         icon: Icons.campaign_outlined,
         color: const Color(0xFFFF4D4D),
         module: ErpModule.marketing,
       ),
       _ModuleConfig(
         title: 'Infraestruturas',
-        subtitle: 'Gestão de Edifícios e Equipamentos',
+        subtitle: 'Edifícios',
         icon: Icons.business_outlined,
         color: const Color(0xFF7B61FF),
         module: ErpModule.infrastructure,
       ),
       _ModuleConfig(
-        title: 'Jurídico & Compliance',
-        subtitle: 'Contratos e Proteção de Dados',
+        title: 'Jurídico',
+        subtitle: 'Compliance',
         icon: Icons.gavel_outlined,
         color: Colors.grey,
         module: ErpModule.legal,
@@ -93,15 +96,61 @@ class ErpDashboard extends StatelessWidget {
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        crossAxisSpacing: 20,
-        mainAxisSpacing: 20,
-        childAspectRatio: 0.85,
+        crossAxisCount: 3,
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 12,
+        mainAxisExtent: 160,
       ),
       itemCount: modules.length,
       itemBuilder: (context, index) {
         final config = modules[index];
-        return _ErpModuleCard(config: config, institution: institution);
+        return AppTile(
+          label: config.title,
+          subtitle: config.subtitle,
+          icon: config.icon,
+          photoUrl: config.photoUrl,
+          color: config.color,
+          onTap: () {
+            if (config.module == ErpModule.hr) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => HRManagementScreen(institution: institution),
+                ),
+              );
+              return;
+            }
+            if (config.module == ErpModule.finance) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => FinanceManagementScreen(institution: institution),
+                ),
+              );
+              return;
+            }
+            if (config.module == ErpModule.procurement) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ProcurementManagementScreen(institution: institution),
+                ),
+              );
+              return;
+            }
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => ErpModuleScreen(
+                  institution: institution,
+                  module: config.module,
+                  title: config.title,
+                  themeColor: config.color,
+                ),
+              ),
+            );
+          },
+        );
       },
     );
   }
@@ -113,6 +162,7 @@ class _ModuleConfig {
   final IconData icon;
   final Color color;
   final ErpModule module;
+  final String? photoUrl;
 
   _ModuleConfig({
     required this.title,
@@ -120,66 +170,6 @@ class _ModuleConfig {
     required this.icon,
     required this.color,
     required this.module,
+    this.photoUrl,
   });
-}
-
-class _ErpModuleCard extends StatelessWidget {
-  final _ModuleConfig config;
-  final InstitutionModel institution;
-
-  const _ErpModuleCard({required this.config, required this.institution});
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => ErpModuleScreen(
-              institution: institution,
-              module: config.module,
-              title: config.title,
-              themeColor: config.color,
-            ),
-          ),
-        );
-      },
-      borderRadius: BorderRadius.circular(20),
-      child: GlassCard(
-        child: Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: config.color.withValues(alpha: 0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(config.icon, size: 40, color: config.color),
-              ),
-              const SizedBox(height: 16),
-              AiTranslatedText(
-                config.title,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                ),
-              ),
-              const SizedBox(height: 4),
-              AiTranslatedText(
-                config.subtitle,
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.white54, fontSize: 11),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 }

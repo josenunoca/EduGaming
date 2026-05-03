@@ -1,4 +1,6 @@
 import 'curriculum_model.dart';
+import 'user_document_model.dart';
+
 
 enum UserRole {
   admin,
@@ -36,6 +38,11 @@ class UserModel {
   final int totalCreditsConsumed; // Total historical consumption
   final String? preferredLanguage; // Support for localization strategy
   final CurriculumModel? curriculum;
+  final String? pushToken; // For FCM
+  final String? whatsappNumber; // For SMS/WhatsApp integration
+  final String? photoUrl;
+  final List<UserDocument> documents;
+
 
   UserModel({
     required this.id,
@@ -62,7 +69,12 @@ class UserModel {
     this.totalCreditsConsumed = 0,
     this.preferredLanguage,
     this.curriculum,
+    this.pushToken,
+    this.whatsappNumber,
+    this.photoUrl,
+    this.documents = const [],
   });
+
 
   Map<String, dynamic> toMap() {
     return {
@@ -90,8 +102,13 @@ class UserModel {
       'totalCreditsConsumed': totalCreditsConsumed,
       if (preferredLanguage != null) 'preferredLanguage': preferredLanguage,
       if (curriculum != null) 'curriculum': curriculum!.toMap(),
+      if (pushToken != null) 'pushToken': pushToken,
+      if (whatsappNumber != null) 'whatsappNumber': whatsappNumber,
+      if (photoUrl != null) 'photoUrl': photoUrl,
+      'documents': documents.map((x) => x.toMap()).toList(),
     };
   }
+
 
   factory UserModel.fromMap(Map<String, dynamic> map) {
     return UserModel(
@@ -123,6 +140,20 @@ class UserModel {
       totalCreditsConsumed: map['totalCreditsConsumed'] ?? 0,
       preferredLanguage: map['preferredLanguage'],
       curriculum: map['curriculum'] != null ? CurriculumModel.fromMap(map['curriculum']) : null,
+      pushToken: map['pushToken'],
+      whatsappNumber: map['whatsappNumber'],
+      photoUrl: map['photoUrl'],
+      documents: map['documents'] != null
+          ? List<UserDocument>.from(
+              map['documents'].map((x) => UserDocument.fromMap(x)))
+          : [],
     );
   }
+
+
+  bool get isAdmin => role == UserRole.admin || role == UserRole.institution;
+  bool get isTeacher => role == UserRole.teacher;
+  bool get isStudent => role == UserRole.student;
+  bool get isParent => role == UserRole.parent;
+  bool get isOrganMember => role == UserRole.courseCoordinator || role == UserRole.admin; // Expanded logic
 }

@@ -752,6 +752,8 @@ class AiGameResult {
   final bool isEvaluation;
   final String? academicYear;
   final double? timeTakenSeconds;
+  /// True when a parent/guardian played this game on behalf of the student.
+  final bool playedByParent;
 
   AiGameResult({
     required this.id,
@@ -772,6 +774,7 @@ class AiGameResult {
     this.isEvaluation = false,
     this.academicYear,
     this.timeTakenSeconds,
+    this.playedByParent = false,
   });
 
   Map<String, dynamic> toMap() {
@@ -796,6 +799,7 @@ class AiGameResult {
       'isEvaluation': isEvaluation,
       if (academicYear != null) 'academicYear': academicYear,
       if (timeTakenSeconds != null) 'timeTakenSeconds': timeTakenSeconds,
+      'playedByParent': playedByParent,
     };
   }
 
@@ -831,6 +835,7 @@ class AiGameResult {
       isEvaluation: map['isEvaluation'] ?? false,
       academicYear: map['academicYear'],
       timeTakenSeconds: (map['timeTakenSeconds'] as num?)?.toDouble(),
+      playedByParent: map['playedByParent'] ?? false,
     );
   }
 }

@@ -270,14 +270,7 @@ class _StudentSubjectScreenState extends State<StudentSubjectScreen>
                 padding: const EdgeInsets.only(bottom: 12.0),
                 child: GlassCard(
                   child: ListTile(
-                    leading: Icon(_getFileIcon(content.type),
-                        color: const Color(0xFF00D1FF)),
-                    title: AiTranslatedText(content.name,
-                        style: const TextStyle(color: Colors.white)),
-                    subtitle: AiTranslatedText(content.type.toUpperCase(),
-                        style: const TextStyle(
-                            color: Colors.white38, fontSize: 11)),
-                    trailing: Checkbox(
+                    leading: Checkbox(
                       value: _selectedContents.any((c) => c.id == content.id),
                       onChanged: (selected) {
                         setState(() {
@@ -292,18 +285,40 @@ class _StudentSubjectScreenState extends State<StudentSubjectScreen>
                       activeColor: const Color(0xFF00D1FF),
                       checkColor: const Color(0xFF0F172A),
                     ),
+                    title: AiTranslatedText(content.name,
+                        style: const TextStyle(color: Colors.white)),
+                    subtitle: AiTranslatedText(content.type.toUpperCase(),
+                        style: const TextStyle(
+                            color: Colors.white38, fontSize: 11)),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.open_in_new,
+                          color: Color(0xFF00D1FF), size: 20),
+                      tooltip: 'Abrir ficheiro',
+                      onPressed: () {
+                        _checkAccessAndLaunch(
+                          subject: subject,
+                          itemId: content.id,
+                          onGranted: () async {
+                            final uri = Uri.tryParse(content.url);
+                            if (uri != null && await canLaunchUrl(uri)) {
+                              await launchUrl(uri,
+                                  mode: LaunchMode.externalApplication);
+                            }
+                          },
+                        );
+                      },
+                    ),
                     onTap: () {
-                      _checkAccessAndLaunch(
-                        subject: subject,
-                        itemId: content.id,
-                        onGranted: () async {
-                          final uri = Uri.tryParse(content.url);
-                          if (uri != null && await canLaunchUrl(uri)) {
-                            await launchUrl(uri,
-                                mode: LaunchMode.externalApplication);
-                          }
-                        },
-                      );
+                      setState(() {
+                        final isSelected =
+                            _selectedContents.any((c) => c.id == content.id);
+                        if (isSelected) {
+                          _selectedContents
+                              .removeWhere((c) => c.id == content.id);
+                        } else {
+                          _selectedContents.add(content);
+                        }
+                      });
                     },
                   ),
                 ),
@@ -340,12 +355,79 @@ class _StudentSubjectScreenState extends State<StudentSubjectScreen>
                   'Ainda não existem jogos de IA para esta disciplina.',
                   style: TextStyle(color: Colors.white38)));
         }
-        return ListView.builder(
+        return ListView(
           padding: const EdgeInsets.all(16),
-          itemCount: games.length,
-          itemBuilder: (context, index) {
-            final game = games[index];
-            return Padding(
+          children: [
+            StreamBuilder<List<ExamSession>>(
+              stream: service.streamStudentExamSessions(
+                widget.studentId ?? FirebaseAuth.instance.currentUser?.uid ?? '',
+                subject.id,
+              ),
+              builder: (context, sessionSnapshot) {
+                final activeSessions = sessionSnapshot.data ?? [];
+                if (activeSessions.isEmpty) return const SizedBox.shrink();
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Padding(
+                      padding: EdgeInsets.only(bottom: 12.0, left: 4),
+                      child: AiTranslatedText('Jogos em Curso (Continuar)',
+                          style: TextStyle(color: Color(0xFF00D1FF), fontWeight: FontWeight.bold)),
+                    ),
+                    ...activeSessions.map((session) {
+                      final game = games.firstWhere((g) => g.id == session.gameId, 
+                        orElse: () => games.first); // Fallback to first if not found (shouldn't happen)
+                      
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 16.0),
+                        child: GlassCard(
+                          padding: const EdgeInsets.all(16),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.play_circle_fill, color: Color(0xFF00D1FF), size: 40),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    AiTranslatedText(game.title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                                    AiTranslatedText('Questão ${session.currentQuestionIndex + 1}', style: const TextStyle(color: Colors.white54, fontSize: 12)),
+                                  ],
+                                ),
+                              ),
+                              ElevatedButton(
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(builder: (_) => AiGamePlayerScreen(
+                                      game: game,
+                                      isEvaluation: game.isAssessment,
+                                      studentId: widget.studentId,
+                                    )),
+                                  );
+                                },
+                                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF00D1FF), foregroundColor: Colors.black),
+                                child: const AiTranslatedText('Continuar'),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }),
+                    const Divider(color: Colors.white10, height: 32),
+                  ],
+                );
+              },
+            ),
+            const Padding(
+              padding: EdgeInsets.only(bottom: 12.0, left: 4),
+              child: AiTranslatedText('Todos os Jogos',
+                  style: TextStyle(color: Colors.white70, fontWeight: FontWeight.bold)),
+            ),
+            ...List.generate(games.length, (index) {
+              final game = games[index];
+              return Padding(
               padding: const EdgeInsets.only(bottom: 16.0),
               child: GlassCard(
                 padding: const EdgeInsets.all(20),
@@ -445,8 +527,13 @@ class _StudentSubjectScreenState extends State<StudentSubjectScreen>
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                  builder: (_) =>
-                                      AiGamePlayerScreen(game: game)),
+                                  builder: (_) => AiGamePlayerScreen(
+                                        game: game,
+                                        studentId: widget.studentId,
+                                        isParentView: widget.studentId != null &&
+                                            widget.studentId !=
+                                                FirebaseAuth.instance.currentUser?.uid,
+                                      )),
                             );
                           },
                         );
@@ -466,7 +553,8 @@ class _StudentSubjectScreenState extends State<StudentSubjectScreen>
                 ),
               ),
             );
-          },
+            }),
+          ],
         );
       },
     );
@@ -665,6 +753,10 @@ class _StudentSubjectScreenState extends State<StudentSubjectScreen>
                                                           AiGamePlayerScreen(
                                                             game: game,
                                                             isEvaluation: true,
+                                                            studentId: widget.studentId,
+                                                            isParentView: widget.studentId != null &&
+                                                                widget.studentId !=
+                                                                    FirebaseAuth.instance.currentUser?.uid,
                                                           )),
                                                 );
                                               },
@@ -737,9 +829,10 @@ class _StudentSubjectScreenState extends State<StudentSubjectScreen>
     return StreamBuilder<List<StudentGradeAdjustment>>(
       stream: service.getGradeAdjustments(subject.id),
       builder: (context, adjustmentSnapshot) {
+        // FIXED: Use real-time stream instead of one-shot Future
+        // This ensures grades update immediately when a student completes a game
         return StreamBuilder<List<AiGameResult>>(
-          stream:
-              Stream.fromFuture(service.getAllSubjectGameResults(subject.id)),
+          stream: service.getAllSubjectGameResultsStream(subject.id),
           builder: (context, resultsSnapshot) {
             if (resultsSnapshot.connectionState == ConnectionState.waiting) {
               return const Center(child: CircularProgressIndicator());

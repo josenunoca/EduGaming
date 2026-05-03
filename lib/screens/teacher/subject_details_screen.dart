@@ -17,6 +17,8 @@ import 'syllabus_management_screen.dart';
 import 'gamification/exam_monitor_screen.dart';
 import 'subject_statistics_screen.dart';
 import 'attendance_matrix_screen.dart';
+import '../student/ai_game_player_screen.dart';
+
 
 class SubjectDetailsScreen extends StatefulWidget {
   final Subject subject;
@@ -481,23 +483,14 @@ class _SubjectDetailsScreenState extends State<SubjectDetailsScreen>
 
                       return InkWell(
                         key: ValueKey(content.id),
-                        onTap: () async {
-                          final messenger = ScaffoldMessenger.of(context);
-                          final uri = Uri.tryParse(content.url);
-                          if (uri != null) {
-                            if (await canLaunchUrl(uri)) {
-                              await launchUrl(uri,
-                                  mode: LaunchMode.externalApplication);
+                        onTap: () {
+                          setState(() {
+                            if (isSelected) {
+                              _selectedContents.remove(content);
                             } else {
-                              if (mounted) {
-                                messenger.showSnackBar(
-                                  const SnackBar(
-                                      content: Text(
-                                          'Não foi possível abrir o conteúdo.')),
-                                );
-                              }
+                              _selectedContents.add(content);
                             }
-                          }
+                          });
                         },
                         child: Column(
                           children: [
@@ -565,6 +558,20 @@ class _SubjectDetailsScreenState extends State<SubjectDetailsScreen>
                               trailing: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
+                                  IconButton(
+                                    icon: const Icon(Icons.open_in_new,
+                                        color: Color(0xFF00D1FF), size: 18),
+                                    tooltip: 'Abrir ficheiro',
+                                    onPressed: () async {
+                                      final uri = Uri.tryParse(content.url);
+                                      if (uri != null &&
+                                          await canLaunchUrl(uri)) {
+                                        await launchUrl(uri,
+                                            mode:
+                                                LaunchMode.externalApplication);
+                                      }
+                                    },
+                                  ),
                                   if (isEvaluation)
                                     IconButton(
                                       icon: const Icon(Icons.analytics,
@@ -778,53 +785,65 @@ class _SubjectDetailsScreenState extends State<SubjectDetailsScreen>
             .where((c) => c.category != 'support')
             .toList();
 
-        final allEvalItems = [
-          ...evalContents.map((c) {
-            final evalComp = _currentSubject.evaluationComponents
-                .cast<EvaluationComponent?>()
-                .firstWhere((comp) => comp?.contentIds.contains(c.id) ?? false,
-                    orElse: () => null);
-            return {
-              'name': c.name,
-              'weight': evalComp != null
-                  ? '${(evalComp.weight * 100).toInt()}%'
-                  : '0.0',
-              'type': c.category,
-              'id': c.id,
-              'isEvaluation': evalComp != null
-            };
-          }),
-          ..._currentSubject.games.map((g) {
-            final evalComp = _currentSubject.evaluationComponents
-                .cast<EvaluationComponent?>()
-                .firstWhere((comp) => comp?.contentIds.contains(g.id) ?? false,
-                    orElse: () => null);
-            return {
-              'name': g.name,
-              'weight': evalComp != null
-                  ? '${(evalComp.weight * 100).toInt()}%'
-                  : '0.0',
-              'type': 'game',
-              'id': g.id,
-              'isEvaluation': evalComp != null
-            };
-          }),
-          ...aiGames.map((g) {
-            final evalComp = _currentSubject.evaluationComponents
-                .cast<EvaluationComponent?>()
-                .firstWhere((comp) => comp?.contentIds.contains(g.id) ?? false,
-                    orElse: () => null);
-            return {
-              'name': g.title,
-              'weight': evalComp != null
-                  ? '${(evalComp.weight * 100).toInt()}%'
-                  : '0.0',
-              'type': 'ai_game',
-              'id': g.id,
-              'isEvaluation': evalComp != null
-            };
-          }),
-        ];
+        final publishedItems = <Map<String, dynamic>>[];
+        final draftItems = <Map<String, dynamic>>[];
+
+        // Handle SubjectContent (Exams/Support)
+        for (var c in evalContents) {
+          final evalComp = _currentSubject.evaluationComponents
+              .cast<EvaluationComponent?>()
+              .firstWhere((comp) => comp?.contentIds.contains(c.id) ?? false,
+                  orElse: () => null);
+          publishedItems.add({
+            'name': c.name,
+            'weight': evalComp != null ? '${(evalComp.weight * 100).toInt()}%' : '0.0',
+            'type': c.category,
+            'id': c.id,
+            'isEvaluation': evalComp != null,
+            'isPublished': true,
+          });
+        }
+
+        // Handle regular Games
+        for (var g in _currentSubject.games) {
+          final evalComp = _currentSubject.evaluationComponents
+              .cast<EvaluationComponent?>()
+              .firstWhere((comp) => comp?.contentIds.contains(g.id) ?? false,
+                  orElse: () => null);
+          publishedItems.add({
+            'name': g.name,
+            'weight': evalComp != null ? '${(evalComp.weight * 100).toInt()}%' : '0.0',
+            'type': 'game',
+            'id': g.id,
+            'isEvaluation': evalComp != null,
+            'isPublished': true,
+          });
+        }
+
+        // Handle AI Games (the ones that can be drafts)
+        for (var g in aiGames) {
+          final evalComp = _currentSubject.evaluationComponents
+              .cast<EvaluationComponent?>()
+              .firstWhere((comp) => comp?.contentIds.contains(g.id) ?? false,
+                  orElse: () => null);
+          
+          final item = {
+            'name': g.title,
+            'weight': evalComp != null ? '${(evalComp.weight * 100).toInt()}%' : '0.0',
+            'type': 'ai_game',
+            'id': g.id,
+            'isEvaluation': evalComp != null,
+            'isPublished': g.isPublished,
+            'gameObj': g,
+          };
+
+          if (g.isPublished) {
+            publishedItems.add(item);
+          } else {
+            draftItems.add(item);
+          }
+        }
+
 
         return Padding(
           padding: const EdgeInsets.all(16.0),
@@ -839,18 +858,8 @@ class _SubjectDetailsScreenState extends State<SubjectDetailsScreen>
                   backgroundColor: const Color(0xFF7B61FF),
                 ),
               ),
-              const SizedBox(height: 24),
-              const Align(
-                alignment: Alignment.centerLeft,
-                child: AiTranslatedText('Itens de Avaliação e Ranking',
-                    style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white70)),
-              ),
-              const SizedBox(height: 8),
-              Expanded(
-                child: allEvalItems.isEmpty
+                 Expanded(
+                child: publishedItems.isEmpty && draftItems.isEmpty
                     ? const Center(
                         child: AiTranslatedText(
                             'Nenhum exame ou jogo configurado.',
@@ -860,166 +869,43 @@ class _SubjectDetailsScreenState extends State<SubjectDetailsScreen>
                             .getAllSubjectGameResults(_currentSubject.id),
                         builder: (context, resSnapshot) {
                           final allResults = resSnapshot.data ?? [];
-
-                          // Map results by gameId
                           Map<String, List<AiGameResult>> resultsMap = {};
                           for (var r in allResults) {
                             resultsMap.putIfAbsent(r.gameId, () => []).add(r);
                           }
 
-                          return ListView.builder(
-                            itemCount: allEvalItems.length,
-                            itemBuilder: (context, index) {
-                              final item = allEvalItems[index];
-                              final bool isAiGame = item['type'] == 'ai_game';
-                              final itemId = item['id'] as String;
-                              final itemResults = resultsMap[itemId] ?? [];
-
-                              final int totalParticipants = itemResults
-                                  .map((r) => r.studentId)
-                                  .toSet()
-                                  .length;
-                              final double averageScore = itemResults.isEmpty
-                                  ? 0
-                                  : itemResults
-                                          .map((r) => r.score)
-                                          .reduce((a, b) => a + b) /
-                                      itemResults.length;
-
-                              return Card(
-                                color: Colors.white.withValues(alpha: 0.05),
-                                margin: const EdgeInsets.only(bottom: 8),
-                                child: ListTile(
-                                  leading: _buildCategoryBadge(
-                                      item['type'] as String,
-                                      isEvaluation:
-                                          item['isEvaluation'] as bool? ??
-                                              false),
-                                  title: AiTranslatedText(
-                                      item['name'] as String,
-                                      style:
-                                          const TextStyle(color: Colors.white)),
-                                  subtitle: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
+                          return ListView(
+                            children: [
+                              if (draftItems.isNotEmpty) ...[
+                                const Padding(
+                                  padding: EdgeInsets.symmetric(vertical: 12),
+                                  child: Row(
                                     children: [
-                                      Text(
-                                        item['isEvaluation'] == true
-                                            ? 'Peso: ${item['weight']}'
-                                            : 'Peso: NA',
-                                        style: const TextStyle(
-                                            color: Color(0xFF00D1FF),
-                                            fontSize: 11),
-                                      ),
-                                      if (resSnapshot.connectionState ==
-                                          ConnectionState.waiting)
-                                        const SizedBox(
-                                            height: 4,
-                                            child: LinearProgressIndicator(
-                                                minHeight: 1))
-                                      else
-                                        Padding(
-                                          padding:
-                                              const EdgeInsets.only(top: 4.0),
-                                          child: Row(
-                                            children: [
-                                              Icon(Icons.people,
-                                                  size: 12,
-                                                  color: Colors.white
-                                                      .withValues(alpha: 0.5)),
-                                              const SizedBox(width: 4),
-                                              Text('$totalParticipants',
-                                                  style: TextStyle(
-                                                      color: Colors.white
-                                                          .withValues(
-                                                              alpha: 0.7),
-                                                      fontSize: 10)),
-                                              const SizedBox(width: 12),
-                                              Icon(Icons.analytics,
-                                                  size: 12,
-                                                  color: Colors.white
-                                                      .withValues(alpha: 0.5)),
-                                              const SizedBox(width: 4),
-                                              Text(
-                                                  '${averageScore.toStringAsFixed(1)} pts (média)',
-                                                  style: TextStyle(
-                                                      color: Colors.white
-                                                          .withValues(
-                                                              alpha: 0.7),
-                                                      fontSize: 10)),
-                                            ],
-                                          ),
-                                        ),
-                                    ],
-                                  ),
-                                  trailing: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      if (isAiGame)
-                                        IconButton(
-                                          icon: const Icon(Icons.analytics,
-                                              color: Color(0xFF00D1FF)),
-                                          onPressed: () {
-                                            final gameObj = aiGames.firstWhere(
-                                                (g) => g.id == item['id']);
-                                            Navigator.push(
-                                              context,
-                                              MaterialPageRoute(
-                                                  builder: (_) =>
-                                                      AiGameRankingScreen(
-                                                          game: gameObj)),
-                                            );
-                                          },
-                                          tooltip: 'Estatísticas Detalhadas',
-                                        ),
-                                      IconButton(
-                                        icon: const Icon(Icons.delete_outline,
-                                            color: Colors.white24, size: 20),
-                                        onPressed: () async {
-                                          final service =
-                                              context.read<FirebaseService>();
-                                          final hasResults = await service
-                                              .hasEvaluationResults(
-                                            _currentSubject.id,
-                                            gameId: item['id'] as String,
-                                          );
-
-                                          if (hasResults) {
-                                            if (mounted)
-                                              _showLockedItemDialog();
-                                            return;
-                                          }
-
-                                          final confirmed =
-                                              await _confirmDeletetion(
-                                                  'Eliminar Jogo/Exame',
-                                                  'Tem a certeza que quer eliminar este item de avaliação?');
-
-                                          if (confirmed == true && mounted) {
-                                            if (item['type'] == 'ai_game') {
-                                              await service.deleteAiGame(
-                                                  item['id'] as String);
-                                            } else {
-                                              await service
-                                                  .deleteSubjectContent(
-                                                      _currentSubject.id,
-                                                      item['id'] as String);
-                                            }
-                                            setState(() {
-                                              _currentSubject.contents
-                                                  .removeWhere((c) =>
-                                                      c.id == item['id']);
-                                              _currentSubject.games.removeWhere(
-                                                  (g) => g.id == item['id']);
-                                            });
-                                          }
-                                        },
-                                      ),
+                                      Icon(Icons.edit_note, color: Colors.orangeAccent, size: 18),
+                                      SizedBox(width: 8),
+                                      AiTranslatedText('Rascunhos (Não Finalizados)',
+                                        style: TextStyle(color: Colors.orangeAccent, fontWeight: FontWeight.bold, fontSize: 13)),
                                     ],
                                   ),
                                 ),
-                              );
-                            },
+                                ...draftItems.map((item) => _buildEvaluationItemTile(item, resultsMap, resSnapshot, aiGames)),
+                                const Divider(color: Colors.white10, height: 32),
+                              ],
+                              if (publishedItems.isNotEmpty) ...[
+                                const Padding(
+                                  padding: EdgeInsets.symmetric(vertical: 12),
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.check_circle_outline, color: Colors.greenAccent, size: 18),
+                                      SizedBox(width: 8),
+                                      AiTranslatedText('Itens Publicados',
+                                        style: TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold, fontSize: 13)),
+                                    ],
+                                  ),
+                                ),
+                                ...publishedItems.map((item) => _buildEvaluationItemTile(item, resultsMap, resSnapshot, aiGames)),
+                              ],
+                            ],
                           );
                         },
                       ),
@@ -1032,7 +918,137 @@ class _SubjectDetailsScreenState extends State<SubjectDetailsScreen>
     );
   }
 
+
+  Widget _buildEvaluationItemTile(
+      Map<String, dynamic> item,
+      Map<String, List<AiGameResult>> resultsMap,
+      AsyncSnapshot<List<AiGameResult>> resSnapshot,
+      List<AiGame> aiGames) {
+    final bool isAiGame = item['type'] == 'ai_game';
+    final itemId = item['id'] as String;
+    final itemResults = resultsMap[itemId] ?? [];
+
+    final int totalParticipants =
+        itemResults.map((r) => r.studentId).toSet().length;
+    final double averageScore = itemResults.isEmpty
+        ? 0
+        : itemResults.map((r) => r.score).reduce((a, b) => a + b) /
+            itemResults.length;
+
+    return Card(
+      color: Colors.white.withValues(alpha: 0.05),
+      margin: const EdgeInsets.only(bottom: 8),
+      child: ListTile(
+        leading: _buildCategoryBadge(item['type'] as String,
+            isEvaluation: item['isEvaluation'] as bool? ?? false),
+        title: AiTranslatedText(item['name'] as String,
+            style: const TextStyle(color: Colors.white)),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              item['isEvaluation'] == true ? 'Peso: ${item['weight']}' : 'Peso: NA',
+              style: const TextStyle(color: Color(0xFF00D1FF), fontSize: 11),
+            ),
+            if (resSnapshot.connectionState == ConnectionState.waiting)
+              const SizedBox(height: 4, child: LinearProgressIndicator(minHeight: 1))
+            else
+              Padding(
+                padding: const EdgeInsets.only(top: 4.0),
+                child: Row(
+                  children: [
+                    Icon(Icons.people,
+                        size: 12, color: Colors.white.withValues(alpha: 0.5)),
+                    const SizedBox(width: 4),
+                    Text('$totalParticipants',
+                        style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.7),
+                            fontSize: 10)),
+                    const SizedBox(width: 12),
+                    Icon(Icons.analytics,
+                        size: 12, color: Colors.white.withValues(alpha: 0.5)),
+                    const SizedBox(width: 4),
+                    Text('${averageScore.toStringAsFixed(1)} pts (média)',
+                        style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.7),
+                            fontSize: 10)),
+                  ],
+                ),
+              ),
+          ],
+        ),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (isAiGame)
+              IconButton(
+                icon: const Icon(Icons.analytics, color: Color(0xFF00D1FF)),
+                onPressed: () {
+                  final gameObj = aiGames.firstWhere((g) => g.id == item['id']);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => AiGameRankingScreen(game: gameObj)),
+                  );
+                },
+                tooltip: 'Estatísticas Detalhadas',
+              ),
+            IconButton(
+              icon: const Icon(Icons.delete_outline,
+                  color: Colors.white24, size: 20),
+              onPressed: () async {
+                final service = context.read<FirebaseService>();
+                final hasResults = await service.hasEvaluationResults(
+                  _currentSubject.id,
+                  gameId: item['id'] as String,
+                );
+
+                if (hasResults) {
+                  if (mounted) _showLockedItemDialog();
+                  return;
+                }
+
+                final confirmed = await _confirmDeletetion('Eliminar Jogo/Exame',
+                    'Tem a certeza que quer eliminar este item de avaliação?');
+
+                if (confirmed == true && mounted) {
+                  if (item['type'] == 'ai_game') {
+                    await service.deleteAiGame(item['id'] as String);
+                  } else {
+                    await service.deleteSubjectContent(
+                        _currentSubject.id, item['id'] as String);
+                  }
+                  setState(() {
+                    _currentSubject.contents
+                        .removeWhere((c) => c.id == item['id']);
+                    _currentSubject.games
+                        .removeWhere((g) => g.id == item['id']);
+                  });
+                }
+              },
+            ),
+          ],
+        ),
+        onTap: () {
+          if (isAiGame) {
+            final gameObj = aiGames.firstWhere((g) => g.id == item['id']);
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => AiGamePlayerScreen(
+                  game: gameObj,
+                ),
+              ),
+            );
+          }
+        },
+
+      ),
+    );
+  }
+
   Widget _buildStudentsTab() {
+
     final service = context.watch<FirebaseService>();
     return Padding(
       padding: const EdgeInsets.all(16.0),

@@ -8,6 +8,7 @@ import '../../models/user_model.dart';
 import '../../models/institution_model.dart';
 import '../../models/subject_model.dart';
 import '../../widgets/glass_card.dart';
+import '../../widgets/app_tile.dart';
 import 'subject_selection_screen.dart';
 import '../common/personal_profile_screen.dart';
 import '../common/timetable_user_screen.dart';
@@ -17,6 +18,8 @@ import '../../widgets/messaging_badge.dart';
 import 'student_subject_screen.dart';
 import '../../widgets/user_notices_widget.dart';
 import 'student_surveys_screen.dart';
+import '../user/user_uniform_catalog_screen.dart';
+import '../user/institutional_ai_chat_screen.dart';
 
 class StudentDashboard extends StatelessWidget {
   final String? studentId;
@@ -57,6 +60,30 @@ class StudentDashboard extends StatelessWidget {
                       ? 'Conta Suspensa: ${student.name}'
                       : 'Acesso Suspenso'),
                   actions: [
+                    StreamBuilder<InstitutionModel?>(
+                      stream: student.institutionId != null
+                          ? service.getInstitutionStream(student.institutionId!)
+                          : Stream.value(null),
+                      builder: (context, instSnap) {
+                        final institution = instSnap.data;
+                        if (institution == null) return const SizedBox.shrink();
+                        return IconButton(
+                          icon: const Icon(Icons.psychology, color: Colors.cyanAccent),
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => InstitutionalAiChatScreen(
+                                  user: student,
+                                  institution: institution,
+                                ),
+                              ),
+                            );
+                          },
+                          tooltip: 'Apoio Institucional IA',
+                        );
+                      },
+                    ),
                     if (!isViewingAsParent)
                       IconButton(
                         icon: const Icon(Icons.logout),
@@ -141,6 +168,30 @@ class StudentDashboard extends StatelessWidget {
                       ),
                       tooltip: 'Ver o meu horário escolar',
                     ),
+                    StreamBuilder<InstitutionModel?>(
+                      stream: student.institutionId != null
+                          ? service.getInstitutionStream(student.institutionId!)
+                          : Stream.value(null),
+                      builder: (context, instSnap) {
+                        final institution = instSnap.data;
+                        if (institution == null) return const SizedBox.shrink();
+                        return IconButton(
+                          icon: const Icon(Icons.psychology, color: Colors.cyanAccent),
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => InstitutionalAiChatScreen(
+                                  user: student,
+                                  institution: institution,
+                                ),
+                              ),
+                            );
+                          },
+                          tooltip: 'Apoio Institucional IA',
+                        );
+                      },
+                    ),
                     Tooltip(
                       message: 'Abrir centro de mensagens e correspondência',
                       child: MessagingBadge(
@@ -177,9 +228,28 @@ class StudentDashboard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    AiTranslatedText('Olá, ${student.name}',
-                        style: const TextStyle(
-                            fontSize: 16, color: Colors.white70)),
+                    Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 20,
+                          backgroundColor: Colors.white10,
+                          backgroundImage: student.photoUrl != null ? NetworkImage(student.photoUrl!) : null,
+                          child: student.photoUrl == null ? const Icon(Icons.person, color: Colors.white24, size: 20) : null,
+                        ),
+                        const SizedBox(width: 12),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            AiTranslatedText('Olá, ${student.name}',
+                                style: const TextStyle(
+                                    fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold)),
+                            const AiTranslatedText('Bem-vindo ao teu painel de aprendizagem',
+                                style: TextStyle(
+                                    fontSize: 11, color: Colors.white38)),
+                          ],
+                        ),
+                      ],
+                    ),
                     const AiTranslatedText('As Tuas Disciplinas',
                         style: TextStyle(
                             fontSize: 22,
@@ -215,7 +285,7 @@ class StudentDashboard extends StatelessWidget {
                           foregroundColor: Colors.white,
                           side: const BorderSide(color: Color(0xFF7B61FF)),
                           minimumSize: const Size(double.infinity, 36),
-                          backgroundColor: const Color(0xFF7B61FF).withOpacity(0.1),
+                          backgroundColor: const Color(0xFF7B61FF).withValues(alpha: 0.1),
                         ),
                         onPressed: () {
                           Navigator.push(
@@ -228,6 +298,60 @@ class StudentDashboard extends StatelessWidget {
                         icon: const Icon(Icons.assignment_outlined),
                         label: const AiTranslatedText('Inquéritos e Avaliações'),
                       ),
+                    ),
+                    const SizedBox(height: 12),
+                    StreamBuilder<InstitutionModel?>(
+                      stream: student.institutionId != null
+                          ? service.getInstitutionStream(student.institutionId!)
+                          : Stream.value(null),
+                      builder: (context, instSnap) {
+                        final institution = instSnap.data;
+                        if (institution == null) return const SizedBox.shrink();
+                        return GridView(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 3,
+                            crossAxisSpacing: 12,
+                            mainAxisSpacing: 12,
+                            mainAxisExtent: 160,
+                          ),
+                          children: [
+                            AppTile(
+                              icon: Icons.shopping_bag_outlined,
+                              label: 'Loja de Uniformes',
+                              color: const Color(0xFFFF9F1C),
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => UserUniformCatalogScreen(
+                                      institution: institution,
+                                      user: student,
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                            AppTile(
+                              icon: Icons.auto_awesome,
+                              label: 'Apoio IA',
+                              color: Colors.cyanAccent,
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => InstitutionalAiChatScreen(
+                                      user: student,
+                                      institution: institution,
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ],
+                        );
+                      },
                     ),
                     const SizedBox(height: 32),
                     const AiTranslatedText('Inscrições e Acesso',

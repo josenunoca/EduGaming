@@ -8,11 +8,16 @@ import '../../models/institution_model.dart';
 import '../../widgets/ai_translated_text.dart';
 import '../../widgets/messaging_badge.dart';
 import '../../widgets/glass_card.dart';
+import '../../widgets/app_tile.dart';
 import '../common/communication_center_screen.dart';
 import '../student/student_dashboard.dart';
 import '../student/subject_selection_screen.dart';
 import '../login_screen.dart';
 import '../../widgets/branded_title.dart';
+import '../user/institutional_ai_chat_screen.dart';
+import '../user/user_uniform_catalog_screen.dart';
+import '../user/user_order_history_screen.dart';
+import '../../services/procurement_service.dart';
 
 class ParentDashboard extends StatelessWidget {
   const ParentDashboard({super.key});
@@ -86,6 +91,30 @@ class ParentDashboard extends StatelessWidget {
               },
             ),
             actions: [
+              StreamBuilder<InstitutionModel?>(
+                stream: parent.institutionId != null
+                    ? service.getInstitutionStream(parent.institutionId!)
+                    : Stream.value(null),
+                builder: (context, instSnap) {
+                  final institution = instSnap.data;
+                  if (institution == null) return const SizedBox.shrink();
+                  return IconButton(
+                    icon: const Icon(Icons.psychology, color: Colors.cyanAccent),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => InstitutionalAiChatScreen(
+                            user: parent,
+                            institution: institution,
+                          ),
+                        ),
+                      );
+                    },
+                    tooltip: 'Apoio Institucional IA',
+                  );
+                },
+              ),
               MessagingBadge(
                 icon: const Icon(Icons.mail),
                 onPressed: () => Navigator.push(
@@ -127,11 +156,11 @@ class ParentDashboard extends StatelessWidget {
                 final children = snapshot.data ?? [];
 
                 if (children.isEmpty) {
-                  return const Center(
+                  return Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.family_restroom,
+                        const Icon(Icons.family_restroom,
                             size: 64, color: Colors.orange),
                         SizedBox(height: 16),
                         AiTranslatedText(
@@ -146,6 +175,38 @@ class ParentDashboard extends StatelessWidget {
                           'Ainda não registou nenhum dependente.',
                           style: TextStyle(color: Colors.white54),
                         ),
+                        const SizedBox(height: 32),
+                        StreamBuilder<InstitutionModel?>(
+                          stream: parent.institutionId != null
+                              ? service.getInstitutionStream(parent.institutionId!)
+                              : Stream.value(null),
+                          builder: (context, instSnap) {
+                            final institution = instSnap.data;
+                            if (institution == null) return const SizedBox.shrink();
+                            return SizedBox(
+                              width: 280,
+                              child: OutlinedButton.icon(
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: Colors.cyanAccent,
+                                  side: const BorderSide(color: Colors.cyanAccent),
+                                  padding: const EdgeInsets.symmetric(vertical: 16),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                ),
+                                onPressed: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => InstitutionalAiChatScreen(
+                                      user: parent,
+                                      institution: institution,
+                                    ),
+                                  ),
+                                ),
+                                icon: const Icon(Icons.auto_awesome),
+                                label: const AiTranslatedText('Apoio Institucional (IA)'),
+                              ),
+                            );
+                          },
+                        ),
                       ],
                     ),
                   );
@@ -153,9 +214,80 @@ class ParentDashboard extends StatelessWidget {
 
                 return ListView.builder(
                   padding: const EdgeInsets.all(16),
-                  itemCount: children.length,
+                  itemCount: children.length + 2,
                   itemBuilder: (context, index) {
-                    final child = children[index];
+                    if (index == 0) {
+                      return StreamBuilder<InstitutionModel?>(
+                        stream: parent.institutionId != null
+                            ? service.getInstitutionStream(parent.institutionId!)
+                            : Stream.value(null),
+                        builder: (context, instSnap) {
+                          final institution = instSnap.data;
+                          if (institution == null) return const SizedBox.shrink();
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 24),
+                            child: GridView(
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 3,
+                                crossAxisSpacing: 12,
+                                mainAxisSpacing: 12,
+                                mainAxisExtent: 160,
+                              ),
+                              children: [
+                                AppTile(
+                                  icon: Icons.auto_awesome,
+                                  label: 'Apoio IA',
+                                  color: Colors.cyanAccent,
+                                  onTap: () => Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => InstitutionalAiChatScreen(
+                                        user: parent,
+                                        institution: institution,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                AppTile(
+                                  icon: Icons.shopping_bag,
+                                  label: 'Loja',
+                                  color: const Color(0xFF00FF85),
+                                  onTap: () => Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => UserUniformCatalogScreen(
+                                        institution: institution,
+                                        user: parent,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                AppTile(
+                                  icon: Icons.history,
+                                  label: 'Encomendas',
+                                  color: Colors.orangeAccent,
+                                  onTap: () => Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => UserOrderHistoryScreen(
+                                        institution: institution,
+                                        user: parent,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      );
+                    }
+                    if (index == 1) {
+                      return const SizedBox.shrink();
+                    }
+                    final child = children[index - 2];
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 12),
                       child: GlassCard(
@@ -164,11 +296,12 @@ class ParentDashboard extends StatelessWidget {
                         child: Column(
                           children: [
                             ListTile(
-                              leading: const CircleAvatar(
-                                backgroundColor: Color(0xFF7B61FF),
+                              leading: CircleAvatar(
+                                backgroundColor: const Color(0xFF7B61FF),
                                 radius: 16,
-                                child: Icon(Icons.person,
-                                    color: Colors.white, size: 16),
+                                backgroundImage: child.photoUrl != null ? NetworkImage(child.photoUrl!) : null,
+                                child: child.photoUrl == null ? const Icon(Icons.person,
+                                    color: Colors.white, size: 16) : null,
                               ),
                               title: Text(child.name,
                                   style: const TextStyle(

@@ -1288,6 +1288,8 @@ class _TimetableManagementScreenState extends State<TimetableManagementScreen> {
     final subjects =
         await service.getSubjectsByInstitution(widget.institution.id).first;
     final classrooms = await service.getClassrooms(widget.institution.id).first;
+    final teachers =
+        await service.getTeachersByInstitution(widget.institution.id).first;
     final entries = await service
         .getTimetableEntriesStream(
           institutionId: widget.institution.id,
@@ -1396,10 +1398,58 @@ class _TimetableManagementScreenState extends State<TimetableManagementScreen> {
                                                   contents: [],
                                                   games: []))
                                           .name;
-                                  return pw.Text(
-                                    sName,
-                                    style: const pw.TextStyle(fontSize: 8),
-                                    textAlign: pw.TextAlign.center,
+
+                                  final teacher = teachers.firstWhere(
+                                    (t) => t.id == e.teacherId,
+                                    orElse: () => UserModel(
+                                      id: '',
+                                      email: '',
+                                      name: e.teacherId ?? '',
+                                      role: UserRole.teacher,
+                                      adConsent: true,
+                                      dataConsent: true,
+                                    ),
+                                  );
+
+                                  final classroom = classrooms.firstWhere(
+                                    (r) => r.id == e.classroomId,
+                                    orElse: () => Classroom(
+                                      id: '',
+                                      name: e.classroomId ?? '',
+                                      institutionId: '',
+                                    ),
+                                  );
+
+                                  return pw.Padding(
+                                    padding: const pw.EdgeInsets.symmetric(
+                                        vertical: 1),
+                                    child: pw.Column(
+                                      children: [
+                                        pw.Text(
+                                          sName,
+                                          style: pw.TextStyle(
+                                              fontSize: 9,
+                                              fontWeight: pw.FontWeight.bold),
+                                          textAlign: pw.TextAlign.center,
+                                        ),
+                                        if (classroom.name.isNotEmpty && isGlobal)
+                                          pw.Text(
+                                            'Sala: ${classroom.name}',
+                                            style: const pw.TextStyle(
+                                                fontSize: 7,
+                                                color: PdfColors.blue900),
+                                            textAlign: pw.TextAlign.center,
+                                          ),
+                                        if (teacher.name.isNotEmpty)
+                                          pw.Text(
+                                            'Prof: ${teacher.name}',
+                                            style: const pw.TextStyle(
+                                                fontSize: 7,
+                                                color: PdfColors.grey900),
+                                            textAlign: pw.TextAlign.center,
+                                          ),
+                                      ],
+                                    ),
                                   );
                                 }).toList(),
                               ),

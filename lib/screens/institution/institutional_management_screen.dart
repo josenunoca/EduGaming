@@ -6,10 +6,12 @@ import '../../widgets/glass_card.dart';
 import 'academic_management_screen.dart';
 import '../institutional/institutional_organs_screen.dart';
 import 'facility_management_screen.dart';
-import 'document_repository_screen.dart';
+import 'knowledge/knowledge_management_screen.dart';
 import 'activity_management_screen.dart';
+import '../user/institutional_ai_chat_screen.dart';
 import 'surveys/survey_list_screen.dart';
 
+import '../../widgets/app_tile.dart';
 import 'erp/erp_dashboard.dart';
 
 class InstitutionalManagementScreen extends StatelessWidget {
@@ -29,6 +31,23 @@ class InstitutionalManagementScreen extends StatelessWidget {
       backgroundColor: const Color(0xFF0F172A),
       appBar: AppBar(
         title: AiTranslatedText('Gestão 360º - ${institution.name}'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.psychology, color: Colors.cyanAccent),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => InstitutionalAiChatScreen(
+                    institution: institution,
+                    user: currentUser ?? _defaultUser(),
+                  ),
+                ),
+              );
+            },
+            tooltip: 'Apoio Institucional IA',
+          ),
+        ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(24.0),
@@ -58,8 +77,8 @@ class InstitutionalManagementScreen extends StatelessWidget {
                   mainAxisExtent: 160,
                 ),
                 children: [
-                  _ManagementCard(
-                    title: 'Gestão Académica',
+                  AppTile(
+                    label: 'Gestão Académica',
                     subtitle: 'Cursos, Ciclos e Disciplinas',
                     icon: Icons.school,
                     color: const Color(0xFF00D1FF),
@@ -71,8 +90,8 @@ class InstitutionalManagementScreen extends StatelessWidget {
                       ),
                     ),
                   ),
-                  _ManagementCard(
-                    title: 'Órgãos e Atas',
+                  AppTile(
+                    label: 'Órgãos e Atas',
                     subtitle: 'Conselhos e Reuniões IA',
                     icon: Icons.gavel,
                     color: const Color(0xFF7B61FF),
@@ -84,8 +103,8 @@ class InstitutionalManagementScreen extends StatelessWidget {
                       ),
                     ),
                   ),
-                  _ManagementCard(
-                    title: 'Espaços e Horários',
+                  AppTile(
+                    label: 'Espaços e Horários',
                     subtitle: 'Salas e Calendários',
                     icon: Icons.calendar_month,
                     color: const Color(0xFFFFB800),
@@ -97,8 +116,8 @@ class InstitutionalManagementScreen extends StatelessWidget {
                       ),
                     ),
                   ),
-                  _ManagementCard(
-                    title: 'Repositório e Docs',
+                  AppTile(
+                    label: 'Repositório e Docs',
                     subtitle: 'Regulamentos e Propostas',
                     icon: Icons.folder_shared,
                     color: const Color(0xFF00FF85),
@@ -106,12 +125,12 @@ class InstitutionalManagementScreen extends StatelessWidget {
                       context,
                       MaterialPageRoute(
                         builder: (_) =>
-                            DocumentRepositoryScreen(institution: institution),
+                            KnowledgeManagementScreen(institution: institution),
                       ),
                     ),
                   ),
-                  _ManagementCard(
-                    title: 'Plano de Atividades',
+                  AppTile(
+                    label: 'Plano de Atividades',
                     subtitle: 'Eventos, Logística e Relatórios',
                     icon: Icons.event_available,
                     color: const Color(0xFFFF4D4D),
@@ -123,8 +142,8 @@ class InstitutionalManagementScreen extends StatelessWidget {
                       ),
                     ),
                   ),
-                  _ManagementCard(
-                    title: 'Inquéritos e Avaliação',
+                  AppTile(
+                    label: 'Inquéritos e Avaliação',
                     subtitle: 'Satisfação e Desempenho',
                     icon: Icons.poll,
                     color: const Color(0xFF00BFA5),
@@ -138,8 +157,8 @@ class InstitutionalManagementScreen extends StatelessWidget {
                       ),
                     ),
                   ),
-                  _ManagementCard(
-                    title: 'Administração ERP 360º',
+                  AppTile(
+                    label: 'Administração ERP 360º',
                     subtitle: 'RH, Finanças e Operações',
                     icon: Icons.business,
                     color: const Color(0xFFE91E63),
@@ -147,6 +166,21 @@ class InstitutionalManagementScreen extends StatelessWidget {
                       context,
                       MaterialPageRoute(
                         builder: (_) => ErpDashboard(institution: institution),
+                      ),
+                    ),
+                  ),
+                  AppTile(
+                    label: 'Apoio Institucional IA',
+                    subtitle: 'Perguntas sobre a Instituição',
+                    icon: Icons.psychology,
+                    color: const Color(0xFF00D1FF),
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => InstitutionalAiChatScreen(
+                          institution: institution,
+                          user: currentUser ?? _defaultUser(),
+                        ),
                       ),
                     ),
                   ),
@@ -169,70 +203,3 @@ class InstitutionalManagementScreen extends StatelessWidget {
       );
 }
 
-class _ManagementCard extends StatelessWidget {
-  final String title;
-  final String subtitle;
-  final IconData icon;
-  final Color color;
-  final VoidCallback onTap;
-
-  const _ManagementCard({
-    required this.title,
-    required this.subtitle,
-    required this.icon,
-    required this.color,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Tooltip(
-      message: title,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
-        splashColor: color.withValues(alpha: 0.1),
-        highlightColor: color.withValues(alpha: 0.05),
-        child: GlassCard(
-          child: Padding(
-            padding: const EdgeInsets.all(4.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(icon, size: 24, color: color),
-                ),
-                const SizedBox(height: 4),
-                Flexible(
-                  child: AiTranslatedText(
-                    title,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Flexible(
-                  child: AiTranslatedText(
-                    subtitle,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(color: Colors.white54, fontSize: 11),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}

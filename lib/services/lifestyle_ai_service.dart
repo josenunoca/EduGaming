@@ -7,7 +7,7 @@ class LifestyleAiService {
   late final GenerativeModel _model;
 
   LifestyleAiService(this.apiKey) {
-    _model = GenerativeModel(model: 'gemini-flash-latest', apiKey: apiKey);
+    _model = GenerativeModel(model: 'gemini-2.5-flash', apiKey: apiKey);
   }
 
   Future<Map<String, dynamic>> analyzeResults(

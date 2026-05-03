@@ -30,11 +30,18 @@ import 'package:flutter_animate/flutter_animate.dart';
 class AiGamePlayerScreen extends StatefulWidget {
   final AiGame game;
   final bool isEvaluation;
+  /// When a parent opens a child's game, pass the child's studentId here.
+  /// Results will be saved under this ID, not the authenticated user's UID.
+  final String? studentId;
+  /// Set to true when this screen is launched from the parent dashboard.
+  final bool isParentView;
 
   const AiGamePlayerScreen({
     super.key,
     required this.game,
     this.isEvaluation = false,
+    this.studentId,
+    this.isParentView = false,
   });
 
   @override
@@ -86,6 +93,15 @@ class _AiGamePlayerScreenState extends State<AiGamePlayerScreen> {
     final user = service.currentUser;
     if (user == null) return;
 
+    // Block evaluation mode entirely for parent views
+    if (widget.isParentView && widget.isEvaluation) {
+      setState(() {
+        _isBlocked = true;
+        _blockMessage = 'As avaliações formais só podem ser realizadas pelo próprio aluno. Pode acompanhar os resultados no painel do aluno.';
+      });
+      return;
+    }
+
     // Check if user is a student and if the game is published
     final userModel = await service.getUserModel(user.uid);
     if (!mounted) return;
@@ -109,16 +125,19 @@ class _AiGamePlayerScreenState extends State<AiGamePlayerScreen> {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
+    // Use the effective student ID (could be child's ID if parent is viewing)
+    final effectiveStudentId = widget.studentId ?? user.uid;
+
     final existing = await context
         .read<FirebaseService>()
-        .getExamSession(user.uid, widget.game.id);
+        .getExamSession(effectiveStudentId, widget.game.id);
     if (!mounted) return;
 
     if (existing != null) {
       if (existing.status == 'completed') {
         setState(() {
           _isBlocked = true;
-          _blockMessage = 'Já completou esta avaliação.';
+          _blockMessage = 'Este aluno já completou esta avaliação.';
         });
         return;
       }
@@ -133,16 +152,15 @@ class _AiGamePlayerScreenState extends State<AiGamePlayerScreen> {
       }
 
       _currentSession = existing;
-      // Mark as active again if it was authorized or just reopening
       if (!mounted) return;
       await context
           .read<FirebaseService>()
           .setExamSessionStatus(existing.id, 'active');
     } else {
-      // Create new session
+      // Create new session under the correct student ID
       final newSession = ExamSession(
         id: const Uuid().v4(),
-        studentId: user.uid,
+        studentId: effectiveStudentId,
         studentName:
             user.displayName ?? user.email?.split('@').first ?? 'Aluno',
         subjectId: widget.game.subjectId,
@@ -310,6 +328,11 @@ class _AiGamePlayerScreenState extends State<AiGamePlayerScreen> {
 
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
+      // CRITICAL FIX: Use the effective student ID.
+      // When a parent plays on behalf of their child, widget.studentId is the
+      // child's ID. Results MUST be saved under the child's account.
+      final effectiveStudentId = widget.studentId ?? user.uid;
+
       Map<int, int> optionsToSave = finalSelectedOptions ?? {};
       Map<int, Map<String, dynamic>> responsesToSave = studentResponses ?? {};
 
@@ -318,21 +341,32 @@ class _AiGamePlayerScreenState extends State<AiGamePlayerScreen> {
       }
 
       String? academicYear;
+      String? studentName;
       try {
         final subject = await context
             .read<FirebaseService>()
             .getSubject(widget.game.subjectId);
         academicYear = subject?.academicYear;
+
+        // Fetch the actual student name (not the parent's name)
+        if (widget.studentId != null) {
+          final studentModel = await context
+              .read<FirebaseService>()
+              .getUserModel(widget.studentId!);
+          studentName = studentModel?.name;
+        }
       } catch (e) {
-        debugPrint('Error fetching academic year: $e');
+        debugPrint('Error fetching data for result: $e');
       }
 
       final result = AiGameResult(
         id: const Uuid().v4(),
         gameId: widget.game.id,
-        studentId: user.uid,
-        studentName:
-            user.displayName ?? user.email?.split('@').first ?? 'Aluno',
+        studentId: effectiveStudentId,
+        studentName: studentName ??
+            user.displayName ??
+            user.email?.split('@').first ??
+            'Aluno',
         subjectId: widget.game.subjectId,
         score: _score,
         correctAnswers: _correctAnswersIndices,
@@ -343,8 +377,9 @@ class _AiGamePlayerScreenState extends State<AiGamePlayerScreen> {
         isEvaluation: widget.isEvaluation,
         academicYear: academicYear,
         timeTakenSeconds: _totalTimeTaken,
+        playedByParent: widget.isParentView,
       );
-      context.read<FirebaseService>().saveAiGameResult(result);
+      await context.read<FirebaseService>().saveAiGameResult(result);
     }
   }
 

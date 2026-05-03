@@ -9,9 +9,14 @@ import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import '../user/theme_settings_screen.dart';
 import '../user/user_lifestyle_screen.dart';
+import '../user/user_hr_dashboard.dart';
 import '../../services/cv_ai_service.dart';
 import '../../models/curriculum_model.dart';
 import '../../config/app_config.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../../models/user_document_model.dart';
+
+
 
 class PersonalProfileScreen extends StatefulWidget {
   final UserModel user;
@@ -40,10 +45,16 @@ class _PersonalProfileScreenState extends State<PersonalProfileScreen> {
   final _addressController = TextEditingController();
   final _postalCodeController = TextEditingController();
   String? _signatureUrl;
+  String? _photoUrl;
   bool _isUploading = false;
+  bool _isUploadingPhoto = false;
+  bool _isUploadingDoc = false;
   bool _isProcessingCv = false;
   InstitutionModel? _institution;
   CurriculumModel? _curriculum;
+  late List<UserDocument> _documents;
+  final _docNameController = TextEditingController();
+
 
   // Controllers for CV Manual Editing
   final _cvAcademicController = TextEditingController();
@@ -65,6 +76,9 @@ class _PersonalProfileScreenState extends State<PersonalProfileScreen> {
     _addressController.text = widget.user.address ?? '';
     _postalCodeController.text = widget.user.postalCode ?? '';
     _signatureUrl = widget.user.signatureUrl;
+    _photoUrl = widget.user.photoUrl;
+    _documents = List.from(widget.user.documents);
+
     
     if (widget.user.curriculum != null) {
       _loadCurriculumToControllers(widget.user.curriculum!);
@@ -141,8 +155,77 @@ class _PersonalProfileScreenState extends State<PersonalProfileScreen> {
       }
     }
   }
+  Future<void> _pickProfilePhoto() async {
+    final picker = ImagePicker();
+    final image = await picker.pickImage(source: ImageSource.gallery, maxWidth: 512, maxHeight: 512);
+    if (image != null) {
+      final service = context.read<FirebaseService>();
+      setState(() => _isUploadingPhoto = true);
+      try {
+        final bytes = await image.readAsBytes();
+        final url = await service.uploadProfilePhoto(widget.user.id, bytes);
+        if (!mounted) return;
+        setState(() {
+          _photoUrl = url;
+          _isUploadingPhoto = false;
+        });
+      } catch (e) {
+        setState(() => _isUploadingPhoto = false);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Erro ao carregar foto: $e')),
+          );
+        }
+      }
+    }
+  }
+
+  Future<void> _uploadDocument() async {
+    if (_docNameController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Por favor, escreva o nome/tipo do documento.')),
+      );
+      return;
+    }
+
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png'],
+    );
+
+    if (result != null && result.files.single.bytes != null) {
+      setState(() => _isUploadingDoc = true);
+      final bytes = result.files.single.bytes!;
+      final extension = result.files.single.extension ?? 'bin';
+      final fileName = '${DateTime.now().millisecondsSinceEpoch}.$extension';
+      
+      try {
+        final service = context.read<FirebaseService>();
+        final url = await service.uploadUserDocument(widget.user.id, bytes, fileName);
+        
+        if (!mounted) return;
+        setState(() {
+          _documents.add(UserDocument(
+            url: url,
+            name: _docNameController.text.trim(),
+            uploadedAt: DateTime.now(),
+          ));
+          _docNameController.clear();
+          _isUploadingDoc = false;
+        });
+      } catch (e) {
+        setState(() => _isUploadingDoc = false);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Erro ao carregar documento: $e')),
+          );
+        }
+      }
+    }
+  }
 
   Future<void> _uploadAndProcessCv() async {
+
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['pdf'],
@@ -219,9 +302,12 @@ class _PersonalProfileScreenState extends State<PersonalProfileScreen> {
         'address': _addressController.text,
         'postalCode': _postalCodeController.text,
         'signatureUrl': _signatureUrl,
+        'photoUrl': _photoUrl,
         'interests': _tempInterests,
+        'documents': _documents.map((d) => d.toMap()).toList(),
         if (_curriculum != null) 'curriculum': _curriculum!.toMap(),
       });
+
     }
 
     if (mounted) {
@@ -259,7 +345,46 @@ class _PersonalProfileScreenState extends State<PersonalProfileScreen> {
                           fontWeight: FontWeight.bold,
                           color: Colors.white),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 24),
+                    Center(
+                      child: Stack(
+                        children: [
+                          CircleAvatar(
+                            radius: 50,
+                            backgroundColor: Colors.white.withValues(alpha: 0.1),
+                            backgroundImage: _photoUrl != null ? NetworkImage(_photoUrl!) : null,
+                            child: _photoUrl == null
+                                ? const Icon(Icons.person, size: 50, color: Colors.white24)
+                                : null,
+                          ),
+                          Positioned(
+                            bottom: 0,
+                            right: 0,
+                            child: GestureDetector(
+                              onTap: _pickProfilePhoto,
+                              child: Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFF7B61FF),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: _isUploadingPhoto
+                                    ? const SizedBox(
+                                        width: 16,
+                                        height: 16,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Colors.white,
+                                        ),
+                                      )
+                                    : const Icon(Icons.camera_alt, size: 16, color: Colors.white),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 24),
                     TextField(
                       controller: _nameController,
                       style: const TextStyle(color: Colors.white),
@@ -267,6 +392,7 @@ class _PersonalProfileScreenState extends State<PersonalProfileScreen> {
                           labelText: 'Nome Completo / Social',
                           border: OutlineInputBorder()),
                     ),
+
                     const SizedBox(height: 12),
                     TextField(
                       controller: _nifController,
@@ -362,6 +488,89 @@ class _PersonalProfileScreenState extends State<PersonalProfileScreen> {
                       ),
                     ),
                     const SizedBox(height: 32),
+                    const AiTranslatedText(
+                      'Meus Documentos',
+                      style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white),
+                    ),
+                    const AiTranslatedText(
+                      'ID, Carta de Condução, Certificados, etc.',
+                      style: TextStyle(color: Colors.white54, fontSize: 12),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: _docNameController,
+                            style: const TextStyle(color: Colors.white),
+                            decoration: const InputDecoration(
+                              labelText: 'O que é este documento?',
+                              hintText: 'Ex: Carta de Condução',
+                              border: OutlineInputBorder(),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        if (_isUploadingDoc)
+                          const CircularProgressIndicator()
+                        else
+                          IconButton.filled(
+                            onPressed: _uploadDocument,
+                            icon: const Icon(Icons.upload_file),
+                            style: IconButton.styleFrom(
+                                backgroundColor: const Color(0xFF00D1FF)),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    ..._documents.reversed.map((doc) => Container(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.03),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.white10),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.description, color: Colors.white54, size: 20),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(doc.name,
+                                        style: const TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.w500)),
+                                    Text(
+                                        'Carregado em ${doc.uploadedAt.day}/${doc.uploadedAt.month}/${doc.uploadedAt.year}',
+                                        style: const TextStyle(
+                                            color: Colors.white38, fontSize: 11)),
+                                  ],
+                                ),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.visibility, color: Color(0xFF00D1FF), size: 20),
+                                onPressed: () async {
+                                  final url = Uri.parse(doc.url);
+                                  if (await canLaunchUrl(url)) {
+                                    await launchUrl(url, mode: LaunchMode.externalApplication);
+                                  }
+                                },
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.delete, color: Colors.redAccent, size: 20),
+                                onPressed: () => setState(() => _documents.remove(doc)),
+                              ),
+                            ],
+                          ),
+                        )),
+                    const SizedBox(height: 32),
+
                     const Text(
                       'Os Meus Interesses',
                       style: TextStyle(
@@ -461,6 +670,26 @@ class _PersonalProfileScreenState extends State<PersonalProfileScreen> {
                             foregroundColor: Colors.black,
                             minimumSize: const Size(double.infinity, 48)),
                       ),
+                      if (_curriculum?.cvFileUrl != null) ...[
+                        const SizedBox(height: 8),
+                        OutlinedButton.icon(
+                          onPressed: () async {
+                            final url = Uri.parse(_curriculum!.cvFileUrl!);
+                            if (await canLaunchUrl(url)) {
+                              await launchUrl(url, mode: LaunchMode.externalApplication);
+                            }
+                          },
+                          icon: const Icon(Icons.download, color: Color(0xFF00D1FF)),
+                          label: const AiTranslatedText('Ver / Download Documento CV'),
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: Color(0xFF00D1FF)),
+                            foregroundColor: const Color(0xFF00D1FF),
+                            minimumSize: const Size(double.infinity, 44),
+                          ),
+                        ),
+                      ],
+
+
                       const SizedBox(height: 16),
                       // CV Fields manually editable
                       TextField(
@@ -673,6 +902,23 @@ class _PersonalProfileScreenState extends State<PersonalProfileScreen> {
                           MaterialPageRoute(
                               builder: (_) => const UserLifestyleScreen())),
                     ),
+                    const SizedBox(height: 12),
+                    if (widget.user.institutionId != null)
+                      ListTile(
+                        leading: const Icon(Icons.badge, color: Color(0xFF00D1FF)),
+                        title: const AiTranslatedText('A Minha Área RH',
+                            style: TextStyle(color: Colors.white)),
+                        subtitle: const AiTranslatedText('Horários, assiduidade e férias',
+                            style: TextStyle(color: Colors.white54)),
+                        trailing: const Icon(Icons.chevron_right, color: Colors.white24),
+                        tileColor: Colors.white.withValues(alpha: 0.05),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                        onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (_) => UserHRDashboard(user: widget.user))),
+                      ),
                     const SizedBox(height: 32),
                   ],
                 ),

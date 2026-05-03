@@ -105,7 +105,7 @@ class _StudentExamDetailScreenState extends State<StudentExamDetailScreen> {
       final aiService = context.read<AiChatService>();
       final evaluation = await aiService.evaluateMultimodalResponse(
         question: question.question,
-        criteria: question.evaluationCriteria,
+        criteria: question.evaluationCriteria ?? '',
         responseType: response['type'] ?? 'unknown',
         responseValue: response['value'] ?? '',
       );
