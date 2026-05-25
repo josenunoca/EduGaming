@@ -3012,6 +3012,27 @@ Este documento foi gerado com assistência de IA.
         });
   }
 
+  Stream<List<HRScheduleEntry>> getHRScheduleEntries(String institutionId, {String? employeeId, DateTime? start, DateTime? end}) {
+    Query query = _db.collection('institutions').doc(institutionId).collection('hr_schedules');
+    
+    if (employeeId != null) {
+      query = query.where('employeeId', isEqualTo: employeeId);
+    }
+    if (start != null) {
+      query = query.where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(start));
+    }
+    if (end != null) {
+      query = query.where('date', isLessThanOrEqualTo: Timestamp.fromDate(end));
+    }
+    
+    return query.snapshots().map((s) => s.docs.map((d) => HRScheduleEntry.fromMap(d.data() as Map<String, dynamic>)).toList());
+  }
+
+  Future<void> saveHRScheduleEntry(HRScheduleEntry entry) async {
+    await _db.collection('institutions').doc(entry.institutionId).collection('hr_schedules')
+        .doc(entry.id).set(entry.toMap());
+  }
+
   Stream<List<HRAbsence>> getHRAbsences(String institutionId) {
     return _db.collection('institutions').doc(institutionId).collection('hr_absences')
         .snapshots().map((s) => s.docs.map((d) => HRAbsence.fromMap(d.data())).toList());
@@ -3020,6 +3041,17 @@ Este documento foi gerado com assistência de IA.
   Future<void> saveHRAbsence(HRAbsence absence) async {
     await _db.collection('institutions').doc(absence.institutionId).collection('hr_absences')
         .doc(absence.id).set(absence.toMap());
+  }
+
+  Future<HRVacationPlan?> getHRVacationPlan(String institutionId, String employeeId, int year) async {
+    final doc = await _db.collection('institutions').doc(institutionId).collection('hr_vacation_plans')
+        .doc('${employeeId}_$year').get();
+    return doc.exists ? HRVacationPlan.fromMap(doc.data()!) : null;
+  }
+
+  Future<void> saveHRVacationPlan(HRVacationPlan plan) async {
+    await _db.collection('institutions').doc(plan.institutionId).collection('hr_vacation_plans')
+        .doc(plan.id).set(plan.toMap());
   }
 
   Stream<List<HRPerformanceEvaluation>> getHRPerformanceEvaluations(String institutionId, String employeeId) {

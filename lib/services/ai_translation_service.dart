@@ -14,7 +14,7 @@ class AiTranslationService {
 
   AiTranslationService(String apiKey) : _apiKey = apiKey {
     _model = GenerativeModel(
-      model: 'gemini-2.5-flash',
+      model: 'gemini-flash-latest',
       apiKey: _apiKey,
     );
   }

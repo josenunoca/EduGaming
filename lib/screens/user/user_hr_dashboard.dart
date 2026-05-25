@@ -10,6 +10,9 @@ import '../../../widgets/ai_translated_text.dart';
 import '../../../widgets/glass_card.dart';
 import 'widgets/hr_attendance_scanner.dart';
 import 'widgets/hr_face_scanner.dart';
+import 'hr/vacation_request_screen.dart';
+import 'hr/absence_justification_screen.dart';
+import 'hr/schedule_view_screen.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'dart:io';
 
@@ -166,7 +169,12 @@ class _UserHRDashboardState extends State<UserHRDashboard> {
             icon: Icons.beach_access,
             label: 'Marcar Férias',
             color: Colors.orange,
-            onTap: () {},
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => HRVacationRequestScreen(user: widget.user)),
+              );
+            },
           ),
         ),
         const SizedBox(width: 16),
@@ -175,7 +183,12 @@ class _UserHRDashboardState extends State<UserHRDashboard> {
             icon: Icons.assignment_late_outlined,
             label: 'Justificar Falta',
             color: Colors.redAccent,
-            onTap: () {},
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => HRAbsenceJustificationScreen(user: widget.user)),
+              );
+            },
           ),
         ),
         const SizedBox(width: 16),
@@ -184,7 +197,12 @@ class _UserHRDashboardState extends State<UserHRDashboard> {
             icon: Icons.visibility_outlined,
             label: 'Ver Escalas',
             color: Colors.blue,
-            onTap: () {},
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => HRScheduleViewScreen(user: widget.user)),
+              );
+            },
           ),
         ),
       ],

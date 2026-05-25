@@ -529,15 +529,18 @@ class _SubjectDetailsScreenState extends State<SubjectDetailsScreen>
                                     Padding(
                                       padding: const EdgeInsets.only(
                                           left: 28.0, top: 4.0, bottom: 4.0),
-                                      child: Text(
-                                        content.url,
-                                        style: const TextStyle(
-                                            color: Colors.blueAccent,
-                                            fontSize: 12,
-                                            decoration:
-                                                TextDecoration.underline),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
+                                      child: GestureDetector(
+                                        onTap: () => _openUrl(content.url),
+                                        child: Text(
+                                          content.url,
+                                          style: const TextStyle(
+                                              color: Colors.blueAccent,
+                                              fontSize: 12,
+                                              decoration:
+                                                  TextDecoration.underline),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
                                       ),
                                     ),
                                   Row(
@@ -562,15 +565,7 @@ class _SubjectDetailsScreenState extends State<SubjectDetailsScreen>
                                     icon: const Icon(Icons.open_in_new,
                                         color: Color(0xFF00D1FF), size: 18),
                                     tooltip: 'Abrir ficheiro',
-                                    onPressed: () async {
-                                      final uri = Uri.tryParse(content.url);
-                                      if (uri != null &&
-                                          await canLaunchUrl(uri)) {
-                                        await launchUrl(uri,
-                                            mode:
-                                                LaunchMode.externalApplication);
-                                      }
-                                    },
+                                    onPressed: () => _openUrl(content.url),
                                   ),
                                   if (isEvaluation)
                                     IconButton(
@@ -625,6 +620,22 @@ class _SubjectDetailsScreenState extends State<SubjectDetailsScreen>
         _selectedContents.remove(content);
         _updateSubject();
       });
+    }
+  }
+
+  Future<void> _openUrl(String url) async {
+    try {
+      final uri = Uri.parse(url);
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Não foi possível abrir o link: $e'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
     }
   }
 

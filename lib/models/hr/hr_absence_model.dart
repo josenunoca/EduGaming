@@ -61,7 +61,7 @@ class HRVacationPlan {
   final String employeeId;
   final String institutionId;
   final int year;
-  final List<DateTimeRange> periods;
+  final List<HRDateRange> periods;
   final int totalDaysAllowed;
   final int daysUsed;
 
@@ -96,7 +96,7 @@ class HRVacationPlan {
       year: map['year'],
       totalDaysAllowed: map['totalDaysAllowed'] ?? 22,
       daysUsed: map['daysUsed'] ?? 0,
-      periods: (map['periods'] as List? ?? []).map((p) => DateTimeRange(
+      periods: (map['periods'] as List? ?? []).map((p) => HRDateRange(
         start: (p['start'] as Timestamp).toDate(),
         end: (p['end'] as Timestamp).toDate(),
       )).toList(),
@@ -104,8 +104,8 @@ class HRVacationPlan {
   }
 }
 
-class DateTimeRange {
+class HRDateRange {
   final DateTime start;
   final DateTime end;
-  DateTimeRange({required this.start, required this.end});
+  HRDateRange({required this.start, required this.end});
 }

@@ -298,13 +298,7 @@ class _StudentSubjectScreenState extends State<StudentSubjectScreen>
                         _checkAccessAndLaunch(
                           subject: subject,
                           itemId: content.id,
-                          onGranted: () async {
-                            final uri = Uri.tryParse(content.url);
-                            if (uri != null && await canLaunchUrl(uri)) {
-                              await launchUrl(uri,
-                                  mode: LaunchMode.externalApplication);
-                            }
-                          },
+                          onGranted: () => _openUrl(content.url),
                         );
                       },
                     ),
@@ -622,13 +616,7 @@ class _StudentSubjectScreenState extends State<StudentSubjectScreen>
                           _checkAccessAndLaunch(
                             subject: subject,
                             itemId: content.id,
-                            onGranted: () async {
-                              final uri = Uri.tryParse(content.url);
-                              if (uri != null && await canLaunchUrl(uri)) {
-                                await launchUrl(uri,
-                                    mode: LaunchMode.externalApplication);
-                              }
-                            },
+                            onGranted: () => _openUrl(content.url),
                           );
                         },
                       ),
@@ -805,6 +793,22 @@ class _StudentSubjectScreenState extends State<StudentSubjectScreen>
       return Icons.image;
     }
     return Icons.insert_drive_file;
+  }
+
+  Future<void> _openUrl(String url) async {
+    try {
+      final uri = Uri.parse(url);
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Não foi possível abrir o link: $e'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    }
   }
 
   Widget _buildStatItem(String label, String value, Color valueColor) {
@@ -1034,15 +1038,7 @@ class _StudentSubjectScreenState extends State<StudentSubjectScreen>
                                   if (enrollment.certificateUrl != null &&
                                       enrollment.certificateUrl!.isNotEmpty) {
                                     return ElevatedButton.icon(
-                                      onPressed: () async {
-                                        final url = Uri.parse(
-                                            enrollment.certificateUrl!);
-                                        if (await canLaunchUrl(url)) {
-                                          await launchUrl(url,
-                                              mode: LaunchMode
-                                                  .externalApplication);
-                                        }
-                                      },
+                                      onPressed: () => _openUrl(enrollment.certificateUrl!),
                                       icon: const Icon(Icons.workspace_premium),
                                       label: const AiTranslatedText(
                                           'VER CERTIFICADO OFICIAL'),

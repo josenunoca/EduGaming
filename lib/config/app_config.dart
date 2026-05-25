@@ -1,5 +1,5 @@
 class AppConfig {
-  static const String geminiApiKey = "AIzaSyAJQsLIH8WCO-bNKVX_Sl2kTVePcnIUXPI";
+  static const String geminiApiKey = "AIzaSyAxzoL9Q5ijTohxTSgD2OY9O-nFwBKdSg0";
 
   // Firebase Options
   static const String firebaseApiKey =

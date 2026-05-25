@@ -38,7 +38,7 @@ dependencies:
   markdown: ^7.3.0
   audioplayers: ^6.6.0
   record: ^6.2.0
-  image_picker: ^1.2.1
+  image_picker: ^1.2.2
   path_provider: ^2.1.5
   path: ^1.9.1
   jitsi_meet_flutter_sdk: ^11.6.0
