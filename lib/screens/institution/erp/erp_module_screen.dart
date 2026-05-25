@@ -166,15 +166,15 @@ class ErpModuleScreen extends StatelessWidget {
     );
   }
 
-  void _editErpRecord(BuildContext context, FirebaseService service, ErpRecord record) {
+  void _editErpRecord(BuildContext sheetContext, FirebaseService service, ErpRecord record) {
     final titleController = TextEditingController(text: record.title);
     final descController = TextEditingController(text: record.description);
     ErpRecordStatus selectedStatus = record.status;
 
     showDialog(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
+      context: sheetContext,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (stateContext, setDialogState) => AlertDialog(
           backgroundColor: const Color(0xFF1E1E2E),
           title: const AiTranslatedText('Editar Registo', style: TextStyle(color: Colors.white)),
           content: SingleChildScrollView(
@@ -228,7 +228,7 @@ class ErpModuleScreen extends StatelessWidget {
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () => Navigator.pop(dialogContext),
               child: const AiTranslatedText('Cancelar'),
             ),
             ElevatedButton(
@@ -239,9 +239,11 @@ class ErpModuleScreen extends StatelessWidget {
                     'description': descController.text,
                     'status': selectedStatus.name,
                   });
-                  if (context.mounted) {
-                    Navigator.pop(context); // Close dialog
-                    Navigator.pop(context); // Close bottom sheet
+                  if (dialogContext.mounted) {
+                    Navigator.pop(dialogContext); // Close dialog
+                  }
+                  if (sheetContext.mounted) {
+                    Navigator.pop(sheetContext); // Close bottom sheet
                   }
                 }
               },
@@ -253,11 +255,14 @@ class ErpModuleScreen extends StatelessWidget {
     );
   }
 
-  void _manageAttachments(BuildContext context, FirebaseService service, ErpRecord record) {
+  void _manageAttachments(BuildContext sheetContext, FirebaseService service, ErpRecord record) {
+    // Force attachments list to be mutable in case it is initialized as const []
+    final mutableAttachments = List<String>.from(record.attachments);
+
     showDialog(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
+      context: sheetContext,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (stateContext, setDialogState) => AlertDialog(
           backgroundColor: const Color(0xFF1E1E2E),
           title: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -274,27 +279,25 @@ class ErpModuleScreen extends StatelessWidget {
                         if (clipboardData != null && clipboardData.text != null) {
                           final text = clipboardData.text!.trim();
                           if (text.startsWith('data:image/') && text.contains(';base64,')) {
-                            final updatedAttachments = List<String>.from(record.attachments)..add(text);
-                            await service.updateErpRecord(record.id, {'attachments': updatedAttachments});
-                            setDialogState(() {
-                              record.attachments.add(text);
-                            });
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
+                            mutableAttachments.add(text);
+                            await service.updateErpRecord(record.id, {'attachments': mutableAttachments});
+                            setDialogState(() {});
+                            if (stateContext.mounted) {
+                              ScaffoldMessenger.of(stateContext).showSnackBar(
                                 const SnackBar(content: Text('Imagem colada com sucesso!')),
                               );
                             }
                             return;
                           }
                         }
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
+                        if (stateContext.mounted) {
+                          ScaffoldMessenger.of(stateContext).showSnackBar(
                             const SnackBar(content: Text('Nenhuma imagem Base64 detectada na área de transferência.')),
                           );
                         }
                       } catch (e) {
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
+                        if (stateContext.mounted) {
+                          ScaffoldMessenger.of(stateContext).showSnackBar(
                             SnackBar(content: Text('Erro ao colar: $e')),
                           );
                         }
@@ -317,21 +320,19 @@ class ErpModuleScreen extends StatelessWidget {
                             final ext = file.extension?.toLowerCase() ?? 'png';
                             final dataUri = 'data:image/$ext;base64,$base64Data';
                             
-                            final updatedAttachments = List<String>.from(record.attachments)..add(dataUri);
-                            await service.updateErpRecord(record.id, {'attachments': updatedAttachments});
-                            setDialogState(() {
-                              record.attachments.add(dataUri);
-                            });
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
+                            mutableAttachments.add(dataUri);
+                            await service.updateErpRecord(record.id, {'attachments': mutableAttachments});
+                            setDialogState(() {});
+                            if (stateContext.mounted) {
+                              ScaffoldMessenger.of(stateContext).showSnackBar(
                                 const SnackBar(content: Text('Imagem adicionada com sucesso!')),
                               );
                             }
                           }
                         }
                       } catch (e) {
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
+                        if (stateContext.mounted) {
+                          ScaffoldMessenger.of(stateContext).showSnackBar(
                             SnackBar(content: Text('Erro ao carregar imagem: $e')),
                           );
                         }
@@ -360,21 +361,19 @@ class ErpModuleScreen extends StatelessWidget {
                                     : 'application/octet-stream';
                             final dataUri = 'data:$mimeType;base64,$base64Data';
                             
-                            final updatedAttachments = List<String>.from(record.attachments)..add(dataUri);
-                            await service.updateErpRecord(record.id, {'attachments': updatedAttachments});
-                            setDialogState(() {
-                              record.attachments.add(dataUri);
-                            });
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
+                            mutableAttachments.add(dataUri);
+                            await service.updateErpRecord(record.id, {'attachments': mutableAttachments});
+                            setDialogState(() {});
+                            if (stateContext.mounted) {
+                              ScaffoldMessenger.of(stateContext).showSnackBar(
                                 SnackBar(content: Text('Ficheiro "${file.name}" adicionado com sucesso!')),
                               );
                             }
                           }
                         }
                       } catch (e) {
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
+                        if (stateContext.mounted) {
+                          ScaffoldMessenger.of(stateContext).showSnackBar(
                             SnackBar(content: Text('Erro ao anexar ficheiro: $e')),
                           );
                         }
@@ -388,16 +387,16 @@ class ErpModuleScreen extends StatelessWidget {
           content: SizedBox(
             width: double.maxFinite,
             height: 300,
-            child: record.attachments.isEmpty
+            child: mutableAttachments.isEmpty
                 ? const Center(
                     child: Text('Nenhum anexo encontrado. Use os botões acima para colar ou carregar anexos!',
                         style: TextStyle(color: Colors.white54),
                         textAlign: TextAlign.center),
                   )
                 : ListView.builder(
-                    itemCount: record.attachments.length,
+                    itemCount: mutableAttachments.length,
                     itemBuilder: (context, index) {
-                      final attachment = record.attachments[index];
+                      final attachment = mutableAttachments[index];
                       final isBase64Image = attachment.startsWith('data:image/');
                       
                       return Container(
@@ -438,11 +437,9 @@ class ErpModuleScreen extends StatelessWidget {
                             IconButton(
                               icon: const Icon(Icons.delete, color: Colors.redAccent),
                               onPressed: () async {
-                                final updatedAttachments = List<String>.from(record.attachments)..removeAt(index);
-                                await service.updateErpRecord(record.id, {'attachments': updatedAttachments});
-                                setDialogState(() {
-                                  record.attachments.removeAt(index);
-                                });
+                                mutableAttachments.removeAt(index);
+                                await service.updateErpRecord(record.id, {'attachments': mutableAttachments});
+                                setDialogState(() {});
                               },
                             ),
                           ],
@@ -453,7 +450,7 @@ class ErpModuleScreen extends StatelessWidget {
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () => Navigator.pop(dialogContext),
               child: const Text('Fechar', style: TextStyle(color: Colors.white54)),
             ),
           ],
@@ -462,26 +459,28 @@ class ErpModuleScreen extends StatelessWidget {
     );
   }
 
-  void _confirmDeleteErpRecord(BuildContext context, FirebaseService service, ErpRecord record) {
+  void _confirmDeleteErpRecord(BuildContext sheetContext, FirebaseService service, ErpRecord record) {
     showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
+      context: sheetContext,
+      builder: (dialogContext) => AlertDialog(
         backgroundColor: const Color(0xFF1E1E2E),
         title: const AiTranslatedText('Eliminar Registo', style: TextStyle(color: Colors.white)),
         content: Text('Deseja realmente eliminar o registo "${record.title}"? Esta ação não pode ser desfeita.',
             style: const TextStyle(color: Colors.white70)),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const AiTranslatedText('Cancelar'),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
             onPressed: () async {
               await service.deleteErpRecord(record.id);
-              if (context.mounted) {
-                Navigator.pop(context); // Close dialog
-                Navigator.pop(context); // Close bottom sheet
+              if (dialogContext.mounted) {
+                Navigator.pop(dialogContext); // Close dialog
+              }
+              if (sheetContext.mounted) {
+                Navigator.pop(sheetContext); // Close bottom sheet
               }
             },
             child: const AiTranslatedText('Eliminar'),
@@ -498,7 +497,7 @@ class ErpModuleScreen extends StatelessWidget {
       backgroundColor: const Color(0xFF1E1E2E),
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (context) => Padding(
+      builder: (sheetContext) => Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -528,16 +527,16 @@ class ErpModuleScreen extends StatelessWidget {
                 _ActionButton(
                     icon: Icons.edit,
                     label: 'Editar',
-                    onTap: () => _editErpRecord(context, service, record)),
+                    onTap: () => _editErpRecord(sheetContext, service, record)),
                 _ActionButton(
                     icon: Icons.attach_file,
                     label: 'Anexos',
-                    onTap: () => _manageAttachments(context, service, record)),
+                    onTap: () => _manageAttachments(sheetContext, service, record)),
                 _ActionButton(
                     icon: Icons.delete,
                     label: 'Eliminar',
                     color: Colors.redAccent,
-                    onTap: () => _confirmDeleteErpRecord(context, service, record)),
+                    onTap: () => _confirmDeleteErpRecord(sheetContext, service, record)),
               ],
             ),
           ],
