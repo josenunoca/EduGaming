@@ -1042,193 +1042,360 @@ class _AiChatDialogState extends State<AiChatDialog> {
     );
   }
 
-  String _cleanLatex(String t) {
-    return t
-        .replaceAll(r'\ ', ' ')
-        .replaceAll(r'\%', '%')
-        .replaceAll(r'\$', r'$')
-        .replaceAll(r'\&', '&')
-        .replaceAll(r'\_', '_')
+  /// Strips LaTeX commands to clean readable text for PDF
+  String _latexToReadable(String latex) {
+    return latex
+        .replaceAllMapped(RegExp(r'\\text\{([^}]*)\}'), (m) => m.group(1) ?? '')
+        .replaceAllMapped(RegExp(r'\\textbf\{([^}]*)\}'), (m) => m.group(1) ?? '')
+        .replaceAllMapped(RegExp(r'\\mathrm\{([^}]*)\}'), (m) => m.group(1) ?? '')
+        .replaceAllMapped(RegExp(r'\\frac\{([^}]*)\}\{([^}]*)\}'),
+            (m) => '(${m.group(1)})/(${m.group(2)})')
+        .replaceAllMapped(RegExp(r'_\{([^}]*)\}'), (m) => m.group(1) ?? '')
+        .replaceAllMapped(RegExp(r'\^\{([^}]*)\}'), (m) => '^${m.group(1)}')
+        .replaceAll(r'\times', 'Ã—')
+        .replaceAll(r'\cdot', 'Â·')
+        .replaceAll(r'\beta', 'Î²')
+        .replaceAll(r'\alpha', 'Î±')
+        .replaceAll(r'\gamma', 'Î³')
+        .replaceAll(r'\Delta', 'Î”')
+        .replaceAll(r'\delta', 'Î´')
+        .replaceAll(r'\pi', 'Ï€')
+        .replaceAll(r'\infty', 'âˆž')
+        .replaceAll(r'\pm', 'Â±')
+        .replaceAll(r'\leq', 'â‰¤')
+        .replaceAll(r'\geq', 'â‰¥')
+        .replaceAll(r'\neq', 'â‰ ')
+        .replaceAll(r'\approx', 'â‰ˆ')
+        .replaceAll(r'\rightarrow', 'â†’')
+        .replaceAll(r'\leftarrow', 'â†')
+        .replaceAll(r'\mu', 'Î¼')
+        .replaceAll(r'\sigma', 'Ïƒ')
+        .replaceAll(r'\sum', 'Î£')
+        .replaceAll(r'\int', 'âˆ«')
+        .replaceAll(r'\partial', 'âˆ‚')
+        .replaceAll(r'\sqrt', 'âˆš')
+        .replaceAll(r'\lambda', 'Î»')
+        .replaceAll(r'\theta', 'Î¸')
+        .replaceAll(r'\phi', 'Ï†')
         .replaceAll(r'\{', '{')
-        .replaceAll(r'\}', '}');
+        .replaceAll(r'\}', '}')
+        .replaceAll(r'\\', ' ')
+        .trim();
   }
 
-  /// Parses text into a mix of plain text and math widgets for PDF
+  /// Build inline pw.TextSpan list for **bold**, *italic*, $latex$, `code`
+  List<pw.InlineSpan> _buildInlineSpans(
+      String text, pw.Font font, pw.Font boldFont, pw.Font italicFont) {
+    final spans = <pw.InlineSpan>[];
+    final re = RegExp(r'\*\*(.+?)\*\*|\*(.+?)\*|\$([^$]+)\$|`([^`]+)`');
+    int last = 0;
+    for (final m in re.allMatches(text)) {
+      if (m.start > last) {
+        spans.add(pw.TextSpan(
+            text: text.substring(last, m.start),
+            style: pw.TextStyle(font: font, fontSize: 11)));
+      }
+      if (m.group(1) != null) {
+        spans.add(pw.TextSpan(
+            text: m.group(1)!,
+            style: pw.TextStyle(font: boldFont, fontSize: 11)));
+      } else if (m.group(2) != null) {
+        spans.add(pw.TextSpan(
+            text: m.group(2)!,
+            style: pw.TextStyle(
+                font: italicFont, fontSize: 11, color: PdfColors.grey700)));
+      } else if (m.group(3) != null) {
+        spans.add(pw.TextSpan(
+            text: _latexToReadable(m.group(3)!),
+            style: pw.TextStyle(
+                font: italicFont, fontSize: 11, color: PdfColors.blue900)));
+      } else if (m.group(4) != null) {
+        spans.add(pw.TextSpan(
+            text: m.group(4)!,
+            style: pw.TextStyle(
+                font: font,
+                fontSize: 9.5,
+                color: PdfColors.green900,
+                background:
+                    const pw.BoxDecoration(color: PdfColors.grey200))));
+      }
+      last = m.end;
+    }
+    if (last < text.length) {
+      spans.add(pw.TextSpan(
+          text: text.substring(last),
+          style: pw.TextStyle(font: font, fontSize: 11)));
+    }
+    return spans;
+  }
+
+  /// Parse markdown table lines (skip separator rows) into string rows
+  List<List<String>> _parseMarkdownTable(List<String> tableLines) {
+    final rows = <List<String>>[];
+    for (final line in tableLines) {
+      final t = line.trim();
+      if (t.startsWith('|') && !RegExp(r'^\|[\s\-|:]+\|$').hasMatch(t)) {
+        rows.add(t
+            .split('|')
+            .where((c) => c.isNotEmpty)
+            .map((c) => _latexToReadable(
+                c.trim().replaceAll(RegExp(r'\*\*?([^*]+)\*\*?'), r'$1')))
+            .toList());
+      }
+    }
+    return rows;
+  }
+
+  /// Render table rows as a styled pw.Table
+  pw.Widget _buildPdfTable(
+      List<List<String>> rows, pw.Font font, pw.Font boldFont) {
+    if (rows.isEmpty) return pw.SizedBox();
+    final header = rows.first;
+    final data = rows.skip(1).toList();
+    return pw.Table(
+      border: pw.TableBorder.all(color: PdfColors.indigo200, width: 0.5),
+      columnWidths: {
+        for (int i = 0; i < header.length; i++) i: const pw.FlexColumnWidth()
+      },
+      children: [
+        pw.TableRow(
+          decoration: const pw.BoxDecoration(color: PdfColors.indigo700),
+          children: header
+              .map((cell) => pw.Padding(
+                    padding: const pw.EdgeInsets.symmetric(
+                        horizontal: 8, vertical: 5),
+                    child: pw.Text(cell,
+                        style: pw.TextStyle(
+                            font: boldFont,
+                            fontSize: 10,
+                            color: PdfColors.white)),
+                  ))
+              .toList(),
+        ),
+        ...data.asMap().entries.map((e) => pw.TableRow(
+              decoration: pw.BoxDecoration(
+                  color: e.key.isEven ? PdfColors.grey50 : PdfColors.white),
+              children: e.value
+                  .map((cell) => pw.Padding(
+                        padding: const pw.EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
+                        child: pw.Text(cell,
+                            style: pw.TextStyle(font: font, fontSize: 10)),
+                      ))
+                  .toList(),
+            )),
+      ],
+    );
+  }
+
+  /// Full markdown-aware PDF content builder
   List<pw.Widget> _buildPdfRichContent(
       String text, pw.Font font, pw.Font boldFont, pw.Font italicFont) {
-    final List<pw.Widget> blocks = [];
+    final blocks = <pw.Widget>[];
     final lines = text.split('\n');
+    int i = 0;
+    while (i < lines.length) {
+      final trimmed = lines[i].trim();
 
-    for (final line in lines) {
-      final trimmed = line.trim();
       if (trimmed.isEmpty) {
-        blocks.add(pw.SizedBox(height: 8));
+        blocks.add(pw.SizedBox(height: 6));
+        i++;
         continue;
       }
 
-      // Check if line contains LaTeX-like patterns even without $
-      final hasRawMath = line.contains(r'\frac') ||
-          line.contains(r'\times') ||
-          line.contains('_');
-      final mathLayers = line.split(RegExp(r'\$'));
-      final List<pw.Widget> lineWidgets = [];
-
-      int k = 0;
-      while (k < mathLayers.length) {
-        final segment = _cleanLatex(mathLayers[k]);
-        if (segment.isNotEmpty) {
-          // If it's a math segment (between $) OR if the whole line is "raw math"
-          if (k % 2 == 1 || (mathLayers.length == 1 && hasRawMath)) {
-            lineWidgets.add(_buildMathWidget(segment, italicFont));
-          } else {
-            final boldParts = segment.split('**');
-            int m = 0;
-            while (m < boldParts.length) {
-              final t = boldParts[m];
-              if (t.isNotEmpty) {
-                // Check if this "normal" segment has subscripts or symbols
-                if (t.contains('_') || t.contains(r'\times')) {
-                  lineWidgets
-                      .add(_buildMathWidget(t, m % 2 == 1 ? boldFont : font));
-                } else {
-                  lineWidgets.add(pw.Text(t,
-                      style: pw.TextStyle(
-                          font: m % 2 == 1 ? boldFont : font, fontSize: 11)));
-                }
-              }
-              m = m + 1;
-            }
-          }
+      // Code block
+      if (trimmed.startsWith('```')) {
+        final codeLines = <String>[];
+        i++;
+        while (i < lines.length && !lines[i].trim().startsWith('```')) {
+          codeLines.add(lines[i]);
+          i++;
         }
-        k = k + 1;
-      }
-      blocks.add(
-        pw.Container(
-          margin: const pw.EdgeInsets.only(bottom: 6),
-          child: pw.Wrap(
-            crossAxisAlignment: pw.WrapCrossAlignment.center,
-            spacing: 2,
-            children: lineWidgets,
+        i++;
+        blocks.add(pw.Container(
+          margin: const pw.EdgeInsets.symmetric(vertical: 6),
+          padding: const pw.EdgeInsets.all(10),
+          decoration: pw.BoxDecoration(
+            color: PdfColors.grey100,
+            borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4)),
+            border: pw.Border.all(color: PdfColors.grey400, width: 0.5),
           ),
+          child: pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: codeLines
+                .map((cl) => pw.Text(cl,
+                    style: pw.TextStyle(
+                        font: font, fontSize: 9, color: PdfColors.green900)))
+                .toList(),
+          ),
+        ));
+        continue;
+      }
+
+      // Markdown table
+      if (trimmed.startsWith('|')) {
+        final tableLines = <String>[];
+        while (i < lines.length && lines[i].trim().startsWith('|')) {
+          tableLines.add(lines[i]);
+          i++;
+        }
+        final rows = _parseMarkdownTable(tableLines);
+        if (rows.isNotEmpty) {
+          blocks.add(pw.Padding(
+            padding: const pw.EdgeInsets.symmetric(vertical: 8),
+            child: _buildPdfTable(rows, font, boldFont),
+          ));
+        }
+        continue;
+      }
+
+      // H3
+      if (trimmed.startsWith('### ')) {
+        blocks.add(pw.Padding(
+          padding: const pw.EdgeInsets.only(top: 10, bottom: 3),
+          child: pw.Text(trimmed.substring(4),
+              style: pw.TextStyle(
+                  font: boldFont, fontSize: 13, color: PdfColors.indigo600)),
+        ));
+        i++;
+        continue;
+      }
+      // H2
+      if (trimmed.startsWith('## ')) {
+        blocks.add(pw.Padding(
+          padding: const pw.EdgeInsets.only(top: 14, bottom: 4),
+          child: pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              pw.Text(trimmed.substring(3),
+                  style: pw.TextStyle(
+                      font: boldFont,
+                      fontSize: 15,
+                      color: PdfColors.indigo800)),
+              pw.Container(
+                  height: 1,
+                  margin: const pw.EdgeInsets.only(top: 2),
+                  decoration:
+                      const pw.BoxDecoration(color: PdfColors.indigo200)),
+            ],
+          ),
+        ));
+        i++;
+        continue;
+      }
+      // H1
+      if (trimmed.startsWith('# ')) {
+        blocks.add(pw.Padding(
+          padding: const pw.EdgeInsets.only(top: 16, bottom: 6),
+          child: pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              pw.Text(trimmed.substring(2),
+                  style: pw.TextStyle(
+                      font: boldFont,
+                      fontSize: 18,
+                      color: PdfColors.indigo900)),
+              pw.Container(
+                  height: 2,
+                  margin: const pw.EdgeInsets.only(top: 3),
+                  decoration:
+                      const pw.BoxDecoration(color: PdfColors.indigo400)),
+            ],
+          ),
+        ));
+        i++;
+        continue;
+      }
+
+      // Divider
+      if (trimmed == '---' || trimmed == '***' || trimmed == '___') {
+        blocks.add(pw.Divider(thickness: 0.5, color: PdfColors.grey400));
+        i++;
+        continue;
+      }
+
+      // Numbered list
+      final numM = RegExp(r'^(\d+)\. (.+)').firstMatch(trimmed);
+      if (numM != null) {
+        blocks.add(pw.Padding(
+          padding: const pw.EdgeInsets.only(left: 16, bottom: 3),
+          child: pw.RichText(
+            text: pw.TextSpan(children: [
+              pw.TextSpan(
+                  text: '${numM.group(1)}. ',
+                  style: pw.TextStyle(
+                      font: boldFont,
+                      fontSize: 11,
+                      color: PdfColors.indigo700)),
+              ..._buildInlineSpans(
+                  numM.group(2)!, font, boldFont, italicFont),
+            ]),
+          ),
+        ));
+        i++;
+        continue;
+      }
+
+      // Bullet list
+      if (trimmed.startsWith('- ') ||
+          trimmed.startsWith('* ') ||
+          trimmed.startsWith('â€¢ ')) {
+        final content = trimmed.substring(2);
+        blocks.add(pw.Padding(
+          padding: const pw.EdgeInsets.only(left: 16, bottom: 3),
+          child: pw.RichText(
+            text: pw.TextSpan(children: [
+              pw.TextSpan(
+                  text: 'â€¢ ',
+                  style: pw.TextStyle(
+                      font: boldFont,
+                      fontSize: 11,
+                      color: PdfColors.indigo600)),
+              ..._buildInlineSpans(content, font, boldFont, italicFont),
+            ]),
+          ),
+        ));
+        i++;
+        continue;
+      }
+
+      // Blockquote
+      if (trimmed.startsWith('> ')) {
+        blocks.add(pw.Container(
+          margin: const pw.EdgeInsets.symmetric(vertical: 4),
+          padding:
+              const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: const pw.BoxDecoration(
+            border: pw.Border(
+                left: pw.BorderSide(color: PdfColors.indigo300, width: 3)),
+            color: PdfColors.grey50,
+          ),
+          child: pw.RichText(
+            text: pw.TextSpan(
+                children: _buildInlineSpans(
+                    trimmed.substring(2), font, boldFont, italicFont)),
+          ),
+        ));
+        i++;
+        continue;
+      }
+
+      // Normal paragraph
+      blocks.add(pw.Padding(
+        padding: const pw.EdgeInsets.only(bottom: 5),
+        child: pw.RichText(
+          text: pw.TextSpan(
+              children:
+                  _buildInlineSpans(trimmed, font, boldFont, italicFont)),
         ),
-      );
+      ));
+      i++;
     }
     return blocks;
   }
-
-  pw.Widget _buildMathWidget(String math, pw.Font mathFont) {
-    String p = math
-        .replaceAll(r'\times', '×')
-        .replaceAll(r'\cdot', '·')
-        .replaceAll(r'\beta', 'β')
-        .replaceAll(r'\Delta', 'Δ')
-        .replaceAll(r'\pi', 'π')
-        .replaceAll(r'\infty', '∞')
-        .replaceAll(r'\pm', '±')
-        .replaceAll(r'\leq', '≤')
-        .replaceAll(r'\geq', '≥')
-        .replaceAll(r'\neq', '≠')
-        .replaceAll(r'\approx', '≈')
-        .replaceAll(r'\rightarrow', '→')
-        .replaceAll(r'\mu', 'μ')
-        .replaceAll(r'\sigma', 'σ')
-        .replaceAll(r'\sum', 'Σ');
-
-    final RegExp fracRegex = RegExp(r'\\frac\{([^}]*)\}\{([^}]*)\}');
-    if (fracRegex.hasMatch(p)) {
-      final List<pw.Widget> rowParts = [];
-      int lastEnd = 0;
-
-      for (final match in fracRegex.allMatches(p)) {
-        if (match.start > lastEnd) {
-          rowParts.add(
-              _buildMathWidget(p.substring(lastEnd, match.start), mathFont));
-        }
-
-        final n = match.group(1) ?? '';
-        final d = match.group(2) ?? '';
-
-        rowParts.add(
-          pw.Padding(
-            padding: const pw.EdgeInsets.symmetric(horizontal: 2),
-            child: pw.Column(
-              mainAxisSize: pw.MainAxisSize.min,
-              children: [
-                _buildMathWidget(n, mathFont),
-                pw.Container(
-                    height: 0.5,
-                    width: (n.length > d.length ? n.length : d.length) * 5.5,
-                    color: PdfColors.black),
-                _buildMathWidget(d, mathFont),
-              ],
-            ),
-          ),
-        );
-        lastEnd = match.end;
-      }
-
-      if (lastEnd < p.length) {
-        rowParts.add(_buildMathWidget(p.substring(lastEnd), mathFont));
-      }
-
-      return pw.Row(
-        mainAxisSize: pw.MainAxisSize.min,
-        crossAxisAlignment: pw.CrossAxisAlignment.center,
-        children: rowParts,
-      );
-    }
-
-    // Subscript handling (e.g. R_d or R_{sub})
-    final RegExp subRegex =
-        RegExp(r'([a-zA-Z0-9])_(\{([^}]*)\}|([a-zA-Z0-9]))');
-    if (subRegex.hasMatch(p)) {
-      final List<pw.Widget> subParts = [];
-      int lastEnd = 0;
-      for (final match in subRegex.allMatches(p)) {
-        if (match.start > lastEnd) {
-          subParts.add(_mathText(p.substring(lastEnd, match.start), mathFont));
-        }
-
-        final base = match.group(1) ?? '';
-        final subscript = match.group(3) ?? match.group(4) ?? '';
-
-        subParts.add(
-          pw.Row(
-            mainAxisSize: pw.MainAxisSize.min,
-            crossAxisAlignment: pw.CrossAxisAlignment.end,
-            children: [
-              _mathText(base, mathFont),
-              pw.Padding(
-                padding: const pw.EdgeInsets.only(bottom: -2),
-                child: pw.Text(subscript,
-                    style: pw.TextStyle(
-                        font: mathFont, fontSize: 7, color: PdfColors.blue900)),
-              ),
-            ],
-          ),
-        );
-        lastEnd = match.end;
-      }
-      if (lastEnd < p.length) {
-        subParts.add(_mathText(p.substring(lastEnd), mathFont));
-      }
-      return pw.Row(mainAxisSize: pw.MainAxisSize.min, children: subParts);
-    }
-
-    return _mathText(p, mathFont);
-  }
-
-  pw.Widget _mathText(String text, pw.Font mathFont) {
-    return pw.Text(
-      text,
-      style: pw.TextStyle(
-        font: mathFont,
-        color: PdfColors.blue900,
-        fontSize: 11,
-      ),
-    );
-  }
 }
+
+
 
 class _MathSyntax extends md.InlineSyntax {
   _MathSyntax() : super(r'\$\$?([^$]+)\$\$?');

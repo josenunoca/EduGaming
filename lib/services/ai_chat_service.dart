@@ -162,13 +162,16 @@ REGRAS DE CONTEÚDO:
 4. NÃO uses conhecimento externo, nem a internet.
 
 REGRAS DE FORMATAÇÃO (OBRIGATÓRIO — segue SEMPRE estas regras em TODAS as respostas):
-- Usa **tabelas markdown** sempre que comparas conceitos, propriedades, fórmulas ou dados numéricos
-- Usa **fórmulas LaTeX** entre \$ para expressões matemáticas: \$E = mc^2\$, \$\\frac{a}{b}\$
-- Usa **blocos de código** com \`\`\` para algoritmos, pseudocódigo ou fórmulas extensas
+- Usa **tabelas markdown** para comparar conceitos, propriedades ou dados numéricos
+- Para estruturas hierárquicas ou árvores, usa **listas indentadas** (NUNCA ASCII art com | - / \\ etc.)
+- Para fórmulas simples usa símbolos Unicode: Σ ∫ ≤ ≥ ≠ ≈ → × ÷ π Δ μ σ ² ³
+- Usa fórmulas \$LaTeX\$ apenas para expressões verdadeiramente complexas: \$\\frac{a}{b}\$
+- Usa **blocos de código** \`\`\` APENAS para código de programação — NUNCA para diagramas
 - Usa **## Cabeçalhos** e **### Sub-cabeçalhos** para estruturar a resposta em secções claras
 - Usa listas numeradas para passos sequenciais e bullets para enumerações
 - Usa **negrito** para termos-chave e *itálico* para definições técnicas
-- Quando apresentas dados numéricos, cria SEMPRE uma tabela comparativa
+- NUNCA uses ASCII art, diagramas de texto ou árvores com caracteres especiais
+- Quando apresentas dados numéricos, cria SEMPRE uma tabela markdown comparativa
 - As respostas devem ser RICAS, BEM ESTRUTURADAS e VISUALMENTE APELATIVAS
 
 Estás a agir como especialista nos seguintes temas: ${contextData.map((c) => c.name).join(', ')}.''';
@@ -188,13 +191,16 @@ REGRAS DE CONTEÚDO:
 4. Apresenta sempre informação verificável e de qualidade.
 
 REGRAS DE FORMATAÇÃO (OBRIGATÓRIO — segue SEMPRE estas regras em TODAS as respostas):
-- Usa **tabelas markdown** sempre que comparas conceitos, propriedades, fórmulas ou dados numéricos
-- Usa **fórmulas LaTeX** entre \$ para expressões matemáticas: \$E = mc^2\$, \$\\frac{a}{b}\$
-- Usa **blocos de código** com \`\`\` para algoritmos, pseudocódigo ou fórmulas extensas
-- Usa **## Cabeçalhos** e **### Sub-cabeçalhos** para estruturar a resposta em secções claras
+- Usa **tabelas markdown** para comparar conceitos, propriedades ou dados numéricos
+- Para estruturas hierárquicas ou árvores, usa **listas indentadas** (NUNCA ASCII art)
+- Para fórmulas simples usa símbolos Unicode: Σ ∫ ≤ ≥ ≠ ≈ → × ÷ π Δ μ σ
+- Usa fórmulas \$LaTeX\$ apenas para expressões complexas: \$\\frac{a}{b}\$
+- Usa **blocos de código** \`\`\` APENAS para código de programação real — NUNCA diagramas
+- Usa **## Cabeçalhos** e **### Sub-cabeçalhos** para estruturar em secções claras
 - Usa listas numeradas para passos sequenciais e bullets para enumerações
 - Usa **negrito** para termos-chave e *itálico* para definições técnicas
-- Quando apresentas dados numéricos, cria SEMPRE uma tabela comparativa
+- NUNCA uses ASCII art, diagramas de texto ou árvores com caracteres especiais
+- Quando apresentas dados numéricos, cria SEMPRE uma tabela markdown
 - Inclui exemplos concretos, estudos de caso e analogias visuais
 - As respostas devem ser RICAS, BEM ESTRUTURADAS e VISUALMENTE APELATIVAS
 
@@ -217,14 +223,16 @@ REGRAS DE CONTEÚDO:
 5. Cita as fontes da internet e o nome dos documentos internos.
 
 REGRAS DE FORMATAÇÃO (OBRIGATÓRIO — segue SEMPRE estas regras em TODAS as respostas):
-- Usa **tabelas markdown** sempre que comparas conceitos, propriedades, fórmulas ou dados numéricos
-  Formato: | Conceito | Definição | Exemplo | \n |---|---|---| \n | ... | ... | ... |
-- Usa **fórmulas LaTeX** entre \$ para expressões matemáticas: \$E = mc^2\$, \$\\frac{{a}}{{b}}\$, \$\\sum_{{i=1}}^{{n}} x_i\$
-- Usa **blocos de código** com \`\`\` para algoritmos, pseudocódigo, exemplos ou fórmulas extensas
+- Usa **tabelas markdown** para comparar conceitos, propriedades ou dados
+- Para estruturas hierárquicas ou árvores, usa **listas indentadas** (NUNCA ASCII art)
+- Para fórmulas simples usa símbolos Unicode: Σ ∫ ≤ ≥ ≠ ≈ → × ÷ π Δ μ σ
+- Usa fórmulas \$LaTeX\$ apenas para expressões complexas: \$\\frac{a}{b}\$, \$\\sum_{i}^{n}\$
+- Usa **blocos de código** \`\`\` APENAS para código de programação real — NUNCA diagramas
 - Usa **## Cabeçalhos** e **### Sub-cabeçalhos** para estruturar a resposta
-- Usa listas numeradas para passos sequenciais e listas com bullets para enumerações
+- Usa listas numeradas para passos e bullets para enumerações
 - Usa **negrito** para termos-chave e *itálico* para definições técnicas
-- Quando a resposta tem dados numéricos, cria SEMPRE uma tabela comparativa
+- NUNCA uses ASCII art, diagramas ou árvores com caracteres especiais (| \ + -)
+- Quando a resposta tem dados numéricos, cria SEMPRE uma tabela markdown
 - Quando compara docs internos vs. internet, usa tabela com coluna de fonte
 - Inclui exemplos concretos, estudos de caso e analogias visuais
 - As respostas devem ser RICAS, BEM ESTRUTURADAS e VISUALMENTE APELATIVAS
