@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'package:flutter/services.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
@@ -163,6 +166,331 @@ class ErpModuleScreen extends StatelessWidget {
     );
   }
 
+  void _editErpRecord(BuildContext context, FirebaseService service, ErpRecord record) {
+    final titleController = TextEditingController(text: record.title);
+    final descController = TextEditingController(text: record.description);
+    ErpRecordStatus selectedStatus = record.status;
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          backgroundColor: const Color(0xFF1E1E2E),
+          title: const AiTranslatedText('Editar Registo', style: TextStyle(color: Colors.white)),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: titleController,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: const InputDecoration(
+                    labelText: 'Título',
+                    labelStyle: TextStyle(color: Colors.white54),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: descController,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: const InputDecoration(
+                    labelText: 'Descrição/Notas',
+                    labelStyle: TextStyle(color: Colors.white54),
+                  ),
+                  maxLines: 3,
+                ),
+                const SizedBox(height: 16),
+                const Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text('Estado', style: TextStyle(color: Colors.white54, fontSize: 12)),
+                ),
+                DropdownButton<ErpRecordStatus>(
+                  value: selectedStatus,
+                  dropdownColor: const Color(0xFF1E1E2E),
+                  isExpanded: true,
+                  style: const TextStyle(color: Colors.white),
+                  items: ErpRecordStatus.values.map((status) {
+                    return DropdownMenuItem<ErpRecordStatus>(
+                      value: status,
+                      child: Text(status.name.toUpperCase(), style: const TextStyle(color: Colors.white)),
+                    );
+                  }).toList(),
+                  onChanged: (val) {
+                    if (val != null) {
+                      setDialogState(() {
+                        selectedStatus = val;
+                      });
+                    }
+                  },
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const AiTranslatedText('Cancelar'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                if (titleController.text.isNotEmpty) {
+                  await service.updateErpRecord(record.id, {
+                    'title': titleController.text,
+                    'description': descController.text,
+                    'status': selectedStatus.name,
+                  });
+                  if (context.mounted) {
+                    Navigator.pop(context); // Close dialog
+                    Navigator.pop(context); // Close bottom sheet
+                  }
+                }
+              },
+              child: const AiTranslatedText('Guardar'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _manageAttachments(BuildContext context, FirebaseService service, ErpRecord record) {
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          backgroundColor: const Color(0xFF1E1E2E),
+          title: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text('Anexos e Imagens', style: TextStyle(color: Colors.white)),
+              Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.paste, color: Color(0xFF00D1FF)),
+                    tooltip: 'Colar Imagem',
+                    onPressed: () async {
+                      try {
+                        final clipboardData = await Clipboard.getData(Clipboard.kTextPlain);
+                        if (clipboardData != null && clipboardData.text != null) {
+                          final text = clipboardData.text!.trim();
+                          if (text.startsWith('data:image/') && text.contains(';base64,')) {
+                            final updatedAttachments = List<String>.from(record.attachments)..add(text);
+                            await service.updateErpRecord(record.id, {'attachments': updatedAttachments});
+                            setDialogState(() {
+                              record.attachments.add(text);
+                            });
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Imagem colada com sucesso!')),
+                              );
+                            }
+                            return;
+                          }
+                        }
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Nenhuma imagem Base64 detectada na área de transferência.')),
+                          );
+                        }
+                      } catch (e) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Erro ao colar: $e')),
+                          );
+                        }
+                      }
+                    },
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.add_photo_alternate, color: Color(0xFF00FF85)),
+                    tooltip: 'Adicionar Imagem',
+                    onPressed: () async {
+                      try {
+                        final result = await FilePicker.platform.pickFiles(
+                          type: FileType.image,
+                          withData: true,
+                        );
+                        if (result != null && result.files.isNotEmpty) {
+                          final file = result.files.first;
+                          if (file.bytes != null) {
+                            final base64Data = base64Encode(file.bytes!);
+                            final ext = file.extension?.toLowerCase() ?? 'png';
+                            final dataUri = 'data:image/$ext;base64,$base64Data';
+                            
+                            final updatedAttachments = List<String>.from(record.attachments)..add(dataUri);
+                            await service.updateErpRecord(record.id, {'attachments': updatedAttachments});
+                            setDialogState(() {
+                              record.attachments.add(dataUri);
+                            });
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Imagem adicionada com sucesso!')),
+                              );
+                            }
+                          }
+                        }
+                      } catch (e) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Erro ao carregar imagem: $e')),
+                          );
+                        }
+                      }
+                    },
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.attach_file, color: Colors.white70),
+                    tooltip: 'Adicionar Ficheiro',
+                    onPressed: () async {
+                      try {
+                        final result = await FilePicker.platform.pickFiles(
+                          type: FileType.any,
+                          withData: true,
+                        );
+                        if (result != null && result.files.isNotEmpty) {
+                          final file = result.files.first;
+                          if (file.bytes != null) {
+                            final base64Data = base64Encode(file.bytes!);
+                            final ext = file.extension?.toLowerCase() ?? '';
+                            final isImg = (ext == 'png' || ext == 'jpg' || ext == 'jpeg' || ext == 'gif');
+                            final mimeType = ext == 'pdf'
+                                ? 'application/pdf'
+                                : isImg
+                                    ? 'image/$ext'
+                                    : 'application/octet-stream';
+                            final dataUri = 'data:$mimeType;base64,$base64Data';
+                            
+                            final updatedAttachments = List<String>.from(record.attachments)..add(dataUri);
+                            await service.updateErpRecord(record.id, {'attachments': updatedAttachments});
+                            setDialogState(() {
+                              record.attachments.add(dataUri);
+                            });
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Ficheiro "${file.name}" adicionado com sucesso!')),
+                              );
+                            }
+                          }
+                        }
+                      } catch (e) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Erro ao anexar ficheiro: $e')),
+                          );
+                        }
+                      }
+                    },
+                  ),
+                ],
+              ),
+            ],
+          ),
+          content: SizedBox(
+            width: double.maxFinite,
+            height: 300,
+            child: record.attachments.isEmpty
+                ? const Center(
+                    child: Text('Nenhum anexo encontrado. Use os botões acima para colar ou carregar anexos!',
+                        style: TextStyle(color: Colors.white54),
+                        textAlign: TextAlign.center),
+                  )
+                : ListView.builder(
+                    itemCount: record.attachments.length,
+                    itemBuilder: (context, index) {
+                      final attachment = record.attachments[index];
+                      final isBase64Image = attachment.startsWith('data:image/');
+                      
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.05),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                        ),
+                        child: Row(
+                          children: [
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: Container(
+                                width: 60,
+                                height: 60,
+                                color: Colors.black26,
+                                child: isBase64Image
+                                    ? Image.memory(
+                                        base64Decode(attachment.split(',').last),
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (context, error, stackTrace) {
+                                          return const Icon(Icons.broken_image, color: Colors.white24);
+                                        },
+                                      )
+                                    : const Icon(Icons.insert_drive_file, color: Colors.white54),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                isBase64Image ? 'Imagem Anexo ${index + 1}' : 'Ficheiro Anexo ${index + 1}',
+                                style: const TextStyle(color: Colors.white, fontSize: 14),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.delete, color: Colors.redAccent),
+                              onPressed: () async {
+                                final updatedAttachments = List<String>.from(record.attachments)..removeAt(index);
+                                await service.updateErpRecord(record.id, {'attachments': updatedAttachments});
+                                setDialogState(() {
+                                  record.attachments.removeAt(index);
+                                });
+                              },
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Fechar', style: TextStyle(color: Colors.white54)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _confirmDeleteErpRecord(BuildContext context, FirebaseService service, ErpRecord record) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1E1E2E),
+        title: const AiTranslatedText('Eliminar Registo', style: TextStyle(color: Colors.white)),
+        content: Text('Deseja realmente eliminar o registo "${record.title}"? Esta ação não pode ser desfeita.',
+            style: const TextStyle(color: Colors.white70)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const AiTranslatedText('Cancelar'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+            onPressed: () async {
+              await service.deleteErpRecord(record.id);
+              if (context.mounted) {
+                Navigator.pop(context); // Close dialog
+                Navigator.pop(context); // Close bottom sheet
+              }
+            },
+            child: const AiTranslatedText('Eliminar'),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showRecordDetails(
       BuildContext context, FirebaseService service, ErpRecord record) {
     showModalBottomSheet(
@@ -197,17 +525,19 @@ class ErpModuleScreen extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                _ActionButton(icon: Icons.edit, label: 'Editar', onTap: () {}),
                 _ActionButton(
-                    icon: Icons.attach_file, label: 'Anexos', onTap: () {}),
+                    icon: Icons.edit,
+                    label: 'Editar',
+                    onTap: () => _editErpRecord(context, service, record)),
+                _ActionButton(
+                    icon: Icons.attach_file,
+                    label: 'Anexos',
+                    onTap: () => _manageAttachments(context, service, record)),
                 _ActionButton(
                     icon: Icons.delete,
                     label: 'Eliminar',
                     color: Colors.redAccent,
-                    onTap: () async {
-                      await service.deleteErpRecord(record.id);
-                      if (context.mounted) Navigator.pop(context);
-                    }),
+                    onTap: () => _confirmDeleteErpRecord(context, service, record)),
               ],
             ),
           ],
