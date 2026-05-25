@@ -11,6 +11,7 @@ import '../../services/firebase_service.dart';
 import '../../widgets/glass_card.dart';
 import '../../widgets/branded_title.dart';
 import '../../widgets/messaging_badge.dart';
+import '../../widgets/pending_hr_badge.dart';
 import '../../widgets/advanced_search_anchor.dart';
 import '../../widgets/ai_translated_text.dart';
 import '../../widgets/user_notices_widget.dart';
@@ -29,6 +30,7 @@ import '../institutional/meeting_list_screen.dart';
 import '../institution/facility_management_screen.dart';
 import '../institution/activity_management_screen.dart';
 import 'surveys/teacher_survey_list_screen.dart';
+import '../user/user_hr_dashboard.dart';
 import '../user/institutional_ai_chat_screen.dart';
 import '../institution/procurement/procurement_management_screen.dart';
 import '../institution/finance/finance_management_screen.dart';
@@ -190,6 +192,11 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
                                       PersonalProfileScreen(user: teacher))),
                         ),
                       ),
+                      if (institution != null)
+                        PendingHRBadge(
+                          user: teacher,
+                          institution: institution,
+                        ),
                       Tooltip(
                         message: 'Abrir centro de mensagens e correspondência',
                         child: MessagingBadge(
@@ -210,6 +217,18 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
                           ),
                         ),
                         tooltip: 'Ver o meu horário escolar',
+                      ),
+                      Tooltip(
+                        message: 'Minha Área RH',
+                        child: IconButton(
+                          icon: const Icon(Icons.badge, color: Color(0xFF00D1FF)),
+                          onPressed: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => UserHRDashboard(user: teacher),
+                            ),
+                          ),
+                        ),
                       ),
                       if (teacher.institutionId != null)
                         IconButton(

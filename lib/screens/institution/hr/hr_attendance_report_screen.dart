@@ -22,6 +22,24 @@ class HRAttendanceReportScreen extends StatefulWidget {
 class _HRAttendanceReportScreenState extends State<HRAttendanceReportScreen> {
   DateTime _selectedMonth = DateTime.now();
 
+  String _formatMonthYear(DateTime date) {
+    try {
+      final name = DateFormat('MMMM yyyy', 'pt_PT').format(date);
+      return name[0].toUpperCase() + name.substring(1);
+    } catch (_) {
+      try {
+        final name = DateFormat('MMMM yyyy').format(date);
+        return name[0].toUpperCase() + name.substring(1);
+      } catch (_) {
+        final months = [
+          'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+          'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+        ];
+        return '${months[date.month - 1]} ${date.year}';
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final service = context.read<FirebaseService>();
@@ -109,7 +127,7 @@ class _HRAttendanceReportScreenState extends State<HRAttendanceReportScreen> {
             onPressed: () => setState(() => _selectedMonth = DateTime(_selectedMonth.year, _selectedMonth.month - 1)),
           ),
           AiTranslatedText(
-            DateFormat('MMMM yyyy').format(_selectedMonth),
+            _formatMonthYear(_selectedMonth),
             style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
           ),
           IconButton(

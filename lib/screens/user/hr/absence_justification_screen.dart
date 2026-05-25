@@ -25,6 +25,20 @@ class _HRAbsenceJustificationScreenState extends State<HRAbsenceJustificationScr
   bool _isUploading = false;
   AbsenceType _selectedType = AbsenceType.justified;
 
+  String _formatDateString(DateTime date, String pattern) {
+    try {
+      return DateFormat(pattern).format(date);
+    } catch (_) {
+      if (pattern == 'dd/MM/yyyy') {
+        final d = date.day.toString().padLeft(2, '0');
+        final m = date.month.toString().padLeft(2, '0');
+        final y = date.year.toString().padLeft(4, '0');
+        return '$d/$m/$y';
+      }
+      return date.toIso8601String().split('T')[0];
+    }
+  }
+
   Future<void> _pickFile() async {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
@@ -152,7 +166,7 @@ class _HRAbsenceJustificationScreenState extends State<HRAbsenceJustificationScr
                           Text(
                             _selectedRange == null 
                               ? 'Selecionar período' 
-                              : '${DateFormat('dd/MM/yyyy').format(_selectedRange!.start)} - ${DateFormat('dd/MM/yyyy').format(_selectedRange!.end)}',
+                              : '${_formatDateString(_selectedRange!.start, 'dd/MM/yyyy')} - ${_formatDateString(_selectedRange!.end, 'dd/MM/yyyy')}',
                             style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
                           ),
                         ],

@@ -15,10 +15,34 @@ import 'services/institutional_knowledge_service.dart';
 import 'services/delegation_service.dart';
 
 import 'package:firebase_core/firebase_core.dart';
+import 'package:intl/intl.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'config/app_config.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  final localesToInit = [
+    'pt_PT', 'pt-PT',
+    'pt_BR', 'pt-BR',
+    'pt',
+    'en_US', 'en-US',
+    'en_GB', 'en-GB',
+    'en',
+    'es_ES', 'es-ES',
+    'es',
+    'fr_FR', 'fr-FR',
+    'fr',
+    'de_DE', 'de-DE',
+    'de',
+  ];
+  for (final loc in localesToInit) {
+    try {
+      await initializeDateFormatting(loc, null);
+    } catch (_) {
+      // Ignore unsupported or failing locales silently
+    }
+  }
+  Intl.defaultLocale = 'pt_PT';
 
   await Firebase.initializeApp(
     options: const FirebaseOptions(

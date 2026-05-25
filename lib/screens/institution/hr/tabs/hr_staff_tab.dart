@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../models/institution_model.dart';
 import '../../../../models/user_model.dart';
+import '../../../../models/hr/hr_attendance_model.dart';
 import '../../../../services/firebase_service.dart';
 import '../../../../widgets/ai_translated_text.dart';
 import '../../../../widgets/glass_card.dart';
@@ -25,55 +26,72 @@ class HRStaffTab extends StatelessWidget {
           return Center(child: AiTranslatedText('Erro ao carregar colaboradores'));
         }
         
-        final staff = snapshot.data ?? [];
+        final allMembers = snapshot.data ?? [];
+        // Only show employees (teachers, coordinators, admins, healthSpecialists, etc.)
+        // Filter out students and parents
+        final staff = allMembers
+            .where((e) => e.role != UserRole.student && e.role != UserRole.parent)
+            .toList();
         
-        return Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      decoration: InputDecoration(
-                        hintText: 'Pesquisar colaborador...',
-                        prefixIcon: const Icon(Icons.search, color: Colors.white54),
-                        filled: true,
-                        fillColor: Colors.white.withValues(alpha: 0.05),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
+        return StreamBuilder<List<HRAttendanceRecord>>(
+          stream: service.getHRAttendance(institution.id, date: DateTime.now()),
+          builder: (context, attendanceSnapshot) {
+            final todayRecords = attendanceSnapshot.data ?? [];
+            
+            return Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          decoration: InputDecoration(
+                            hintText: 'Pesquisar colaborador...',
+                            prefixIcon: const Icon(Icons.search, color: Colors.white54),
+                            filled: true,
+                            fillColor: Colors.white.withValues(alpha: 0.05),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none,
+                            ),
+                          ),
+                          style: const TextStyle(color: Colors.white),
                         ),
                       ),
-                      style: const TextStyle(color: Colors.white),
-                    ),
+                      const SizedBox(width: 16),
+                      ElevatedButton.icon(
+                        onPressed: () {},
+                        icon: const Icon(Icons.add),
+                        label: const AiTranslatedText('Novo Colaborador'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF00D1FF),
+                          foregroundColor: Colors.black,
+                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 16),
-                  ElevatedButton.icon(
-                    onPressed: () {},
-                    icon: const Icon(Icons.add),
-                    label: const AiTranslatedText('Novo Colaborador'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF00D1FF),
-                      foregroundColor: Colors.black,
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
+                ),
+                Expanded(
+                  child: ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    itemCount: staff.length,
+                    itemBuilder: (context, index) {
+                      final employee = staff[index];
+                      final checkInList = todayRecords
+                          .where((r) => r.employeeId == employee.id && r.type == AttendanceType.checkIn)
+                          .toList();
+                      final checkIn = checkInList.isNotEmpty ? checkInList.first : null;
+                      
+                      return _EmployeeTile(employee: employee, checkIn: checkIn);
+                    },
                   ),
-                ],
-              ),
-            ),
-            Expanded(
-              child: ListView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                itemCount: staff.length,
-                itemBuilder: (context, index) {
-                  final employee = staff[index];
-                  return _EmployeeTile(employee: employee);
-                },
-              ),
-            ),
-          ],
+                ),
+              ],
+            );
+          },
         );
       },
     );
@@ -82,8 +100,26 @@ class HRStaffTab extends StatelessWidget {
 
 class _EmployeeTile extends StatelessWidget {
   final UserModel employee;
+  final HRAttendanceRecord? checkIn;
 
-  const _EmployeeTile({required this.employee});
+  const _EmployeeTile({required this.employee, this.checkIn});
+
+  String _formatTime(DateTime date) {
+    final h = date.hour.toString().padLeft(2, '0');
+    final m = date.minute.toString().padLeft(2, '0');
+    return '$h:$m';
+  }
+
+  String _getMethodLabel(AttendanceMethod method) {
+    switch (method) {
+      case AttendanceMethod.qrCode:
+        return 'QR Code';
+      case AttendanceMethod.manual:
+        return 'Manual';
+      default:
+        return 'Outro';
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -123,10 +159,16 @@ class _EmployeeTile extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              const AiTranslatedText(
-                'Entrada: 08:32',
-                style: TextStyle(color: Colors.greenAccent, fontSize: 11),
-              ),
+              if (checkIn != null)
+                Text(
+                  'Entrada: ${_formatTime(checkIn!.timestamp)} (${_getMethodLabel(checkIn!.method)})',
+                  style: const TextStyle(color: Colors.greenAccent, fontSize: 11, fontWeight: FontWeight.bold),
+                )
+              else
+                const Text(
+                  'Sem registo de entrada',
+                  style: TextStyle(color: Colors.white30, fontSize: 11),
+                ),
               Row(
                 children: [
                    StreamBuilder<InstitutionModel?>(

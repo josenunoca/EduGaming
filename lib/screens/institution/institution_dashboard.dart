@@ -9,6 +9,7 @@ import '../../widgets/glass_card.dart';
 import '../../widgets/ai_translated_text.dart';
 import '../../widgets/branded_title.dart';
 import '../../widgets/messaging_badge.dart';
+import '../../widgets/pending_hr_badge.dart';
 import '../../widgets/custom_button.dart';
 import '../../widgets/user_notices_widget.dart';
 import '../common/communication_center_screen.dart';
@@ -139,6 +140,10 @@ class InstitutionDashboard extends StatelessWidget {
                                   PersonalProfileScreen(user: user)),
                         ),
                         tooltip: 'Área Pessoal',
+                      ),
+                      PendingHRBadge(
+                        user: user,
+                        institution: institution,
                       ),
                       MessagingBadge(
                         icon: const Icon(Icons.mail),

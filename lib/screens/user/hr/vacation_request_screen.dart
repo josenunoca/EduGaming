@@ -22,6 +22,20 @@ class _HRVacationRequestScreenState extends State<HRVacationRequestScreen> {
   bool _isLoading = false;
   HRVacationPlan? _plan;
 
+  String _formatDateString(DateTime date, String pattern) {
+    try {
+      return DateFormat(pattern).format(date);
+    } catch (_) {
+      if (pattern == 'dd/MM/yyyy') {
+        final d = date.day.toString().padLeft(2, '0');
+        final m = date.month.toString().padLeft(2, '0');
+        final y = date.year.toString().padLeft(4, '0');
+        return '$d/$m/$y';
+      }
+      return date.toIso8601String().split('T')[0];
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -169,7 +183,7 @@ class _HRVacationRequestScreenState extends State<HRVacationRequestScreen> {
                         Text(
                           _selectedRange == null 
                             ? 'Clique para selecionar as datas' 
-                            : '${DateFormat('dd/MM/yyyy').format(_selectedRange!.start)} - ${DateFormat('dd/MM/yyyy').format(_selectedRange!.end)}',
+                            : '${_formatDateString(_selectedRange!.start, 'dd/MM/yyyy')} - ${_formatDateString(_selectedRange!.end, 'dd/MM/yyyy')}',
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             color: _selectedRange == null ? Colors.white38 : Colors.white,

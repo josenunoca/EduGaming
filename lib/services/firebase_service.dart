@@ -1398,6 +1398,39 @@ class FirebaseService {
     });
   }
 
+  Future<void> archiveMessageForUser(String userId, String messageId, bool archive) async {
+    if (archive) {
+      await _db.collection('internal_messages').doc(messageId).update({
+        'archivedBy': FieldValue.arrayUnion([userId])
+      });
+    } else {
+      await _db.collection('internal_messages').doc(messageId).update({
+        'archivedBy': FieldValue.arrayRemove([userId])
+      });
+    }
+  }
+
+  Future<void> assignThemeToMessage(String userId, String messageId, String? theme) async {
+    final docRef = _db.collection('internal_messages').doc(messageId);
+    if (theme == null || theme.trim().isEmpty) {
+      await docRef.update({
+        'userThemes.$userId': FieldValue.delete()
+      });
+    } else {
+      await docRef.update({
+        'userThemes.$userId': theme.trim()
+      });
+    }
+  }
+
+  Stream<InternalMessage> getMessageStream(String messageId) {
+    return _db
+        .collection('internal_messages')
+        .doc(messageId)
+        .snapshots()
+        .map((doc) => InternalMessage.fromMap(doc.data() ?? {}));
+  }
+
   // --- Suspension Logic ---
 
   Future<void> toggleUserSuspension(String uid, bool suspended) async {
@@ -1918,6 +1951,31 @@ class FirebaseService {
         .where('institutionId', isEqualTo: institutionId)
         .get();
     return users.docs.map((d) => UserModel.fromMap(d.data())).toList();
+  }
+
+  Stream<List<UserModel>> streamInstitutionMembers(String institutionId) {
+    return _db
+        .collection('users')
+        .where('institutionId', isEqualTo: institutionId)
+        .snapshots()
+        .map((s) => s.docs.map((d) => UserModel.fromMap(d.data())).toList());
+  }
+
+  Future<void> updateUserContractedHours(String userId, int hours) async {
+    await _db.collection('users').doc(userId).update({'contractedHours': hours});
+  }
+
+  Future<void> updateContractedHoursByRole(String institutionId, String roleName, int hours) async {
+    final users = await _db
+        .collection('users')
+        .where('institutionId', isEqualTo: institutionId)
+        .where('role', isEqualTo: roleName)
+        .get();
+    final batch = _db.batch();
+    for (var doc in users.docs) {
+      batch.update(doc.reference, {'contractedHours': hours});
+    }
+    await batch.commit();
   }
 
   // --- Credit Management ---
@@ -2968,16 +3026,15 @@ Este documento foi gerado com assistência de IA.
   }
 
   Stream<List<HRScheduleEntry>> getHRSchedule(String institutionId, {DateTime? start, DateTime? end}) {
-    var query = _db.collection('institutions').doc(institutionId).collection('hr_schedule');
-    // Simple way to filter by month/date if needed
+    var query = _db.collection('institutions').doc(institutionId).collection('hr_schedules');
     return query.snapshots().map((s) => s.docs.map((d) => HRScheduleEntry.fromMap(d.data())).toList());
   }
 
   Future<void> saveHRScheduleEntries(String institutionId, List<HRScheduleEntry> entries) async {
     final batch = _db.batch();
-    final coll = _db.collection('institutions').doc(institutionId).collection('hr_schedule');
+    final coll = _db.collection('institutions').doc(institutionId).collection('hr_schedules');
     for (var entry in entries) {
-      final id = "${entry.employeeId}_${DateFormat('yyyyMMdd').format(entry.date)}";
+      final id = entry.id.isNotEmpty ? entry.id : "${entry.employeeId}_${DateFormat('yyyyMMdd').format(entry.date)}";
       batch.set(coll.doc(id), entry.toMap());
     }
     await batch.commit();
@@ -2996,8 +3053,8 @@ Este documento foi gerado com assistência de IA.
     } else if (month != null) {
       final start = DateTime(month.year, month.month, 1);
       final end = DateTime(month.year, month.month + 1, 0, 23, 59, 59);
-      query = query.where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(start))
-                   .where('date', isLessThanOrEqualTo: Timestamp.fromDate(end));
+      query = query.where('timestamp', isGreaterThanOrEqualTo: Timestamp.fromDate(start))
+                   .where('timestamp', isLessThanOrEqualTo: Timestamp.fromDate(end));
     }
     
     return query.snapshots().map((s) => s.docs.map((d) => HRAttendanceRecord.fromMap(d.data())).toList());
@@ -3005,11 +3062,49 @@ Este documento foi gerado com assistência de IA.
 
   Future<void> saveHRAttendance(HRAttendanceRecord record) async {
     final dateStr = DateFormat('yyyy-MM-dd').format(record.date);
-    await _db.collection('institutions').doc(record.institutionId).collection('hr_attendance')
-        .doc(record.id).set({
-          ...record.toMap(),
-          'dateStr': dateStr,
-        });
+    final coll = _db.collection('institutions').doc(record.institutionId).collection('hr_attendance');
+    final docId = record.id.isNotEmpty ? record.id : coll.doc().id;
+    final updatedRecord = HRAttendanceRecord(
+      id: docId,
+      employeeId: record.employeeId,
+      employeeName: record.employeeName,
+      institutionId: record.institutionId,
+      timestamp: record.timestamp,
+      type: record.type,
+      method: record.method,
+      photoUrl: record.photoUrl,
+      location: record.location,
+      verifiedByManager: record.verifiedByManager,
+    );
+    await coll.doc(docId).set({
+      ...updatedRecord.toMap(),
+      'dateStr': dateStr,
+    });
+  }
+
+  Stream<List<Map<String, dynamic>>> getHRClosedDays(String institutionId) {
+    return _db.collection('institutions').doc(institutionId).collection('hr_closed_days')
+        .snapshots().map((s) => s.docs.map((d) {
+          final data = d.data();
+          data['id'] = d.id;
+          return data;
+        }).toList());
+  }
+
+  Future<void> saveHRClosedDay(String institutionId, Map<String, dynamic> closedDay) async {
+    final coll = _db.collection('institutions').doc(institutionId).collection('hr_closed_days');
+    final id = closedDay['id'] as String? ?? coll.doc().id;
+    final data = Map<String, dynamic>.from(closedDay);
+    data['id'] = id;
+    await coll.doc(id).set(data);
+  }
+
+  Future<void> deleteHRClosedDay(String institutionId, String id) async {
+    await _db.collection('institutions').doc(institutionId).collection('hr_closed_days').doc(id).delete();
+  }
+
+  Future<void> updateInstitutionWorkingDays(String institutionId, List<int> workingDays) async {
+    await _db.collection('institutions').doc(institutionId).update({'workingDays': workingDays});
   }
 
   Stream<List<HRScheduleEntry>> getHRScheduleEntries(String institutionId, {String? employeeId, DateTime? start, DateTime? end}) {

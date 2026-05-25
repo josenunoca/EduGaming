@@ -42,6 +42,7 @@ class UserModel {
   final String? whatsappNumber; // For SMS/WhatsApp integration
   final String? photoUrl;
   final List<UserDocument> documents;
+  final int contractedHours; // Default 40
 
 
   UserModel({
@@ -73,6 +74,7 @@ class UserModel {
     this.whatsappNumber,
     this.photoUrl,
     this.documents = const [],
+    this.contractedHours = 40,
   });
 
 
@@ -106,6 +108,7 @@ class UserModel {
       if (whatsappNumber != null) 'whatsappNumber': whatsappNumber,
       if (photoUrl != null) 'photoUrl': photoUrl,
       'documents': documents.map((x) => x.toMap()).toList(),
+      'contractedHours': contractedHours,
     };
   }
 
@@ -147,6 +150,7 @@ class UserModel {
           ? List<UserDocument>.from(
               map['documents'].map((x) => UserDocument.fromMap(x)))
           : [],
+      contractedHours: map['contractedHours'] ?? 40,
     );
   }
 
@@ -156,4 +160,12 @@ class UserModel {
   bool get isStudent => role == UserRole.student;
   bool get isParent => role == UserRole.parent;
   bool get isOrganMember => role == UserRole.courseCoordinator || role == UserRole.admin; // Expanded logic
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is UserModel && runtimeType == other.runtimeType && id == other.id;
+
+  @override
+  int get hashCode => id.hashCode;
 }

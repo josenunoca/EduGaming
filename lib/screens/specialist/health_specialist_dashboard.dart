@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/firebase_service.dart';
 import '../../models/questionnaire_model.dart';
+import '../../models/user_model.dart';
+import '../../models/institution_model.dart';
+import '../../widgets/pending_hr_badge.dart';
+import '../user/user_hr_dashboard.dart';
 import 'package:intl/intl.dart';
 
 class HealthSpecialistDashboard extends StatelessWidget {
@@ -22,6 +26,57 @@ class HealthSpecialistDashboard extends StatelessWidget {
           IconButton(
             onPressed: () {},
             icon: const Icon(Icons.notifications_active_outlined),
+          ),
+          StreamBuilder<UserModel?>(
+            stream: service.getUserStream(service.currentUser?.uid ?? ''),
+            builder: (context, snap) {
+              final userModel = snap.data;
+              if (userModel == null) return const SizedBox.shrink();
+              
+              if (userModel.institutionId == null) {
+                return Tooltip(
+                  message: 'Minha Área RH',
+                  child: IconButton(
+                    icon: const Icon(Icons.badge, color: const Color(0xFF00D1FF)),
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => UserHRDashboard(user: userModel),
+                      ),
+                    ),
+                  ),
+                );
+              }
+
+              return StreamBuilder<InstitutionModel?>(
+                stream: service.getInstitutionStream(userModel.institutionId!),
+                builder: (context, instSnap) {
+                  final institution = instSnap.data;
+                  return Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (institution != null)
+                        PendingHRBadge(
+                          user: userModel,
+                          institution: institution,
+                        ),
+                      Tooltip(
+                        message: 'Minha Área RH',
+                        child: IconButton(
+                          icon: const Icon(Icons.badge, color: const Color(0xFF00D1FF)),
+                          onPressed: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => UserHRDashboard(user: userModel),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              );
+            },
           ),
         ],
       ),

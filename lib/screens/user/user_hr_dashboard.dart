@@ -52,6 +52,13 @@ class _UserHRDashboardState extends State<UserHRDashboard> {
             _buildQuickActions(),
             const SizedBox(height: 32),
             const AiTranslatedText(
+              'Minhas Férias e Ausências',
+              style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            _buildMyRequests(service, institutionId),
+            const SizedBox(height: 32),
+            const AiTranslatedText(
               'Histórico de Assiduidade (Este Mês)',
               style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
             ),
@@ -60,6 +67,146 @@ class _UserHRDashboardState extends State<UserHRDashboard> {
           ],
         ),
       ),
+    );
+  }
+
+  String _getAbsenceTypeLabel(AbsenceType type) {
+    switch (type) {
+      case AbsenceType.sickLeave:
+        return 'Baixa Médica';
+      case AbsenceType.unjustified:
+        return 'Falta Não Justificada';
+      case AbsenceType.vacation:
+        return 'Férias';
+      case AbsenceType.insurance:
+        return 'Acidente de Trabalho';
+      case AbsenceType.maternity:
+        return 'Licença Parental';
+      case AbsenceType.mourning:
+        return 'Nojo (Luto)';
+      case AbsenceType.justified:
+        return 'Falta Justificada';
+      case AbsenceType.other:
+        return 'Outra Ausência';
+    }
+  }
+
+  Widget _buildMyRequests(FirebaseService service, String instId) {
+    return StreamBuilder<List<HRAbsence>>(
+      stream: service.getHRAbsences(instId),
+      builder: (context, snapshot) {
+        final allAbsences = snapshot.data ?? [];
+        final myAbsences = allAbsences.where((a) => a.employeeId == widget.user.id).toList();
+
+        // Sort by start date descending
+        myAbsences.sort((a, b) => b.startDate.compareTo(a.startDate));
+
+        if (myAbsences.isEmpty) {
+          return GlassCard(
+            child: Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: Row(
+                children: [
+                  const Icon(Icons.info_outline, color: Colors.white30, size: 20),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: AiTranslatedText(
+                      'Sem solicitações de férias ou faltas registadas.',
+                      style: TextStyle(color: Colors.white30, fontSize: 13),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        return ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: myAbsences.length,
+          itemBuilder: (context, index) {
+            final absence = myAbsences[index];
+            final isVacation = absence.type == AbsenceType.vacation;
+            
+            Color statusBgColor = Colors.orange.withValues(alpha: 0.1);
+            Color statusTextColor = Colors.orangeAccent;
+            String statusText = 'Pendente';
+            
+            if (absence.status == 'approved') {
+              statusBgColor = Colors.green.withValues(alpha: 0.1);
+              statusTextColor = Colors.greenAccent;
+              statusText = 'Aprovada';
+            } else if (absence.status == 'rejected') {
+              statusBgColor = Colors.red.withValues(alpha: 0.1);
+              statusTextColor = Colors.redAccent;
+              statusText = 'Rejeitada';
+            }
+
+            return GlassCard(
+              margin: const EdgeInsets.only(bottom: 12),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: isVacation ? Colors.orange.withValues(alpha: 0.1) : Colors.red.withValues(alpha: 0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        isVacation ? Icons.beach_access : Icons.assignment_late_outlined,
+                        color: isVacation ? Colors.orangeAccent : Colors.redAccent,
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          AiTranslatedText(
+                            _getAbsenceTypeLabel(absence.type),
+                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${DateFormat('dd/MM/yyyy').format(absence.startDate)} - ${DateFormat('dd/MM/yyyy').format(absence.endDate)} (${absence.days} dias)',
+                            style: const TextStyle(color: Colors.white70, fontSize: 12),
+                          ),
+                          if (absence.description.isNotEmpty) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              absence.description,
+                              style: const TextStyle(color: Colors.white38, fontSize: 11, fontStyle: FontStyle.italic),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: statusBgColor,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: statusTextColor.withValues(alpha: 0.3), width: 1),
+                      ),
+                      child: AiTranslatedText(
+                        statusText,
+                        style: TextStyle(color: statusTextColor, fontSize: 11, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 

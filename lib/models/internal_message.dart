@@ -11,6 +11,9 @@ class InternalMessage {
   final List<String> deletedBy;
   final String category; // 'academic', 'correspondence', 'admin', 'other'
   final String? relatedEntityId; // ID of Subject, Course, etc.
+  final List<String> attachments; // URLs or base64 strings of attached images/files
+  final List<String> archivedBy; // User IDs who archived this message
+  final Map<String, String> userThemes; // Key: userId, Value: custom theme/folder name
 
   InternalMessage({
     required this.id,
@@ -25,6 +28,9 @@ class InternalMessage {
     this.deletedBy = const [],
     this.category = 'other',
     this.relatedEntityId,
+    this.attachments = const [],
+    this.archivedBy = const [],
+    this.userThemes = const {},
   });
 
   Map<String, dynamic> toMap() {
@@ -41,6 +47,9 @@ class InternalMessage {
       'deletedBy': deletedBy,
       'category': category,
       if (relatedEntityId != null) 'relatedEntityId': relatedEntityId,
+      'attachments': attachments,
+      'archivedBy': archivedBy,
+      'userThemes': userThemes,
     };
   }
 
@@ -60,6 +69,9 @@ class InternalMessage {
       deletedBy: List<String>.from(map['deletedBy'] ?? []),
       category: map['category'] ?? 'other',
       relatedEntityId: map['relatedEntityId'],
+      attachments: List<String>.from(map['attachments'] ?? []),
+      archivedBy: List<String>.from(map['archivedBy'] ?? []),
+      userThemes: Map<String, String>.from(map['userThemes'] ?? {}),
     );
   }
 }

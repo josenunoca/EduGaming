@@ -74,7 +74,12 @@ class _HRManagementScreenState extends State<HRManagementScreen> with SingleTick
       body: TabBarView(
         controller: _tabController,
         children: [
-          HRDashboardTab(institution: widget.institution),
+          HRDashboardTab(
+            institution: widget.institution,
+            onTabRequested: (index) {
+              _tabController.animateTo(index);
+            },
+          ),
           HRStaffTab(institution: widget.institution),
           HRScheduleTab(institution: widget.institution),
           HRAttendanceTab(institution: widget.institution),

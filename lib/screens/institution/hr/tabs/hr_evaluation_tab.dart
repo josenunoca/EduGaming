@@ -51,14 +51,24 @@ class _HREvaluationTabState extends State<HREvaluationTab> {
             future: service.getAllInstitutionMembers(widget.institution.id),
             builder: (context, snapshot) {
               if (!snapshot.hasData) return const CircularProgressIndicator();
-              final employees = snapshot.data!;
+              
+              // Filtrar para exibir apenas colaboradores (excluindo estudantes, encarregados de educação e contas administrativas)
+              final employees = snapshot.data!.where((m) =>
+                  m.role != UserRole.student &&
+                  m.role != UserRole.parent &&
+                  m.role != UserRole.institution &&
+                  m.role != UserRole.admin &&
+                  !m.isSuspended).toList();
+
+              // Garante que o valor selecionado existe na lista filtrada para evitar crashes de asserção
+              final dropdownValue = employees.contains(_selectedEmployee) ? _selectedEmployee : null;
 
               return GlassCard(
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<UserModel>(
-                      value: _selectedEmployee,
+                      value: dropdownValue,
                       hint: const AiTranslatedText('Selecionar Colaborador', style: TextStyle(color: Colors.white54)),
                       dropdownColor: const Color(0xFF1E293B),
                       icon: const Icon(Icons.arrow_drop_down, color: Colors.orangeAccent),

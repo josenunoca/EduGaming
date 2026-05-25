@@ -54,6 +54,8 @@ class HRScheduleEntry {
   final String? shiftId;
   final String customStartTime;
   final String customEndTime;
+  final String? mealStartTime;
+  final String? mealEndTime;
   final bool isOffDay;
   final String status; // 'planned', 'actual', 'completed'
 
@@ -65,6 +67,8 @@ class HRScheduleEntry {
     this.shiftId,
     this.customStartTime = "09:00",
     this.customEndTime = "18:00",
+    this.mealStartTime,
+    this.mealEndTime,
     this.isOffDay = false,
     this.status = 'planned',
   });
@@ -77,6 +81,8 @@ class HRScheduleEntry {
     'shiftId': shiftId,
     'customStartTime': customStartTime,
     'customEndTime': customEndTime,
+    'mealStartTime': mealStartTime,
+    'mealEndTime': mealEndTime,
     'isOffDay': isOffDay,
     'status': status,
   };
@@ -89,6 +95,8 @@ class HRScheduleEntry {
     shiftId: map['shiftId'],
     customStartTime: map['customStartTime'] ?? '09:00',
     customEndTime: map['customEndTime'] ?? '18:00',
+    mealStartTime: map['mealStartTime'],
+    mealEndTime: map['mealEndTime'],
     isOffDay: map['isOffDay'] ?? false,
     status: map['status'] ?? 'planned',
   );

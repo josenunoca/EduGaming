@@ -32,6 +32,7 @@ class InstitutionModel {
 
   final String? scheduleStartTime; // e.g., "08:00"
   final String? scheduleEndTime; // e.g., "18:00"
+  final List<int> workingDays; // 1 = Monday, 7 = Sunday
 
   InstitutionModel({
     required this.id,
@@ -59,6 +60,7 @@ class InstitutionModel {
     required this.createdAt,
     this.scheduleStartTime = '08:00',
     this.scheduleEndTime = '18:00',
+    this.workingDays = const [1, 2, 3, 4, 5], // Default: Monday to Friday
   });
 
   InstitutionModel copyWith({
@@ -87,6 +89,7 @@ class InstitutionModel {
     DateTime? createdAt,
     String? scheduleStartTime,
     String? scheduleEndTime,
+    List<int>? workingDays,
   }) {
     return InstitutionModel(
       id: id ?? this.id,
@@ -114,6 +117,7 @@ class InstitutionModel {
       createdAt: createdAt ?? this.createdAt,
       scheduleStartTime: scheduleStartTime ?? this.scheduleStartTime,
       scheduleEndTime: scheduleEndTime ?? this.scheduleEndTime,
+      workingDays: workingDays ?? this.workingDays,
     );
   }
 
@@ -144,6 +148,7 @@ class InstitutionModel {
       'createdAt': createdAt.toIso8601String(),
       'scheduleStartTime': scheduleStartTime,
       'scheduleEndTime': scheduleEndTime,
+      'workingDays': workingDays,
     };
   }
 
@@ -183,6 +188,7 @@ class InstitutionModel {
           DateTime.parse(map['createdAt'] ?? DateTime.now().toIso8601String()),
       scheduleStartTime: map['scheduleStartTime'] ?? '08:00',
       scheduleEndTime: map['scheduleEndTime'] ?? '18:00',
+      workingDays: map['workingDays'] != null ? List<int>.from(map['workingDays']) : [1, 2, 3, 4, 5],
     );
   }
 }
