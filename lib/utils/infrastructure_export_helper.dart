@@ -8,7 +8,7 @@ import '../models/infrastructure_model.dart';
 import 'download_helper.dart';
 
 class InfrastructureExportHelper {
-  static Future<Uint8List> generateGlobalReportPdf(List<Infrastructure> infrastructures) async {
+  static Future<Uint8List> generateGlobalReportPdf(List<Infrastructure> infrastructures, {DateTime? startDate, DateTime? endDate}) async {
     final pdf = pw.Document();
 
     final titleStyle = pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold);
@@ -56,7 +56,36 @@ class InfrastructureExportHelper {
             }
             
             widgets.add(pw.SizedBox(height: 10));
+                        widgets.add(pw.SizedBox(height: 10));
+            
+            // Maintenance logic
+            if (infra.maintenances.isNotEmpty) {
+              final filteredMaintenances = infra.maintenances.where((m) {
+                if (startDate != null && m.startDate.isBefore(startDate)) return false;
+                if (endDate != null && m.endDate.isAfter(endDate)) return false;
+                return true;
+              }).toList();
+              
+              if (filteredMaintenances.isNotEmpty) {
+                final totalMaintenanceCost = filteredMaintenances.fold<double>(0, (sum, m) => sum + m.cost);
+                widgets.add(pw.Text('Manutencao no periodo:', style: headingStyle));
+                widgets.add(pw.SizedBox(height: 4));
+                widgets.add(pw.Text('Intervencoes: ${filteredMaintenances.length}', style: normalStyle));
+                widgets.add(pw.Text('Custo Total: EUR${totalMaintenanceCost.toStringAsFixed(2)}', style: normalStyle));
+                
+                // Details
+                for (var m in filteredMaintenances) {
+                  final desc = m.description.replaceAll(RegExp(r'[^\x00-\xFF]'), '');
+                  widgets.add(pw.Padding(
+                    padding: const pw.EdgeInsets.only(left: 10, top: 4),
+                    child: pw.Text('- $desc (EUR${m.cost.toStringAsFixed(2)})', style: smallStyle),
+                  ));
+                }
+              }
+            }
+
             if (infra.description.isNotEmpty) {
+
               widgets.add(pw.Text('Resenha Historica:', style: headingStyle));
               widgets.add(pw.SizedBox(height: 4));
               widgets.add(
@@ -78,8 +107,8 @@ class InfrastructureExportHelper {
     return await pdf.save();
   }
 
-  static Future<void> downloadGlobalReport(List<Infrastructure> infrastructures) async {
-    final pdfBytes = await generateGlobalReportPdf(infrastructures);
+  static Future<void> downloadGlobalReport(List<Infrastructure> infrastructures, {DateTime? startDate, DateTime? endDate}) async {
+    final pdfBytes = await generateGlobalReportPdf(infrastructures, startDate: startDate, endDate: endDate);
     await DownloadHelper.downloadFile(pdfBytes, 'Relatorio_Global_Infraestruturas.pdf');
   }
 }

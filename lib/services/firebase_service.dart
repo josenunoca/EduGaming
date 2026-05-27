@@ -1777,6 +1777,19 @@ class FirebaseService {
     });
   }
 
+  Future<void> addInfrastructureMaintenance(String id, InfrastructureMaintenance maintenance) async {
+    await _db.collection('infrastructures').doc(id).update({
+      'maintenances': FieldValue.arrayUnion([maintenance.toMap()])
+    });
+  }
+
+  Future<void> removeInfrastructureMaintenance(String id, InfrastructureMaintenance maintenance) async {
+    await _db.collection('infrastructures').doc(id).update({
+      'maintenances': FieldValue.arrayRemove([maintenance.toMap()])
+    });
+  }
+
+
   Future<void> bulkRemoveInfrastructureMedia(String id, List<ActivityMedia> mediaItems) async {
     final mediaMaps = mediaItems.map((e) => e.toMap()).toList();
     await _db.collection('infrastructures').doc(id).update({

@@ -12,6 +12,7 @@ class Infrastructure {
   final bool isMarketValueNotApplicable;
   final bool includeInReport;
   final List<ActivityMedia> media;
+  final List<InfrastructureMaintenance> maintenances;
 
   Infrastructure({
     required this.id,
@@ -25,6 +26,7 @@ class Infrastructure {
     this.isMarketValueNotApplicable = false,
     this.includeInReport = false,
     this.media = const [],
+    this.maintenances = const [],
   });
 
   Map<String, dynamic> toMap() {
@@ -40,6 +42,7 @@ class Infrastructure {
       'isMarketValueNotApplicable': isMarketValueNotApplicable,
       'includeInReport': includeInReport,
       'media': media.map((x) => x.toMap()).toList(),
+      'maintenances': maintenances.map((x) => x.toMap()).toList(),
     };
   }
 
@@ -61,6 +64,10 @@ class Infrastructure {
           ? List<ActivityMedia>.from(
               map['media']?.map((x) => ActivityMedia.fromMap(x)))
           : [],
+      maintenances: map['maintenances'] != null
+          ? List<InfrastructureMaintenance>.from(
+              map['maintenances']?.map((x) => InfrastructureMaintenance.fromMap(x)))
+          : [],
     );
   }
 
@@ -76,6 +83,7 @@ class Infrastructure {
     bool? isMarketValueNotApplicable,
     bool? includeInReport,
     List<ActivityMedia>? media,
+    List<InfrastructureMaintenance>? maintenances,
   }) {
     return Infrastructure(
       id: id ?? this.id,
@@ -90,6 +98,51 @@ class Infrastructure {
           isMarketValueNotApplicable ?? this.isMarketValueNotApplicable,
       includeInReport: includeInReport ?? this.includeInReport,
       media: media ?? this.media,
+      maintenances: maintenances ?? this.maintenances,
+    );
+  }
+}
+
+class InfrastructureMaintenance {
+  final String id;
+  final String description;
+  final DateTime startDate;
+  final DateTime endDate;
+  final double cost;
+  final String? documentUrl;
+  final String? documentName;
+
+  InfrastructureMaintenance({
+    required this.id,
+    required this.description,
+    required this.startDate,
+    required this.endDate,
+    required this.cost,
+    this.documentUrl,
+    this.documentName,
+  });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'description': description,
+      'startDate': startDate.toIso8601String(),
+      'endDate': endDate.toIso8601String(),
+      'cost': cost,
+      'documentUrl': documentUrl,
+      'documentName': documentName,
+    };
+  }
+
+  factory InfrastructureMaintenance.fromMap(Map<String, dynamic> map) {
+    return InfrastructureMaintenance(
+      id: map['id'] ?? '',
+      description: map['description'] ?? '',
+      startDate: DateTime.parse(map['startDate'] ?? DateTime.now().toIso8601String()),
+      endDate: DateTime.parse(map['endDate'] ?? DateTime.now().toIso8601String()),
+      cost: (map['cost'] ?? 0.0).toDouble(),
+      documentUrl: map['documentUrl'],
+      documentName: map['documentName'],
     );
   }
 }
