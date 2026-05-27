@@ -7,6 +7,7 @@ import 'erp_module_screen.dart';
 import '../hr/hr_management_screen.dart';
 import '../finance/finance_management_screen.dart';
 import '../marketing/marketing_management_screen.dart';
+import '../infrastructure/infrastructure_management_screen.dart';
 import '../procurement/procurement_management_screen.dart';
 
 class ErpDashboard extends StatelessWidget {
