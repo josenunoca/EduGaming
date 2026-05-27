@@ -1808,8 +1808,8 @@ class _AddSubjectFormState extends State<_AddSubjectForm> {
             const SizedBox(width: 8),
             Expanded(
               flex: 2,
-              child: FutureBuilder<List<UserModel>>(
-                future: service.getAllInstitutionMembers(widget.institutionId),
+              child: StreamBuilder<List<UserModel>>(
+                stream: service.streamInstitutionMembers(widget.institutionId),
                 builder: (context, snapshot) {
                   final teachers = (snapshot.data ?? [])
                       .where((u) =>

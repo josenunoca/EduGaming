@@ -3,12 +3,9 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../../models/institution_model.dart';
 import '../../../models/user_model.dart';
-import '../../../models/hr/hr_attendance_model.dart';
-import '../../../models/hr/hr_absence_model.dart';
 import '../../../services/firebase_service.dart';
 import '../../../services/pdf_service.dart';
 import '../../../widgets/ai_translated_text.dart';
-import '../../../widgets/glass_card.dart';
 
 class HRAttendanceReportScreen extends StatefulWidget {
   final InstitutionModel institution;
@@ -71,8 +68,8 @@ class _HRAttendanceReportScreenState extends State<HRAttendanceReportScreen> {
         children: [
           _buildMonthPicker(),
           Expanded(
-            child: FutureBuilder<List<UserModel>>(
-              future: service.getAllInstitutionMembers(widget.institution.id),
+            child: StreamBuilder<List<UserModel>>(
+              stream: service.streamInstitutionMembers(widget.institution.id),
               builder: (context, empSnapshot) {
                 if (empSnapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
                 final employees = empSnapshot.data ?? [];
