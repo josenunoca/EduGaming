@@ -47,8 +47,8 @@ class _HREvaluationTabState extends State<HREvaluationTab> {
             style: TextStyle(color: Colors.white54),
           ),
           const SizedBox(height: 32),
-          FutureBuilder<List<UserModel>>(
-            future: service.getAllInstitutionMembers(widget.institution.id),
+          StreamBuilder<List<UserModel>>(
+            stream: service.streamInstitutionMembers(widget.institution.id),
             builder: (context, snapshot) {
               if (!snapshot.hasData) return const CircularProgressIndicator();
               

@@ -16,8 +16,8 @@ class HRStaffTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final service = context.read<FirebaseService>();
 
-    return FutureBuilder<List<UserModel>>(
-      future: service.getAllInstitutionMembers(institution.id),
+    return StreamBuilder<List<UserModel>>(
+      stream: service.streamInstitutionMembers(institution.id),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());

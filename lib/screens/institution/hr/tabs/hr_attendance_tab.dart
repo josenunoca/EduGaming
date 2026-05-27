@@ -213,8 +213,8 @@ class _HRAttendanceTabState extends State<HRAttendanceTab> {
   Widget build(BuildContext context) {
     final service = context.read<FirebaseService>();
 
-    return FutureBuilder<List<UserModel>>(
-      future: service.getAllInstitutionMembers(widget.institution.id),
+    return StreamBuilder<List<UserModel>>(
+      stream: service.streamInstitutionMembers(widget.institution.id),
       builder: (context, empSnapshot) {
         if (empSnapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());

@@ -26,8 +26,8 @@ class _HRScheduleTabState extends State<HRScheduleTab> {
     return StreamBuilder<List<HRShift>>(
       stream: service.getHRShifts(widget.institution.id),
       builder: (context, shiftSnapshot) {
-        return FutureBuilder<List<UserModel>>(
-          future: service.getAllInstitutionMembers(widget.institution.id),
+        return StreamBuilder<List<UserModel>>(
+          stream: service.streamInstitutionMembers(widget.institution.id),
           builder: (context, empSnapshot) {
             if (empSnapshot.connectionState == ConnectionState.waiting) {
               return const Center(child: CircularProgressIndicator());
