@@ -22,6 +22,7 @@ import 'lifestyle_management_screen.dart';
 import '../login_screen.dart';
 import 'delegation_management_screen.dart';
 import 'knowledge/knowledge_management_screen.dart';
+import 'infrastructure/infrastructure_management_screen.dart';
 import '../../widgets/app_tile.dart';
 
 class InstitutionDashboard extends StatelessWidget {
@@ -73,23 +74,9 @@ class InstitutionDashboard extends StatelessWidget {
 
             if (user.institutionId == null) {
               return Scaffold(
-                body: FutureBuilder(
-                  future: service.repairInstitutionLink(
-                      authSnap.data!.uid, authSnap.data!.email!),
-                  builder: (context, repairSnap) {
-                    if (repairSnap.connectionState == ConnectionState.waiting) {
-                      return const Center(child: CircularProgressIndicator());
-                    }
-                    return const Center(
-                      child: Padding(
-                        padding: EdgeInsets.all(24.0),
-                        child: AiTranslatedText(
-                          'Erro: Vincule este utilizador a uma instituição no painel de Administrador ou verifique o email.',
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    );
-                  },
+                body: _RepairInstitutionLinkWidget(
+                  uid: authSnap.data!.uid,
+                  email: authSnap.data!.email!,
                 ),
               );
             }
@@ -269,6 +256,17 @@ class InstitutionDashboard extends StatelessWidget {
                                           institution: institution)),
                                 ),
                               ),
+                              AppTile(
+                                icon: Icons.domain,
+                                label: 'Infraestruturas',
+                                color: Colors.deepOrangeAccent,
+                                onTap: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (_) => InfrastructureManagementScreen(
+                                          institution: institution)),
+                                ),
+                              ),
                             ],
                           ),
                         ],
@@ -364,6 +362,47 @@ class InstitutionDashboard extends StatelessWidget {
               style: TextStyle(color: Colors.white54)),
         ],
       ),
+    );
+  }
+}
+
+class _RepairInstitutionLinkWidget extends StatefulWidget {
+  final String uid;
+  final String email;
+
+  const _RepairInstitutionLinkWidget({required this.uid, required this.email});
+
+  @override
+  State<_RepairInstitutionLinkWidget> createState() => _RepairInstitutionLinkWidgetState();
+}
+
+class _RepairInstitutionLinkWidgetState extends State<_RepairInstitutionLinkWidget> {
+  late Future<void> _repairFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _repairFuture = context.read<FirebaseService>().repairInstitutionLink(widget.uid, widget.email);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder(
+      future: _repairFuture,
+      builder: (context, repairSnap) {
+        if (repairSnap.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        return const Center(
+          child: Padding(
+            padding: EdgeInsets.all(24.0),
+            child: AiTranslatedText(
+              'Erro: Vincule este utilizador a uma instituição no painel de Administrador ou verifique o email.',
+              textAlign: TextAlign.center,
+            ),
+          ),
+        );
+      },
     );
   }
 }

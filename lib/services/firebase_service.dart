@@ -9,6 +9,7 @@ import 'package:rxdart/rxdart.dart' hide Subject;
 import '../models/agenda_item_model.dart';
 import '../models/user_model.dart';
 import '../models/erp_record_model.dart';
+import '../models/marketing_event_model.dart';
 import '../models/management_document_model.dart';
 import '../models/institution_model.dart';
 import '../models/internal_message.dart';
@@ -20,6 +21,7 @@ import '../models/course_model.dart';
 import '../models/institutional_organ_model.dart';
 import '../models/institution_organ_model.dart';
 import '../models/facility_model.dart';
+import '../models/infrastructure_model.dart';
 import '../models/document_model.dart';
 import '../models/activity_model.dart';
 import '../models/hr/hr_schedule_model.dart';
@@ -1728,6 +1730,240 @@ class FirebaseService {
     debugPrint('Generating AI Minute for: $transcription');
     await Future.delayed(const Duration(seconds: 2));
     return "Ata gerada automaticamente: A reunião focou na discussão de... \n\nDecisões tomadas: \n1. Aprovado o novo regulamento. \n2. Definidas as datas dos exames.";
+  }
+
+
+  // ---------------------------------------------------------------------------
+  // INFRASTRUCTURES
+  // ---------------------------------------------------------------------------
+
+  Stream<List<Infrastructure>> getInfrastructures(String institutionId) {
+    return _db
+        .collection('infrastructures')
+        .where('institutionId', isEqualTo: institutionId)
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => Infrastructure.fromMap({...doc.data(), 'id': doc.id}))
+            .toList());
+  }
+
+  Future<Infrastructure?> getInfrastructureById(String id) async {
+    final doc = await _db.collection('infrastructures').doc(id).get();
+    if (doc.exists) {
+      final data = doc.data()!;
+      data['id'] = doc.id;
+      return Infrastructure.fromMap(data);
+    }
+    return null;
+  }
+
+  Future<void> saveInfrastructure(Infrastructure infra) async {
+    await _db.collection('infrastructures').doc(infra.id).set(infra.toMap());
+  }
+
+  Future<void> deleteInfrastructure(String id) async {
+    await _db.collection('infrastructures').doc(id).delete();
+  }
+
+  Future<void> updateInfrastructureMedia(String id, ActivityMedia mediaItem) async {
+    await _db.collection('infrastructures').doc(id).update({
+      'media': FieldValue.arrayUnion([mediaItem.toMap()])
+    });
+  }
+
+  Future<void> removeInfrastructureMedia(String id, ActivityMedia mediaItem) async {
+    await _db.collection('infrastructures').doc(id).update({
+      'media': FieldValue.arrayRemove([mediaItem.toMap()])
+    });
+  }
+
+  Future<void> bulkRemoveInfrastructureMedia(String id, List<ActivityMedia> mediaItems) async {
+    final mediaMaps = mediaItems.map((e) => e.toMap()).toList();
+    await _db.collection('infrastructures').doc(id).update({
+      'media': FieldValue.arrayRemove(mediaMaps)
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  // MARKETING EVENTS
+  // ---------------------------------------------------------------------------
+
+  Future<void> saveMarketingEvent(MarketingEvent event) async {
+    await _db.collection('marketing_events').doc(event.id).set(event.toMap());
+  }
+
+  Future<MarketingEvent?> getMarketingEventById(String id) async {
+    final doc = await _db.collection('marketing_events').doc(id).get();
+    if (doc.exists) {
+      final data = doc.data()!;
+      data['id'] = doc.id;
+      return MarketingEvent.fromMap(data);
+    }
+    return null;
+  }
+
+  Future<void> updateMarketingEventStatus(String eventId, String status) async {
+    await _db.collection('marketing_events').doc(eventId).update({'status': status});
+  }
+
+  Future<void> deleteMarketingEvent(String eventId) async {
+    await _db.collection('marketing_events').doc(eventId).delete();
+  }
+
+  Future<void> updateMarketingMedia(
+      String eventId, ActivityMedia mediaItem) async {
+    await _db.collection('marketing_events').doc(eventId).update({
+      'media': FieldValue.arrayUnion([mediaItem.toMap()])
+    });
+  }
+
+  Future<void> removeMarketingMedia(
+      String eventId, ActivityMedia mediaItem) async {
+    await _db.collection('marketing_events').doc(eventId).update({
+      'media': FieldValue.arrayRemove([mediaItem.toMap()])
+    });
+  }
+
+  Future<void> bulkRemoveMarketingMedia(
+      String eventId, List<ActivityMedia> mediaItems) async {
+    final mediaMaps = mediaItems.map((e) => e.toMap()).toList();
+    await _db.collection('marketing_events').doc(eventId).update({
+      'media': FieldValue.arrayRemove(mediaMaps)
+    });
+  }
+
+  Future<void> deleteAllMarketingEvents(String institutionId) async {
+    final snapshot = await _db
+        .collection('marketing_events')
+        .where('institutionId', isEqualTo: institutionId)
+        .get();
+    final batch = _db.batch();
+    for (var doc in snapshot.docs) {
+      batch.delete(doc.reference);
+    }
+    await batch.commit();
+  }
+
+  Future<void> deleteAllMarketingEventsByGroup(String institutionId, String marketingGroup) async {
+    final snapshot = await _db
+        .collection('marketing_events')
+        .where('institutionId', isEqualTo: institutionId)
+        .where('marketingGroup', isEqualTo: marketingGroup)
+        .get();
+    final batch = _db.batch();
+    for (var doc in snapshot.docs) {
+      batch.delete(doc.reference);
+    }
+    await batch.commit();
+  }
+
+  Stream<List<MarketingEvent>> getMarketingEvents(String institutionId, {
+    String? responsibleUserId,
+    String? marketingGroup,
+    String? academicYear,
+    String? status,
+  }) {
+    Query query = _db.collection('marketing_events').where('institutionId', isEqualTo: institutionId);
+    
+    if (responsibleUserId != null) query = query.where('responsibleUserId', isEqualTo: responsibleUserId);
+    if (marketingGroup != null) query = query.where('marketingGroup', isEqualTo: marketingGroup);
+    if (status != null) query = query.where('status', isEqualTo: status);
+
+    return query.snapshots().map((snapshot) {
+      final list = snapshot.docs.map((doc) => MarketingEvent.fromMap(doc.data() as Map<String, dynamic>)).toList();
+      
+      list.sort((a, b) {
+        final aIsCompleted = a.status == 'completed';
+        final bIsCompleted = b.status == 'completed';
+        
+        if (aIsCompleted != bIsCompleted) {
+          return aIsCompleted ? 1 : -1;
+        }
+        
+        return a.startDate.compareTo(b.startDate);
+      });
+      
+      return list;
+    });
+  }
+
+  Future<void> updateMarketingEventMedia(String eventId, ActivityMedia mediaItem) async {
+    await _db.collection('marketing_events').doc(eventId).update({
+      'media': FieldValue.arrayUnion([mediaItem.toMap()])
+    });
+  }
+
+  Future<void> removeMarketingEventMedia(String eventId, ActivityMedia mediaItem) async {
+    await _db.collection('marketing_events').doc(eventId).update({
+      'media': FieldValue.arrayRemove([mediaItem.toMap()])
+    });
+  }
+
+  Future<void> bulkRemoveMarketingEventMedia(String eventId, List<ActivityMedia> mediaItems) async {
+    final mediaMaps = mediaItems.map((e) => e.toMap()).toList();
+    await _db.collection('marketing_events').doc(eventId).update({
+      'media': FieldValue.arrayRemove(mediaMaps)
+    });
+  }
+
+  Future<void> duplicateMarketingEvent(String sourceId, DateTime newStartDate, DateTime newEndDate) async {
+    final doc = await _db.collection('marketing_events').doc(sourceId).get();
+    if (!doc.exists) return;
+
+    final source = MarketingEvent.fromMap(doc.data()!);
+    final newId = const Uuid().v4();
+
+    final duplicated = MarketingEvent(
+      id: newId,
+      title: '${source.title} (Cópia)',
+      description: source.description,
+      institutionId: source.institutionId,
+      startDate: newStartDate,
+      endDate: newEndDate,
+      startTime: source.startTime,
+      endTime: source.endTime,
+      marketingGroup: source.marketingGroup,
+      resources: source.resources,
+      goals: source.goals,
+      indicators: source.indicators,
+      participants: const [],
+      media: const [],
+      status: 'planned',
+    );
+
+    await saveMarketingEvent(duplicated);
+  }
+
+  Future<void> inviteGroupToMarketingEvent(String eventId, String groupType,
+      String groupId, List<UserModel> members) async {
+    final participants = members
+        .map((u) => ActivityParticipant(
+              id: u.id,
+              name: u.name,
+              email: u.email,
+              role: 'participant',
+              groupType: groupType,
+              groupId: groupId,
+            ).toMap())
+        .toList();
+
+    await _db
+        .collection('marketing_events')
+        .doc(eventId)
+        .update({'participants': FieldValue.arrayUnion(participants)});
+
+    final emails = members.map((u) => u.email).toList();
+    if (emails.isNotEmpty) {
+      await sendInternalMessage(InternalMessage(
+        id: const Uuid().v4(),
+        senderId: 'SYSTEM',
+        senderName: 'EduGaming System',
+        recipientIds: emails,
+        subject: 'Novo Convite para Campanha de Marketing',
+        body: 'Foi convidado para participar numa nova campanha de marketing institucional.',
+        timestamp: DateTime.now(),
+      ));
+    }
   }
 
 
