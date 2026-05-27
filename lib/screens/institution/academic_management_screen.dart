@@ -214,10 +214,10 @@ class _AcademicManagementScreenState extends State<AcademicManagementScreen>
                               const Icon(Icons.person, color: Colors.amber),
                           title: const Text('Coordenador de Curso',
                               style: TextStyle(color: Colors.white)),
-                          subtitle: FutureBuilder<UserModel?>(
-                            future: course.coordinatorId != null
-                                ? service.getUserModel(course.coordinatorId!)
-                                : Future.value(null),
+                          subtitle: StreamBuilder<UserModel?>(
+                            stream: course.coordinatorId != null
+                                ? service.getUserStream(course.coordinatorId!)
+                                : Stream.value(null),
                             builder: (context, userSnap) {
                               return Text(
                                   userSnap.data?.name ?? 'Não atribuído',
@@ -1125,9 +1125,9 @@ class _AcademicManagementScreenState extends State<AcademicManagementScreen>
 
     return StatefulBuilder(
       builder: (context, setState) {
-        return FutureBuilder<SchoolCalendar?>(
-          future:
-              service.getSchoolCalendar(widget.institution.id, selectedYear),
+        return StreamBuilder<SchoolCalendar?>(
+          stream:
+              service.getSchoolCalendarStream(widget.institution.id, selectedYear),
           builder: (context, snapshot) {
             final calendar = snapshot.data;
 

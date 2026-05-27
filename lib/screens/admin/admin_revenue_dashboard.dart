@@ -6,8 +6,21 @@ import '../../../models/institution_model.dart';
 import '../../../widgets/glass_card.dart';
 import '../../../widgets/ai_translated_text.dart';
 
-class AdminRevenueDashboard extends StatelessWidget {
+class AdminRevenueDashboard extends StatefulWidget {
   const AdminRevenueDashboard({super.key});
+
+  @override
+  State<AdminRevenueDashboard> createState() => _AdminRevenueDashboardState();
+}
+
+class _AdminRevenueDashboardState extends State<AdminRevenueDashboard> {
+  late Future<Map<String, dynamic>> _statsFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _statsFuture = context.read<FirebaseService>().getAdminRevenueStats();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -22,7 +35,7 @@ class AdminRevenueDashboard extends StatelessWidget {
         elevation: 0,
       ),
       body: FutureBuilder<Map<String, dynamic>>(
-        future: service.getAdminRevenueStats(),
+        future: _statsFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());

@@ -9,6 +9,7 @@ import '../models/institution_model.dart';
 import '../models/subject_model.dart';
 import '../models/questionnaire_model.dart';
 import '../models/activity_model.dart';
+import '../models/marketing_event_model.dart';
 
 /// Controls the information sources used during a DocTalk session.
 enum DocSearchMode {
@@ -23,6 +24,37 @@ enum DocSearchMode {
 }
 
 class AiChatService {
+  Future<Map<String, dynamic>> generateMarketingReportDraft({
+    required InstitutionModel institution,
+    required List<MarketingEvent> events,
+  }) async {
+    final ai = GenerativeModel(
+      model: 'gemini-1.5-flash',
+      apiKey: _apiKey,
+      systemInstruction: Content.system(
+          'És um Diretor de Marketing especializado em instituições de ensino. '
+          'Analisa os seguintes eventos de marketing e gera um relatório profissional com Introdução, Conclusão e Resumo por secção. '
+          'Retorna APENAS JSON válido com o formato: {"introduction": "...", "conclusion": "...", "sections": [{"title": "...", "summary": "...", "eventIds": ["id1"]}]}'),
+    );
+
+    final summary = events.map((a) => 'ID:${a.id} - ${a.title} (${a.marketingGroup}) - Orçamento: ${a.financials.fold(0.0, (s,f)=>s+f.amount)}').join('\n');
+
+    final prompt = '''
+Instituição: ${institution.name}
+Eventos Realizados:
+$summary
+''';
+
+    try {
+      final response = await ai.generateContent([Content.text(prompt)]);
+      final text = response.text ?? '{}';
+      final cleanJson = text.replaceAll('```json', '').replaceAll('```', '').trim();
+      return jsonDecode(cleanJson);
+    } catch (e) {
+      debugPrint('Error generating marketing report draft: $e');
+      return {};
+    }
+  }
   late GenerativeModel _model;
   final String _apiKey;
   List<Content> _history = [];
@@ -777,3 +809,4 @@ class _PodcastSegment {
   final String text;
   _PodcastSegment(this.speaker, this.text);
 }
+

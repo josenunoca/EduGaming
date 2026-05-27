@@ -7,17 +7,28 @@ import '../../../../services/procurement_service.dart';
 import '../../../../widgets/ai_translated_text.dart';
 import '../../../../widgets/glass_card.dart';
 
-class ProcurementProfitReportTab extends StatelessWidget {
+class ProcurementProfitReportTab extends StatefulWidget {
   final InstitutionModel institution;
 
   const ProcurementProfitReportTab({super.key, required this.institution});
 
   @override
-  Widget build(BuildContext context) {
-    final service = context.read<ProcurementService>();
+  State<ProcurementProfitReportTab> createState() => _ProcurementProfitReportTabState();
+}
 
+class _ProcurementProfitReportTabState extends State<ProcurementProfitReportTab> {
+  late Future<List<ArticleProfit>> _profitFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _profitFuture = context.read<ProcurementService>().getProfitReport(widget.institution.id);
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return FutureBuilder<List<ArticleProfit>>(
-      future: service.getProfitReport(institution.id),
+      future: _profitFuture,
       builder: (context, snapshot) {
         if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
         final profits = snapshot.data!;

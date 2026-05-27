@@ -387,7 +387,7 @@ class _FinanceReportsTabState extends State<FinanceReportsTab> {
                 pw.SizedBox(height: 40),
                 pw.Text('NOTAS E OBSERVAÇÕES', style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold)),
                 pw.SizedBox(height: 10),
-                pw.Text(report.notes, style: const pw.TextStyle(fontSize: 10, fontStyle: pw.FontStyle.italic)),
+                pw.Text(report.notes, style: pw.TextStyle(fontSize: 10, fontStyle: pw.FontStyle.italic)),
               ],
               
               pw.Spacer(),

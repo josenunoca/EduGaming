@@ -20,6 +20,13 @@ class InstitutionCreditManagementScreen extends StatefulWidget {
 
 class _InstitutionCreditManagementScreenState
     extends State<InstitutionCreditManagementScreen> {
+  late Future<Map<String, List<UserModel>>> _statsFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _statsFuture = context.read<FirebaseService>().getTopConsumptionStats(widget.institution.id);
+  }
   Future<void> _showSetLimitDialog(UserModel user) async {
     final controller =
         TextEditingController(text: user.aiCreditLimit?.toString() ?? '');
@@ -101,7 +108,7 @@ class _InstitutionCreditManagementScreenState
           children: [
             _buildBalanceHero(widget.institution),
             const SizedBox(height: 32),
-            _buildStatsSection(service),
+            _buildStatsSection(),
             const SizedBox(height: 32),
             _buildLimitsSection(service),
             const SizedBox(height: 32),
@@ -143,9 +150,9 @@ class _InstitutionCreditManagementScreenState
     );
   }
 
-  Widget _buildStatsSection(FirebaseService service) {
+  Widget _buildStatsSection() {
     return FutureBuilder<Map<String, List<UserModel>>>(
-      future: service.getTopConsumptionStats(widget.institution.id),
+      future: _statsFuture,
       builder: (context, snapshot) {
         if (!snapshot.hasData)
           return const Center(child: CircularProgressIndicator());
@@ -247,11 +254,10 @@ class _InstitutionCreditManagementScreenState
         ),
         const SizedBox(height: 16),
         StreamBuilder<List<UserModel>>(
-          stream: service.getUsers(),
+          stream: service.getUsersForInstitution(widget.institution.id),
           builder: (context, snapshot) {
             final members = (snapshot.data ?? [])
                 .where((u) =>
-                    u.institutionId == widget.institution.id &&
                     (u.role == UserRole.student ||
                         u.role == UserRole.teacher ||
                         u.role == UserRole.courseCoordinator))

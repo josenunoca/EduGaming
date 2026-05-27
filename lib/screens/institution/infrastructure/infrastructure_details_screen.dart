@@ -7,13 +7,13 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../models/infrastructure_model.dart';
-import 'package:loan_calc_mvp/models/institution_model.dart';
+import '../../../../models/institution_model.dart';
 import '../../../../models/activity_model.dart';
 import '../../../../services/firebase_service.dart';
 import '../../../../widgets/ai_translated_text.dart';
 
 class InfrastructureDetailsScreen extends StatefulWidget {
-  final Institution institution;
+  final InstitutionModel institution;
   final Infrastructure infrastructure;
 
   const InfrastructureDetailsScreen({
@@ -450,8 +450,7 @@ class _InfrastructureDetailsScreenState
       for (var file in result.files) {
         if (file.bytes != null) {
           final type = file.name.toLowerCase().endsWith('.pdf') ? 'document' : 'image';
-          final url = await service.uploadContentFile(
-              _currentInfra.id, file.bytes!, file.name); // Reusing upload bucket path logic
+          final url = await service.uploadContentFile(file.bytes!, file.name); // Reusing upload bucket path logic
           if (url != null) {
             final item = ActivityMedia(
               id: const Uuid().v4(),

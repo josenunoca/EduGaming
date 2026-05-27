@@ -16,7 +16,7 @@ import '../../widgets/glass_card.dart';
 import '../../widgets/participant_selector_dialog.dart';
 import '../../models/user_model.dart';
 import '../../widgets/ai_text_field.dart';
-import '../../utils/marketing_export_helper.dart';
+import '../../utils/activity_export_helper.dart';
 import '../../models/facility_model.dart';
 
 class ActivityDetailsScreen extends StatefulWidget {
@@ -775,7 +775,7 @@ class _ActivityDetailsScreenState extends State<ActivityDetailsScreen>
               IconButton(
                 onPressed: () async {
                   try {
-                    await MarketingExportHelper.downloadPdf(_currentActivity, platform, generatedContent);
+                    await ActivityExportHelper.downloadPdf(_currentActivity, platform, generatedContent);
                   } catch (e) {
                     debugPrint('Erro a gerar PDF: $e');
                   }
@@ -786,7 +786,7 @@ class _ActivityDetailsScreenState extends State<ActivityDetailsScreen>
               IconButton(
                 onPressed: () async {
                   try {
-                    await MarketingExportHelper.downloadZip(_currentActivity, platform, generatedContent);
+                    await ActivityExportHelper.downloadZip(_currentActivity, platform, generatedContent);
                   } catch (e) {
                     debugPrint('Erro a gerar ZIP: $e');
                   }
@@ -2059,3 +2059,4 @@ class _ActivityDetailsScreenState extends State<ActivityDetailsScreen>
     _refreshActivity();
   }
 }
+

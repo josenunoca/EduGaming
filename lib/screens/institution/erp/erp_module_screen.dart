@@ -279,12 +279,37 @@ class ErpModuleScreen extends StatelessWidget {
                         if (clipboardData != null && clipboardData.text != null) {
                           final text = clipboardData.text!.trim();
                           if (text.startsWith('data:image/') && text.contains(';base64,')) {
+                            // Extract bytes and upload to Firebase Storage
+                            try {
+                              final base64Str = text.split(',').last;
+                              final bytes = base64Decode(base64Str);
+                              final ext = text.split(';').first.split('/').last;
+                              final destination = 'erp_attachments/${record.id}/${const Uuid().v4()}.$ext';
+                              final url = await service.uploadFileBytes(bytes, destination);
+                              
+                              mutableAttachments.add(url);
+                              await service.updateErpRecord(record.id, {'attachments': mutableAttachments});
+                              setDialogState(() {});
+                              if (stateContext.mounted) {
+                                ScaffoldMessenger.of(stateContext).showSnackBar(
+                                  const SnackBar(content: Text('Imagem colada e carregada com sucesso!')),
+                                );
+                              }
+                            } catch (e) {
+                              if (stateContext.mounted) {
+                                ScaffoldMessenger.of(stateContext).showSnackBar(
+                                  SnackBar(content: Text('Erro ao carregar imagem para o Storage: $e')),
+                                );
+                              }
+                            }
+                            return;
+                          } else {
                             mutableAttachments.add(text);
                             await service.updateErpRecord(record.id, {'attachments': mutableAttachments});
                             setDialogState(() {});
                             if (stateContext.mounted) {
                               ScaffoldMessenger.of(stateContext).showSnackBar(
-                                const SnackBar(content: Text('Imagem colada com sucesso!')),
+                                const SnackBar(content: Text('Texto colado como anexo!')),
                               );
                             }
                             return;
@@ -292,7 +317,7 @@ class ErpModuleScreen extends StatelessWidget {
                         }
                         if (stateContext.mounted) {
                           ScaffoldMessenger.of(stateContext).showSnackBar(
-                            const SnackBar(content: Text('Nenhuma imagem Base64 detectada na área de transferência.')),
+                            const SnackBar(content: Text('Nenhum anexo detectado na área de transferência.')),
                           );
                         }
                       } catch (e) {
@@ -316,11 +341,18 @@ class ErpModuleScreen extends StatelessWidget {
                         if (result != null && result.files.isNotEmpty) {
                           final file = result.files.first;
                           if (file.bytes != null) {
-                            final base64Data = base64Encode(file.bytes!);
                             final ext = file.extension?.toLowerCase() ?? 'png';
-                            final dataUri = 'data:image/$ext;base64,$base64Data';
+                            final destination = 'erp_attachments/${record.id}/${const Uuid().v4()}.$ext';
                             
-                            mutableAttachments.add(dataUri);
+                            if (stateContext.mounted) {
+                              ScaffoldMessenger.of(stateContext).showSnackBar(
+                                const SnackBar(content: Text('A carregar imagem para o Firebase Storage...')),
+                              );
+                            }
+                            
+                            final url = await service.uploadFileBytes(file.bytes!, destination);
+                            
+                            mutableAttachments.add(url);
                             await service.updateErpRecord(record.id, {'attachments': mutableAttachments});
                             setDialogState(() {});
                             if (stateContext.mounted) {
@@ -351,17 +383,18 @@ class ErpModuleScreen extends StatelessWidget {
                         if (result != null && result.files.isNotEmpty) {
                           final file = result.files.first;
                           if (file.bytes != null) {
-                            final base64Data = base64Encode(file.bytes!);
                             final ext = file.extension?.toLowerCase() ?? '';
-                            final isImg = (ext == 'png' || ext == 'jpg' || ext == 'jpeg' || ext == 'gif');
-                            final mimeType = ext == 'pdf'
-                                ? 'application/pdf'
-                                : isImg
-                                    ? 'image/$ext'
-                                    : 'application/octet-stream';
-                            final dataUri = 'data:$mimeType;base64,$base64Data';
+                            final destination = 'erp_attachments/${record.id}/${const Uuid().v4()}.$ext';
                             
-                            mutableAttachments.add(dataUri);
+                            if (stateContext.mounted) {
+                              ScaffoldMessenger.of(stateContext).showSnackBar(
+                                SnackBar(content: Text('A carregar ficheiro "${file.name}" para o Storage...')),
+                              );
+                            }
+                            
+                            final url = await service.uploadFileBytes(file.bytes!, destination);
+                            
+                            mutableAttachments.add(url);
                             await service.updateErpRecord(record.id, {'attachments': mutableAttachments});
                             setDialogState(() {});
                             if (stateContext.mounted) {
@@ -397,7 +430,13 @@ class ErpModuleScreen extends StatelessWidget {
                     itemCount: mutableAttachments.length,
                     itemBuilder: (context, index) {
                       final attachment = mutableAttachments[index];
-                      final isBase64Image = attachment.startsWith('data:image/');
+                      final isLegacyBase64Image = attachment.startsWith('data:image/');
+                      final isFirebaseImage = attachment.startsWith('http') && 
+                          (attachment.contains('.png?') || attachment.contains('.jpg?') || 
+                           attachment.contains('.jpeg?') || attachment.contains('.gif?') ||
+                           attachment.contains('%2Fpng?') || attachment.contains('%2Fjpg?') || 
+                           attachment.contains('%2Fjpeg?'));
+                      final isImage = isLegacyBase64Image || isFirebaseImage;
                       
                       return Container(
                         margin: const EdgeInsets.only(bottom: 12),
@@ -415,21 +454,25 @@ class ErpModuleScreen extends StatelessWidget {
                                 width: 60,
                                 height: 60,
                                 color: Colors.black26,
-                                child: isBase64Image
+                                child: isLegacyBase64Image
                                     ? Image.memory(
                                         base64Decode(attachment.split(',').last),
                                         fit: BoxFit.cover,
-                                        errorBuilder: (context, error, stackTrace) {
-                                          return const Icon(Icons.broken_image, color: Colors.white24);
-                                        },
+                                        errorBuilder: (context, error, stackTrace) => const Icon(Icons.broken_image, color: Colors.white24),
                                       )
-                                    : const Icon(Icons.insert_drive_file, color: Colors.white54),
+                                    : isFirebaseImage 
+                                      ? Image.network(
+                                          attachment,
+                                          fit: BoxFit.cover,
+                                          errorBuilder: (context, error, stackTrace) => const Icon(Icons.broken_image, color: Colors.white24),
+                                        )
+                                      : const Icon(Icons.insert_drive_file, color: Colors.white54),
                               ),
                             ),
                             const SizedBox(width: 12),
                             Expanded(
                               child: Text(
-                                isBase64Image ? 'Imagem Anexo ${index + 1}' : 'Ficheiro Anexo ${index + 1}',
+                                isImage ? 'Imagem Anexo ${index + 1}' : 'Ficheiro Anexo ${index + 1}',
                                 style: const TextStyle(color: Colors.white, fontSize: 14),
                                 overflow: TextOverflow.ellipsis,
                               ),

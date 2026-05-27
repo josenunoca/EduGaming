@@ -308,25 +308,14 @@ class ParentDashboard extends StatelessWidget {
                                       color: Colors.white,
                                       fontWeight: FontWeight.bold,
                                       fontSize: 16)),
-                              subtitle: FutureBuilder<List<InstitutionModel>>(
-                                  future: service.getInstitutions().first,
+                              subtitle: StreamBuilder<InstitutionModel?>(
+                                  stream: child.institutionId != null
+                                      ? service.getInstitutionStream(child.institutionId!)
+                                      : Stream.value(null),
                                   builder: (context, snapshot) {
-                                    final institutions = snapshot.data ?? [];
-                                    final inst = institutions.firstWhere(
-                                      (i) => i.id == child.institutionId,
-                                      orElse: () => InstitutionModel(
-                                        id: '',
-                                        name: 'Não definida',
-                                        email: '',
-                                        phone: '',
-                                        address: '',
-                                        nif: '',
-                                        educationLevels: [],
-                                        createdAt: DateTime.now(),
-                                      ),
-                                    );
+                                    final instName = snapshot.data?.name ?? 'Não definida';
                                     return AiTranslatedText(
-                                      'Instituição: ${inst.name}',
+                                      'Instituição: $instName',
                                       style: const TextStyle(
                                           color: Colors.white54, fontSize: 12),
                                     );
@@ -467,8 +456,8 @@ class ParentDashboard extends StatelessWidget {
                 style: TextStyle(color: Colors.white70, fontSize: 13),
               ),
               const SizedBox(height: 8),
-              FutureBuilder<List<InstitutionModel>>(
-                future: service.getInstitutions().first,
+              StreamBuilder<List<InstitutionModel>>(
+                stream: service.getInstitutions(),
                 builder: (context, snapshot) {
                   final institutions = snapshot.data ?? [];
                   return DropdownButtonFormField<String>(

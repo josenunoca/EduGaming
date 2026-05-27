@@ -859,10 +859,8 @@ class _StudentSubjectScreenState extends State<StudentSubjectScreen>
             bool hasMissing = false;
 
             // Fetch games map for calculations
-            return FutureBuilder<List<AiGame>>(
-              future: service
-                  .getAiGamesBySubject(subject.id, publishedOnly: true)
-                  .first,
+            return StreamBuilder<List<AiGame>>(
+              stream: service.getAiGamesBySubject(subject.id, publishedOnly: true),
               builder: (context, gamesSnapshot) {
                 if (!gamesSnapshot.hasData) {
                   return const Center(child: CircularProgressIndicator());

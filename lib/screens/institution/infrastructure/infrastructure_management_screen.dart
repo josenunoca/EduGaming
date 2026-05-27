@@ -3,14 +3,14 @@ import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../../models/infrastructure_model.dart';
-import 'package:loan_calc_mvp/models/institution_model.dart';
+import '../../../../models/institution_model.dart';
 import '../../../../services/firebase_service.dart';
 import '../../../../widgets/ai_translated_text.dart';
 import '../../../../utils/infrastructure_export_helper.dart';
 import 'infrastructure_details_screen.dart';
 
 class InfrastructureManagementScreen extends StatefulWidget {
-  final Institution institution;
+  final InstitutionModel institution;
 
   const InfrastructureManagementScreen({super.key, required this.institution});
 

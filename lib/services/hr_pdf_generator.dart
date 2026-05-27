@@ -561,7 +561,7 @@ class HRPdfGenerator {
             else
               pw.Text(
                 'Dias de encerramento semanal: ${closedWeekdays.join(', ')}.',
-                style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey700, fontStyle: pw.FontStyle.italic),
+                style: pw.TextStyle(fontSize: 10, color: PdfColors.grey700, fontStyle: pw.FontStyle.italic),
               ),
 
             pw.SizedBox(height: 25),

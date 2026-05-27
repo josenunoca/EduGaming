@@ -6,6 +6,7 @@ import '../../../widgets/ai_translated_text.dart';
 import 'erp_module_screen.dart';
 import '../hr/hr_management_screen.dart';
 import '../finance/finance_management_screen.dart';
+import '../marketing/marketing_management_screen.dart';
 import '../procurement/procurement_management_screen.dart';
 
 class ErpDashboard extends StatelessWidget {
@@ -134,6 +135,15 @@ class ErpDashboard extends StatelessWidget {
                 context,
                 MaterialPageRoute(
                   builder: (_) => ProcurementManagementScreen(institution: institution),
+                ),
+              );
+              return;
+            }
+            if (config.module == ErpModule.marketing) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => MarketingManagementScreen(institution: institution),
                 ),
               );
               return;

@@ -12,6 +12,8 @@ import '../models/questionnaire_model.dart';
 import '../models/user_model.dart';
 import '../models/institution_organ_model.dart';
 import '../models/activity_model.dart';
+import '../models/marketing_event_model.dart';
+import '../models/marketing_report_draft.dart';
 import '../models/annual_report_draft.dart';
 import '../models/survey_response_summary_model.dart';
 import '../models/hr/hr_attendance_model.dart';
@@ -21,6 +23,45 @@ import '../models/hr/hr_schedule_model.dart';
 import '../models/procurement/procurement_models.dart';
 
 class PdfService {
+  static Future<void> generateMarketingReportPDF(
+    InstitutionModel institution,
+    List<MarketingEvent> events, {
+    MarketingReportDraft? draft,
+  }) async {
+    return generateAnnualReportPDF(
+      institution,
+      events.map((e) => InstitutionalActivity.fromMap(e.toMap()..['activityGroup'] = e.marketingGroup)).toList(),
+      draft: draft == null ? null : AnnualReportDraft(
+        introduction: draft.introduction,
+        conclusion: draft.conclusion,
+        sections: draft.sections.map((s) => ReportSection(
+          title: s.title,
+          summary: s.summary,
+          activities: s.events.map((e) => InstitutionalActivity.fromMap(e.toMap()..['activityGroup'] = e.marketingGroup)).toList(),
+        )).toList(),
+      ),
+    );
+  }
+
+  static Future<void> generateMarketingPresentationPDF(
+    InstitutionModel institution,
+    List<MarketingEvent> events, {
+    MarketingReportDraft? draft,
+  }) async {
+    return generatePresentationPDF(
+      institution,
+      events.map((e) => InstitutionalActivity.fromMap(e.toMap()..['activityGroup'] = e.marketingGroup)).toList(),
+      draft: draft == null ? null : AnnualReportDraft(
+        introduction: draft.introduction,
+        conclusion: draft.conclusion,
+        sections: draft.sections.map((s) => ReportSection(
+          title: s.title,
+          summary: s.summary,
+          activities: s.events.map((e) => InstitutionalActivity.fromMap(e.toMap()..['activityGroup'] = e.marketingGroup)).toList(),
+        )).toList(),
+      ),
+    );
+  }
   static Future<pw.ImageProvider?> _fetchLogo(String? url) async {
     if (url == null || url.isEmpty) return null;
     try {
@@ -2447,4 +2488,5 @@ class PdfService {
     await Printing.layoutPdf(onLayout: (format) async => pdf.save(), name: 'PO_${order.id}.pdf');
   }
 }
+
 

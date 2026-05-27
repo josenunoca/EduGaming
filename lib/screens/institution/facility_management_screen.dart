@@ -344,10 +344,10 @@ class _ClassroomCard extends StatelessWidget {
                                               style: const TextStyle(color: Colors.white, fontSize: 10),
                                               overflow: TextOverflow.ellipsis,
                                             )
-                                          : FutureBuilder<Subject?>(
-                                              future: entry.subjectId != null 
-                                                ? service.getSubject(entry.subjectId!)
-                                                : Future.value(null),
+                                          : StreamBuilder<Subject?>(
+                                              stream: entry.subjectId != null 
+                                                ? service.getSubjectStream(entry.subjectId!)
+                                                : Stream.value(null),
                                               builder: (context, subSnap) {
                                                 return Text(
                                                   subSnap.data?.name ?? 'Carregar...',
