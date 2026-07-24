@@ -1,5 +1,6 @@
 {
   "hosting": {
+    "site": "edugamingpt",
     "public": "build/web",
     "ignore": [
       "firebase.json",
@@ -18,20 +19,16 @@
         "headers": [
           {
             "key": "Cache-Control",
-            "value": "max-age=604800"
+            "value": "max-age=31536000"
           }
         ]
       },
       {
-        "source": "**",
+        "source": "index.html",
         "headers": [
           {
-            "key": "X-Frame-Options",
-            "value": "SAMEORIGIN"
-          },
-          {
-            "key": "X-Content-Type-Options",
-            "value": "nosniff"
+            "key": "Cache-Control",
+            "value": "no-cache"
           }
         ]
       }
