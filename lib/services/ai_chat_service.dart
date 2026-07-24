@@ -29,7 +29,7 @@ class AiChatService {
     required List<MarketingEvent> events,
   }) async {
     final ai = GenerativeModel(
-      model: 'gemini-1.5-flash',
+      model: 'gemini-2.5-flash',
       apiKey: _apiKey,
       systemInstruction: Content.system(
           'És um Diretor de Marketing especializado em instituições de ensino. '
@@ -68,7 +68,7 @@ $summary
 
   AiChatService({required String apiKey}) : _apiKey = apiKey {
     _model = GenerativeModel(
-      model: 'gemini-flash-latest',
+      model: 'gemini-2.5-flash',
       apiKey: apiKey,
     );
   }

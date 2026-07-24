@@ -8,7 +8,7 @@ class CvAiService {
   late final GenerativeModel _model;
 
   CvAiService({required String apiKey}) {
-    _model = GenerativeModel(model: 'gemini-flash-latest', apiKey: apiKey);
+    _model = GenerativeModel(model: 'gemini-2.5-flash', apiKey: apiKey);
   }
 
   Future<CurriculumModel> parseCvPdf(Uint8List pdfBytes) async {
