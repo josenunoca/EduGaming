@@ -484,13 +484,14 @@ class _ComposeMessageScreenState extends State<ComposeMessageScreen> {
               final user = _potentialRecipients.firstWhere((u) => u.id == id,
                   orElse: () => UserModel(
                       id: id,
-                      name: '...',
-                      email: '',
+                      name: id.contains('@') ? id : '...',
+                      email: id.contains('@') ? id : '',
                       role: UserRole.student,
                       adConsent: false,
                       dataConsent: false));
+              final displayName = user.name != '...' ? user.name : id;
               return InputChip(
-                label: Text(user.name,
+                label: Text(displayName,
                     style: const TextStyle(color: Colors.white, fontSize: 12)),
                 backgroundColor: const Color(0xFF7B61FF).withValues(alpha: 0.3),
                 onDeleted: () => setState(() => selectedIds.remove(id)),
@@ -603,8 +604,29 @@ class _ComposeMessageScreenState extends State<ComposeMessageScreen> {
                             ],
                           ),
                         ),
+                        if (searchQuery.trim().contains('@')) ...[
+                          ListTile(
+                            leading: const Icon(Icons.mark_email_unread, color: Color(0xFF00FF85)),
+                            title: Text('Adicionar e-mail externo: ${searchQuery.trim()}',
+                                style: const TextStyle(color: Color(0xFF00FF85), fontWeight: FontWeight.bold)),
+                            subtitle: const Text('Enviar mensagem direta para este e-mail',
+                                style: TextStyle(color: Colors.white38, fontSize: 11)),
+                            trailing: IconButton(
+                              icon: const Icon(Icons.add_circle, color: Color(0xFF00FF85)),
+                              onPressed: () {
+                                final email = searchQuery.trim();
+                                final listToUpdate = isCc ? _selectedCcIds : _selectedRecipientIds;
+                                if (!listToUpdate.contains(email)) {
+                                  setState(() => listToUpdate.add(email));
+                                }
+                                Navigator.pop(context);
+                              },
+                            ),
+                          ),
+                          const Divider(color: Colors.white10),
+                        ],
                         Expanded(
-                          child: filteredList.isEmpty
+                          child: filteredList.isEmpty && !searchQuery.trim().contains('@')
                               ? const Center(
                                   child: AiTranslatedText(
                                       'Nenhum resultado encontrado.',

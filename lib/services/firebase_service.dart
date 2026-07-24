@@ -41,6 +41,7 @@ import '../models/credit_transaction.dart' as ai;
 import '../models/meeting_model.dart';
 import '../models/council_request_model.dart';
 import '../models/assignment_model.dart';
+import 'mail_service.dart';
 
 class FirebaseService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -1348,6 +1349,34 @@ class FirebaseService {
         .collection('internal_messages')
         .doc(message.id)
         .set(message.toMap());
+
+    // Dispatch real external email via Resend to recipient mailboxes
+    try {
+      final recipientEmails = <String>[];
+      final allRecipientIds = [...message.recipientIds, ...message.ccIds];
+
+      for (final idOrEmail in allRecipientIds) {
+        if (idOrEmail.contains('@')) {
+          recipientEmails.add(idOrEmail);
+        } else {
+          final user = await getUserModel(idOrEmail);
+          if (user != null && user.email.contains('@')) {
+            recipientEmails.add(user.email);
+          }
+        }
+      }
+
+      if (recipientEmails.isNotEmpty) {
+        MailService.sendResendEmail(
+          to: recipientEmails.toSet().toList(),
+          subject: message.subject,
+          body: message.body,
+          senderName: message.senderName,
+        );
+      }
+    } catch (e) {
+      debugPrint('Error dispatching external email: $e');
+    }
   }
 
   Stream<List<InternalMessage>> getInboxStream(String userId) {
