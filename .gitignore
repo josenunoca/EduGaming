@@ -61,3 +61,9 @@ android/key.properties
 *.jks
 *.keystore
 upload-keystore.jks
+
+# Firebase cache
+.firebase/
+
+# Old keystore backups
+*.jks.old
