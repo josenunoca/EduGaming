@@ -2,6 +2,7 @@ import 'env_config.dart';
 
 class AppConfig {
   static const String geminiApiKey = EnvConfig.geminiApiKey;
+  static const String resendApiKey = EnvConfig.resendApiKey;
 
   // Firebase Options
   static const String firebaseApiKey =
