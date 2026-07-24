@@ -173,8 +173,9 @@ class _ComposeMessageScreenState extends State<ComposeMessageScreen> {
               });
             });
             if (!mounted) return;
-            _promptInsertImage(name, text);
-            return;
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Link de imagem anexado com sucesso!')),
+            );
           }
         }
       }
