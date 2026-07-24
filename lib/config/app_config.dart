@@ -1,6 +1,8 @@
+import 'env_config.dart';
+
 class AppConfig {
-  static const String geminiApiKey =
-      "AQ.Ab8RN6JulO3MpdmvmfzW8_roUDv8-FHuRPmzxrTCJ4ZRTc2oag";
+  static String get geminiApiKey =>
+      EnvConfig.geminiApiKey.isNotEmpty ? EnvConfig.geminiApiKey : "";
 
   // Firebase Options
   static const String firebaseApiKey =

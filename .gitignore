@@ -61,6 +61,7 @@ android/key.properties
 *.jks
 *.keystore
 upload-keystore.jks
+lib/config/env_config.dart
 
 # Firebase cache
 .firebase/
