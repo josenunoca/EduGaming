@@ -1,16 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 import '../../../widgets/ai_translated_text.dart';
 
-// Camera and ML Kit are only available on Android and iOS
-// On Windows/Web we show a fallback UI
-export 'hr_face_scanner_mobile.dart'
-    if (dart.library.html) 'hr_face_scanner_stub.dart'
-    if (dart.library.js_interop) 'hr_face_scanner_stub.dart';
-
-class HRFaceScannerUnavailable extends StatelessWidget {
+// Stub for Web/Windows — face scanner not available
+class HRFaceScanner extends StatelessWidget {
   final Function(dynamic photo) onFaceVerified;
-  const HRFaceScannerUnavailable({super.key, required this.onFaceVerified});
+  const HRFaceScanner({super.key, required this.onFaceVerified});
 
   @override
   Widget build(BuildContext context) {

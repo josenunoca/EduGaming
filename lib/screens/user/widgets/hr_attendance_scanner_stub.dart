@@ -1,23 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 import '../../../widgets/ai_translated_text.dart';
 
-// Camera and ML Kit are only available on Android and iOS
-// On Windows/Web we show a fallback UI
-export 'hr_face_scanner_mobile.dart'
-    if (dart.library.html) 'hr_face_scanner_stub.dart'
-    if (dart.library.js_interop) 'hr_face_scanner_stub.dart';
-
-class HRFaceScannerUnavailable extends StatelessWidget {
-  final Function(dynamic photo) onFaceVerified;
-  const HRFaceScannerUnavailable({super.key, required this.onFaceVerified});
+// Stub for Web/Windows — QR scanner not available
+class HRAttendanceScanner extends StatelessWidget {
+  final Function(String code) onScan;
+  const HRAttendanceScanner({super.key, required this.onScan});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
-        title: const AiTranslatedText('Verificação Facial'),
+        title: const AiTranslatedText('Scanner QR Code'),
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
@@ -25,10 +19,10 @@ class HRFaceScannerUnavailable extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.camera_alt_outlined, size: 80, color: Colors.white24),
+            const Icon(Icons.qr_code_scanner, size: 80, color: Colors.white24),
             const SizedBox(height: 24),
             const AiTranslatedText(
-              'Verificação facial disponível apenas\nna aplicação móvel (Android / iOS).',
+              'Leitura de QR Code disponível apenas\nna aplicação móvel (Android / iOS).',
               textAlign: TextAlign.center,
               style: TextStyle(color: Colors.white70, fontSize: 16),
             ),

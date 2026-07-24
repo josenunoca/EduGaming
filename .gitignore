@@ -55,3 +55,9 @@ models_out.txt
 test_gemini*.dart
 test_models.dart
 *.iml
+
+# Security — NEVER commit these
+android/key.properties
+*.jks
+*.keystore
+upload-keystore.jks

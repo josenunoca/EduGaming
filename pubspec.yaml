@@ -1,5 +1,5 @@
-name: loan_calc_mvp
-description: A premium Flutter Loan Calculator MVP.
+name: edugaming
+description: Plataforma educacional gamificada para gestão institucional inteligente.
 version: 1.0.0+1
 
 environment:
@@ -58,6 +58,32 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^3.0.0
+  flutter_launcher_icons: ^0.14.3
+  msix: ^3.16.8
+
+flutter_icons:
+  android: true
+  ios: true
+  image_path: "assets/icon/icon.png"
+  adaptive_icon_background: "#0F172A"
+  adaptive_icon_foreground: "assets/icon/icon_fg.png"
+  web:
+    generate: true
+    image_path: "assets/icon/icon.png"
+  windows:
+    generate: true
+    image_path: "assets/icon/icon.png"
+    icon_size: 48
+
+msix_config:
+  display_name: EduGaming
+  publisher_display_name: JoseNuno
+  identity_name: com.josenunoca.edugaming
+  msix_version: 1.0.0.0
+  logo_path: assets/icon/icon.png
+  capabilities: internetClient, microphone, webcam, picturesLibrary, documentsLibrary
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/icon/

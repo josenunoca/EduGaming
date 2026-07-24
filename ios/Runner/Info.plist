@@ -7,7 +7,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Loan Calc Mvp</string>
+	<string>EduGaming</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -15,7 +15,7 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>loan_calc_mvp</string>
+	<string>EduGaming</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -26,6 +26,27 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+
+	<!-- Permissions descriptions — required by App Store review -->
+	<key>NSCameraUsageDescription</key>
+	<string>A câmara é necessária para leitura de códigos QR no registo de ponto digital e para videoconferências.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>O microfone é necessário para gravação de áudio em inquéritos, reuniões e chamadas de vídeo.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>O acesso às fotos é necessário para carregar documentos, imagens de perfil e anexos.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Necessário para guardar documentos e relatórios exportados na sua galeria.</string>
+	<key>NSContactsUsageDescription</key>
+	<string>Acesso aos contactos para facilitar o envio de mensagens institucionais.</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>O Face ID é utilizado para autenticação rápida e segura.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>O reconhecimento de voz é necessário para as funcionalidades de ditado e transcrição de reuniões.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>A localização pode ser usada para registo de ponto georreferenciado.</string>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>O Bluetooth é necessário para algumas funcionalidades de videoconferência.</string>
+
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

@@ -1,0 +1,11 @@
+# Android Signing Configuration
+# IMPORTANT: Keep this file private — do NOT commit to Git!
+# Add 'key.properties' to your .gitignore
+
+# After running: keytool -genkey -v -keystore upload-keystore.jks ...
+# Fill in the values below:
+
+storePassword=CHANGE_ME_TO_YOUR_STORE_PASSWORD
+keyPassword=CHANGE_ME_TO_YOUR_KEY_PASSWORD
+keyAlias=upload
+storeFile=../upload-keystore.jks
