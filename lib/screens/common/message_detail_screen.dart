@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:open_file_plus/open_file_plus.dart';
+import 'package:open_filex/open_filex.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../models/internal_message.dart';
 import '../../services/firebase_service.dart';
@@ -58,7 +58,7 @@ class MessageDetailScreen extends StatelessWidget {
           final tempDir = await getTemporaryDirectory();
           final tempFile = File('${tempDir.path}/$name');
           await tempFile.writeAsBytes(bytes);
-          await OpenFile.open(tempFile.path);
+          await OpenFilex.open(tempFile.path);
         }
       } else if (data.startsWith('http')) {
         await launchUrl(Uri.parse(data), mode: LaunchMode.externalApplication);
