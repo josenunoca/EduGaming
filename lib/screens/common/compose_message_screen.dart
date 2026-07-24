@@ -69,52 +69,6 @@ class _ComposeMessageScreenState extends State<ComposeMessageScreen> {
     });
   }
 
-  void _insertImageIntoBody(String name, String base64OrUrl) {
-    final tag = '\n![$name]($base64OrUrl)\n';
-    final text = _bodyController.text;
-    final selection = _bodyController.selection;
-    
-    if (selection.isValid && selection.start >= 0) {
-      final start = selection.start;
-      final end = selection.end;
-      final newText = text.replaceRange(start, end, tag);
-      _bodyController.value = TextEditingValue(
-        text: newText,
-        selection: TextSelection.collapsed(offset: start + tag.length),
-      );
-    } else {
-      _bodyController.text = text + tag;
-    }
-  }
-
-  void _promptInsertImage(String name, String base64OrUrl) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1E293B),
-        title: const Text('Imagem Adicionada', style: TextStyle(color: Colors.white)),
-        content: const Text('Deseja inserir esta imagem diretamente no corpo do e-mail?', style: TextStyle(color: Colors.white70)),
-        actions: [
-          TextButton(
-            child: const Text('Apenas Anexo', style: TextStyle(color: Colors.white38)),
-            onPressed: () => Navigator.pop(context),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF7B61FF)),
-            child: const Text('Inserir no Corpo', style: TextStyle(color: Colors.white)),
-            onPressed: () {
-              _insertImageIntoBody(name, base64OrUrl);
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Imagem inserida no corpo da mensagem!')),
-              );
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
   Future<void> _pickImageAndInsert() async {
     try {
       final result = await FilePicker.platform.pickFiles(
@@ -137,11 +91,9 @@ class _ComposeMessageScreenState extends State<ComposeMessageScreen> {
             });
           });
           
-          _insertImageIntoBody(file.name, dataUri);
-          
           if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Imagem "${file.name}" inserida no corpo da mensagem!')),
+            SnackBar(content: Text('Imagem "${file.name}" anexada com sucesso!')),
           );
         }
       }
@@ -180,10 +132,6 @@ class _ComposeMessageScreenState extends State<ComposeMessageScreen> {
                 'data': dataUri,
               });
             });
-
-            if (isImg && mounted) {
-              _promptInsertImage(file.name, dataUri);
-            }
           }
         }
       }
@@ -200,7 +148,6 @@ class _ComposeMessageScreenState extends State<ComposeMessageScreen> {
       final clipboardData = await Clipboard.getData(Clipboard.kTextPlain);
       if (clipboardData != null && clipboardData.text != null) {
         final text = clipboardData.text!.trim();
-        // Check if it's a base64 image or a web URL
         if (text.startsWith('data:image/') && text.contains(';base64,')) {
           final name = 'imagem_colada_${DateTime.now().millisecondsSinceEpoch}.png';
           setState(() {
@@ -211,8 +158,9 @@ class _ComposeMessageScreenState extends State<ComposeMessageScreen> {
             });
           });
           if (!mounted) return;
-          _promptInsertImage(name, text);
-          return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Imagem colada e anexada!')),
+          );
         } else if (text.startsWith('http://') || text.startsWith('https://')) {
           final isImage = text.endsWith('.png') || text.endsWith('.jpg') || text.endsWith('.jpeg') || text.endsWith('.gif');
           if (isImage) {
