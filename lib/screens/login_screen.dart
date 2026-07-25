@@ -27,234 +27,443 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoading = false;
+  bool _obscurePassword = true;
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
+    final screenSize = MediaQuery.of(context).size;
+    final isDesktop = screenSize.width > 800;
+
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
-          ),
-        ),
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24.0),
-            child: GlassCard(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  AiTranslatedText(
-                    'EduGaming Platform',
-                    style: GoogleFonts.outfit(
-                      fontSize: 32,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  const AiTranslatedText(
-                    'A vanguarda da educação',
-                    style: TextStyle(
-                      fontFamily: 'Outfit',
-                      fontSize: 16,
-                      color: Colors.white70,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  _LanguageSelector(),
-                  const SizedBox(height: 24),
-                  TextField(
-                    controller: _emailController,
-                    decoration: InputDecoration(
-                      label: const AiTranslatedText('Email'),
-                      prefixIcon: const Icon(Icons.email_outlined),
-                      border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12)),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: _passwordController,
-                    obscureText: true,
-                    decoration: InputDecoration(
-                      label: const AiTranslatedText('Senha'),
-                      prefixIcon: const Icon(Icons.lock_outline),
-                      border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12)),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  _isLoading
-                      ? const CircularProgressIndicator()
-                      : ElevatedButton(
-                          onPressed: () async {
-                            if (_emailController.text.isEmpty ||
-                                _passwordController.text.isEmpty) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                    content: Text(
-                                        'Por favor, preencha o email e a senha.')),
-                              );
-                              return;
-                            }
-
-                            setState(() => _isLoading = true);
-                            final service = context.read<FirebaseService>();
-                            try {
-                              final creds = await service.signInWithEmail(
-                                  _emailController.text.trim(),
-                                  _passwordController.text);
-
-                              if (creds != null) {
-                                final userProfile =
-                                    await service.getUserModel(creds.user!.uid);
-
-                                if (userProfile == null) {
-                                  if (_emailController.text.trim() ==
-                                      'josenunoca@gmail.com') {
-                                    final adminUser = UserModel(
-                                      id: creds.user!.uid,
-                                      email: _emailController.text.trim(),
-                                      name: 'Administrador Principal',
-                                      role: UserRole.admin,
-                                      adConsent: true,
-                                      dataConsent: true,
-                                    );
-                                    await service.saveUser(adminUser);
-                                    _navigateToDashboard(adminUser.role);
-                                  } else {
-                                    if (!mounted) return;
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                          content: Text(
-                                              'Perfil não encontrado. Por favor, registe-se.')),
-                                    );
-                                  }
-                                } else {
-                                  if (!mounted) return;
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                        content: Text(
-                                            'Login efetuado com sucesso!')),
-                                  );
-                                  _navigateToDashboard(userProfile.role);
-                                }
-                              } else {
-                                if (!mounted) return;
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                      content: Text(
-                                          'Credenciais inválidas ou serviço desativado no Firebase.')),
-                                );
-                              }
-                            } catch (e) {
-                              if (!mounted) return;
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('Erro inesperado: $e')),
-                              );
-                            } finally {
-                              if (mounted) setState(() => _isLoading = false);
-                            }
-                          },
-                          style: ElevatedButton.styleFrom(
-                            minimumSize: const Size(double.infinity, 50),
-                            backgroundColor: const Color(0xFF7B61FF),
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12)),
-                          ),
-                          child: const AiTranslatedText('Entrar',
-                              style:
-                                  TextStyle(color: Colors.white, fontSize: 16)),
-                        ),
-                  const SizedBox(height: 24),
-                  const Row(
-                    children: [
-                      Expanded(child: Divider()),
-                      Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 16),
-                        child: AiTranslatedText('ou entrar com',
-                            style: TextStyle(color: Colors.white54)),
-                      ),
-                      Expanded(child: Divider()),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      _SocialButton(
-                        icon: Icons.g_mobiledata,
-                        label: 'Google',
-                        onPressed: () async {
-                          final service = context.read<FirebaseService>();
-                          final creds = await service.signInWithGoogle();
-                          if (!mounted) return;
-                          if (creds != null) {
-                            if (!mounted) return;
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                  content:
-                                      Text('Login com Google bem-sucedido!')),
-                            );
-                          } else {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                  content: Text(
-                                      'Configuração de Google Sign-In pendente.')),
-                            );
-                          }
-                        },
-                      ),
-                      const SizedBox(width: 16),
-                      _SocialButton(
-                        icon: Icons.facebook,
-                        label: 'Facebook',
-                        onPressed: () async {
-                          final service = context.read<FirebaseService>();
-                          final creds = await service.signInWithFacebook();
-                          if (!mounted) return;
-                          if (creds != null) {
-                            if (!mounted) return;
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                  content:
-                                      Text('Login com Facebook bem-sucedido!')),
-                            );
-                          } else {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                  content: Text(
-                                      'Configuração de Facebook Auth pendente.')),
-                            );
-                          }
-                        },
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 32),
-                  TextButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => const RegistrationForm(
-                                initialRole: UserRole.student)),
-                      );
-                    },
-                    child: const AiTranslatedText(
-                        'Não tem uma conta? Registe-se',
-                        style: TextStyle(color: Color(0xFF00D1FF))),
-                  ),
+      body: Stack(
+        children: [
+          // ─── Dynamic Modern Background Gradient ─────────────────────────
+          Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Color(0xFF070B19), // Deep rich midnight navy
+                  Color(0xFF0F172A), // Slate navy
+                  Color(0xFF1E1B4B), // Rich indigo accent
                 ],
               ),
             ),
           ),
-        ),
+
+          // ─── Ambient Glow Blobs ──────────────────────────────────────────
+          Positioned(
+            top: -100,
+            right: -100,
+            child: Container(
+              width: 350,
+              height: 350,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: const Color(0xFF7B61FF).withValues(alpha: 0.18),
+                filter: const ColorFilter.mode(Colors.transparent, BlendMode.srcOver),
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: -120,
+            left: -120,
+            child: Container(
+              width: 400,
+              height: 400,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: const Color(0xFF00D1FF).withValues(alpha: 0.15),
+              ),
+            ),
+          ),
+
+          // ─── Main Content ────────────────────────────────────────────────
+          SafeArea(
+            child: Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
+                child: Container(
+                  constraints: BoxConstraints(
+                    maxWidth: isDesktop ? 480 : 420,
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // ─── Official Logo Display ──────────────────────────
+                      Container(
+                        padding: const EdgeInsets.all(16.0),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(28),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.2),
+                            width: 1.5,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF00D1FF).withValues(alpha: 0.2),
+                              blurRadius: 30,
+                              spreadRadius: 2,
+                            ),
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.4),
+                              blurRadius: 20,
+                              offset: const Offset(0, 10),
+                            ),
+                          ],
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(20),
+                          child: Image.asset(
+                            'assets/images/edugaming_official_logo.png',
+                            height: isDesktop ? 180 : 150,
+                            fit: BoxFit.contain,
+                            errorBuilder: (context, error, stackTrace) {
+                              // Web asset fallback
+                              return Image.network(
+                                'assets/assets/edugaming_official_logo.png',
+                                height: 150,
+                                fit: BoxFit.contain,
+                                errorBuilder: (ctx, err, st) => Column(
+                                  children: [
+                                    const Icon(Icons.school, size: 70, color: Color(0xFF00D1FF)),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      'EDUGAMING',
+                                      style: GoogleFonts.outfit(
+                                        fontSize: 26,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+
+                      // ─── Language Selector Chip ──────────────────────────
+                      _LanguageSelector(),
+                      const SizedBox(height: 24),
+
+                      // ─── Glassmorphism Login Card ───────────────────────
+                      GlassCard(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Text(
+                              'Bem-vindo de Volta',
+                              textAlign: TextAlign.center,
+                              style: GoogleFonts.outfit(
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            const Text(
+                              'Aceda à sua conta institucional',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Colors.white60,
+                              ),
+                            ),
+                            const SizedBox(height: 28),
+
+                            // Email Input Field
+                            TextField(
+                              controller: _emailController,
+                              keyboardType: TextInputType.emailAddress,
+                              style: const TextStyle(color: Colors.white, fontSize: 15),
+                              decoration: InputDecoration(
+                                labelText: 'E-mail',
+                                labelStyle: const TextStyle(color: Colors.white60, fontSize: 14),
+                                prefixIcon: const Icon(Icons.email_outlined, color: Color(0xFF00D1FF), size: 20),
+                                filled: true,
+                                fillColor: Colors.white.withValues(alpha: 0.05),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                  borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.15)),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                  borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.15)),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                  borderSide: const BorderSide(color: Color(0xFF00D1FF), width: 1.8),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 18),
+
+                            // Password Input Field
+                            TextField(
+                              controller: _passwordController,
+                              obscureText: _obscurePassword,
+                              style: const TextStyle(color: Colors.white, fontSize: 15),
+                              decoration: InputDecoration(
+                                labelText: 'Senha',
+                                labelStyle: const TextStyle(color: Colors.white60, fontSize: 14),
+                                prefixIcon: const Icon(Icons.lock_outline, color: Color(0xFF7B61FF), size: 20),
+                                suffixIcon: IconButton(
+                                  icon: Icon(
+                                    _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                                    color: Colors.white38,
+                                    size: 20,
+                                  ),
+                                  onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                                ),
+                                filled: true,
+                                fillColor: Colors.white.withValues(alpha: 0.05),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                  borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.15)),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                  borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.15)),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                  borderSide: const BorderSide(color: Color(0xFF7B61FF), width: 1.8),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 26),
+
+                            // Submit Button
+                            _isLoading
+                                ? const Center(
+                                    child: Padding(
+                                      padding: EdgeInsets.all(12.0),
+                                      child: CircularProgressIndicator(color: Color(0xFF00D1FF)),
+                                    ),
+                                  )
+                                : Container(
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(14),
+                                      gradient: const LinearGradient(
+                                        colors: [Color(0xFF7B61FF), Color(0xFF00D1FF)],
+                                      ),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: const Color(0xFF7B61FF).withValues(alpha: 0.4),
+                                          blurRadius: 16,
+                                          offset: const Offset(0, 6),
+                                        ),
+                                      ],
+                                    ),
+                                    child: ElevatedButton(
+                                      onPressed: _performLogin,
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.transparent,
+                                        shadowColor: Colors.transparent,
+                                        minimumSize: const Size(double.infinity, 52),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(14),
+                                        ),
+                                      ),
+                                      child: Row(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          const Text(
+                                            'Entrar na Plataforma',
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold,
+                                              letterSpacing: 0.5,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 20),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                            const SizedBox(height: 24),
+
+                            // Divider
+                            const Row(
+                              children: [
+                                Expanded(child: Divider(color: Colors.white12)),
+                                Padding(
+                                  padding: EdgeInsets.symmetric(horizontal: 14),
+                                  child: Text('ou continuar com',
+                                      style: TextStyle(color: Colors.white38, fontSize: 12)),
+                                ),
+                                Expanded(child: Divider(color: Colors.white12)),
+                              ],
+                            ),
+                            const SizedBox(height: 20),
+
+                            // Social Login Row
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Expanded(
+                                  child: _SocialButton(
+                                    icon: Icons.g_mobiledata,
+                                    label: 'Google',
+                                    onPressed: _loginWithGoogle,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: _SocialButton(
+                                    icon: Icons.facebook,
+                                    label: 'Facebook',
+                                    onPressed: _loginWithFacebook,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+
+                      // Registration Prompt Link
+                      TextButton(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const RegistrationForm(
+                                initialRole: UserRole.student,
+                              ),
+                            ),
+                          );
+                        },
+                        child: const Text(
+                          'Não tem uma conta? Registe-se agora',
+                          style: TextStyle(
+                            color: Color(0xFF00D1FF),
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      const Text(
+                        'EduGaming © 2026 — Plataforma de Gestão Académica e Organizacional',
+                        style: TextStyle(color: Colors.white24, fontSize: 11),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
+  }
+
+  Future<void> _performLogin() async {
+    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Por favor, preencha o email e a senha.')),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+    final service = context.read<FirebaseService>();
+    try {
+      final creds = await service.signInWithEmail(
+        _emailController.text.trim(),
+        _passwordController.text,
+      );
+
+      if (creds != null) {
+        final userProfile = await service.getUserModel(creds.user!.uid);
+
+        if (userProfile == null) {
+          if (_emailController.text.trim() == 'josenunoca@gmail.com') {
+            final adminUser = UserModel(
+              id: creds.user!.uid,
+              email: _emailController.text.trim(),
+              name: 'Administrador Principal',
+              role: UserRole.admin,
+              adConsent: true,
+              dataConsent: true,
+            );
+            await service.saveUser(adminUser);
+            _navigateToDashboard(adminUser.role);
+          } else {
+            if (!mounted) return;
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Perfil não encontrado. Por favor, registe-se.')),
+            );
+          }
+        } else {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Login efetuado com sucesso!')),
+          );
+          _navigateToDashboard(userProfile.role);
+        }
+      } else {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Credenciais inválidas ou serviço desativado no Firebase.')),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erro inesperado: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _loginWithGoogle() async {
+    final service = context.read<FirebaseService>();
+    final creds = await service.signInWithGoogle();
+    if (!mounted) return;
+    if (creds != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Login com Google bem-sucedido!')),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Configuração de Google Sign-In pendente.')),
+      );
+    }
+  }
+
+  Future<void> _loginWithFacebook() async {
+    final service = context.read<FirebaseService>();
+    final creds = await service.signInWithFacebook();
+    if (!mounted) return;
+    if (creds != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Login com Facebook bem-sucedido!')),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Configuração de Facebook Auth pendente.')),
+      );
+    }
   }
 
   void _navigateToDashboard(UserRole role) {
@@ -299,17 +508,17 @@ class _LanguageSelector extends StatelessWidget {
     final provider = context.watch<LanguageProvider>();
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+        color: Colors.white.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<AppLanguage>(
           value: provider.currentLanguage,
           dropdownColor: const Color(0xFF1E293B),
-          icon: const Icon(Icons.language, color: Color(0xFF7B61FF), size: 18),
+          icon: const Icon(Icons.language, color: Color(0xFF00D1FF), size: 18),
           items: AppLanguage.values.map((lang) {
             return DropdownMenuItem(
               value: lang,
@@ -318,9 +527,10 @@ class _LanguageSelector extends StatelessWidget {
                 children: [
                   Text(lang.flag, style: const TextStyle(fontSize: 18)),
                   const SizedBox(width: 8),
-                  Text(lang.name,
-                      style:
-                          const TextStyle(color: Colors.white, fontSize: 14)),
+                  Text(
+                    lang.name,
+                    style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500),
+                  ),
                 ],
               ),
             );
@@ -339,19 +549,21 @@ class _SocialButton extends StatelessWidget {
   final String label;
   final VoidCallback onPressed;
 
-  const _SocialButton(
-      {required this.icon, required this.label, required this.onPressed});
+  const _SocialButton({
+    required this.icon,
+    required this.label,
+    required this.onPressed,
+  });
 
   @override
   Widget build(BuildContext context) {
     return OutlinedButton.icon(
       onPressed: onPressed,
-      icon: Icon(icon, color: Colors.white),
-      label:
-          AiTranslatedText(label, style: const TextStyle(color: Colors.white)),
+      icon: Icon(icon, color: Colors.white, size: 20),
+      label: Text(label, style: const TextStyle(color: Colors.white, fontSize: 13)),
       style: OutlinedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-        side: const BorderSide(color: Colors.white24),
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        side: BorderSide(color: Colors.white.withValues(alpha: 0.2)),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
