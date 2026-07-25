@@ -69,7 +69,6 @@ class _LoginScreenState extends State<LoginScreen> {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: const Color(0xFF7B61FF).withValues(alpha: 0.18),
-                filter: const ColorFilter.mode(Colors.transparent, BlendMode.srcOver),
               ),
             ),
           ),
