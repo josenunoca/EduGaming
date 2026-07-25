@@ -27,8 +27,8 @@ class MailService {
 
     try {
       final fromHeader = (senderName != null && senderName.isNotEmpty)
-          ? '$senderName via EduGaming <onboarding@resend.dev>'
-          : 'EduGaming <onboarding@resend.dev>';
+          ? '$senderName via EduGaming <notificacoes@edugaming.pt>'
+          : 'EduGaming <notificacoes@edugaming.pt>';
 
       final htmlContent = '''
 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #0F172A; color: #FFFFFF; border-radius: 12px;">
