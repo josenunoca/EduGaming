@@ -124,10 +124,48 @@ class InstitutionCollaboratorManagementScreen extends StatelessWidget {
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const AiTranslatedText('Docente',
+                            style: TextStyle(
+                                fontSize: 9, color: Colors.white70)),
+                        SizedBox(
+                          height: 32,
+                          child: Checkbox(
+                            value: user.role == UserRole.teacher ||
+                                user.role == UserRole.courseCoordinator,
+                            activeColor: const Color(0xFF7B61FF),
+                            onChanged: (bool? isDocente) {
+                              if (isDocente != null) {
+                                final newRole = isDocente
+                                    ? UserRole.teacher.name
+                                    : UserRole.other.name;
+                                service.updateUserProfile(
+                                    user.id, {'role': newRole});
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      isDocente
+                                          ? 'Colaborador alterado para Pessoal Docente!'
+                                          : 'Colaborador alterado para Pessoal Não Docente!',
+                                    ),
+                                    duration: const Duration(seconds: 2),
+                                  ),
+                                );
+                              }
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                    const VerticalDivider(
+                        color: Colors.white10, indent: 10, endIndent: 10),
                     IconButton(
                       icon: const Icon(Icons.edit,
                           color: Colors.white70, size: 20),
-                      onPressed: () => _showEditCollaboratorDialog(context, user),
+                      onPressed: () =>
+                          _showEditCollaboratorDialog(context, user),
                       tooltip: 'Editar Colaborador',
                     ),
                     const VerticalDivider(
@@ -401,15 +439,115 @@ class InstitutionCollaboratorManagementScreen extends StatelessWidget {
     final nameController = TextEditingController(text: user.name);
     final emailController = TextEditingController(text: user.email);
     final phoneController = TextEditingController(text: user.phone);
+    bool isDocente = user.role == UserRole.teacher || user.role == UserRole.courseCoordinator;
 
     showDialog(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        backgroundColor: const Color(0xFF1E293B),
-        title: const AiTranslatedText('Editar Colaborador',
-            style: TextStyle(color: Colors.white)),
-        content: SingleChildScrollView(
-          child: Column(
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          backgroundColor: const Color(0xFF1E293B),
+          title: const AiTranslatedText('Editar Colaborador',
+              style: TextStyle(color: Colors.white)),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: nameController,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: const InputDecoration(
+                    labelText: 'Nome do Colaborador',
+                    labelStyle: TextStyle(color: Colors.white70),
+                    enabledBorder: UnderlineInputBorder(
+                        borderSide: BorderSide(color: Colors.white24)),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: emailController,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: const InputDecoration(
+                    labelText: 'Email',
+                    labelStyle: TextStyle(color: Colors.white70),
+                    enabledBorder: UnderlineInputBorder(
+                        borderSide: BorderSide(color: Colors.white24)),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: phoneController,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: const InputDecoration(
+                    labelText: 'Telemóvel',
+                    labelStyle: TextStyle(color: Colors.white70),
+                    enabledBorder: UnderlineInputBorder(
+                        borderSide: BorderSide(color: Colors.white24)),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                CheckboxListTile(
+                  title: const AiTranslatedText('Pessoal Docente (Professor)',
+                      style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
+                  subtitle: const AiTranslatedText('Marque para Docente ou desmarque para Não Docente',
+                      style: TextStyle(color: Colors.white54, fontSize: 11)),
+                  value: isDocente,
+                  activeColor: const Color(0xFF7B61FF),
+                  contentPadding: EdgeInsets.zero,
+                  onChanged: (val) => setDialogState(() => isDocente = val ?? true),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const AiTranslatedText('Cancelar',
+                  style: TextStyle(color: Colors.white54)),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                if (nameController.text.isEmpty || emailController.text.isEmpty) {
+                  return;
+                }
+                final service = context.read<FirebaseService>();
+                final newRole = isDocente ? UserRole.teacher.name : UserRole.other.name;
+                await service.updateUserProfile(user.id, {
+                  'name': nameController.text.trim(),
+                  'email': emailController.text.trim(),
+                  'phone': phoneController.text.trim(),
+                  'role': newRole,
+                });
+                if (context.mounted) {
+                  Navigator.pop(dialogContext);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                        content: Text('Dados atualizados com sucesso!')),
+                  );
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF7B61FF)),
+              child: const AiTranslatedText('Salvar'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showAddCollaboratorDialog(BuildContext context) {
+    final nameController = TextEditingController();
+    final emailController = TextEditingController();
+    bool isDocente = true;
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          backgroundColor: const Color(0xFF1E293B),
+          title: const AiTranslatedText('Adicionar Novo Colaborador',
+              style: TextStyle(color: Colors.white)),
+          content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
@@ -434,119 +572,51 @@ class InstitutionCollaboratorManagementScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 16),
-              TextField(
-                controller: phoneController,
-                style: const TextStyle(color: Colors.white),
-                decoration: const InputDecoration(
-                  labelText: 'Telemóvel',
-                  labelStyle: TextStyle(color: Colors.white70),
-                  enabledBorder: UnderlineInputBorder(
-                      borderSide: BorderSide(color: Colors.white24)),
-                ),
+              CheckboxListTile(
+                title: const AiTranslatedText('Pessoal Docente (Professor)',
+                    style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
+                subtitle: const AiTranslatedText('Marque para Docente ou desmarque para Não Docente',
+                    style: TextStyle(color: Colors.white54, fontSize: 11)),
+                value: isDocente,
+                activeColor: const Color(0xFF7B61FF),
+                contentPadding: EdgeInsets.zero,
+                onChanged: (val) => setDialogState(() => isDocente = val ?? true),
               ),
             ],
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const AiTranslatedText('Cancelar',
-                style: TextStyle(color: Colors.white54)),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              if (nameController.text.isEmpty || emailController.text.isEmpty) {
-                return;
-              }
-              final service = context.read<FirebaseService>();
-              await service.updateUserProfile(user.id, {
-                'name': nameController.text.trim(),
-                'email': emailController.text.trim(),
-                'phone': phoneController.text.trim(),
-              });
-              if (context.mounted) {
-                Navigator.pop(dialogContext);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                      content: Text('Dados atualizados com sucesso!')),
-                );
-              }
-            },
-            style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF7B61FF)),
-            child: const AiTranslatedText('Salvar'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showAddCollaboratorDialog(BuildContext context) {
-    final nameController = TextEditingController();
-    final emailController = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        backgroundColor: const Color(0xFF1E293B),
-        title: const AiTranslatedText('Adicionar Novo Colaborador',
-            style: TextStyle(color: Colors.white)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nameController,
-              style: const TextStyle(color: Colors.white),
-              decoration: const InputDecoration(
-                labelText: 'Nome do Colaborador',
-                labelStyle: TextStyle(color: Colors.white70),
-                enabledBorder: UnderlineInputBorder(
-                    borderSide: BorderSide(color: Colors.white24)),
-              ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const AiTranslatedText('Cancelar',
+                  style: TextStyle(color: Colors.white54)),
             ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: emailController,
-              style: const TextStyle(color: Colors.white),
-              decoration: const InputDecoration(
-                labelText: 'Email',
-                labelStyle: TextStyle(color: Colors.white70),
-                enabledBorder: UnderlineInputBorder(
-                    borderSide: BorderSide(color: Colors.white24)),
-              ),
+            ElevatedButton(
+              onPressed: () async {
+                if (nameController.text.isEmpty || emailController.text.isEmpty) {
+                  return;
+                }
+                final service = context.read<FirebaseService>();
+                final role = isDocente ? UserRole.teacher : UserRole.other;
+                await service.addProfessorByEmail(
+                  nameController.text.trim(),
+                  emailController.text.trim(),
+                  institution.id,
+                  role: role,
+                );
+                if (context.mounted) {
+                  Navigator.pop(dialogContext);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                        content: Text('Colaborador adicionado com sucesso!')),
+                  );
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF7B61FF)),
+              child: const AiTranslatedText('Adicionar'),
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const AiTranslatedText('Cancelar',
-                style: TextStyle(color: Colors.white54)),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              if (nameController.text.isEmpty || emailController.text.isEmpty) {
-                return;
-              }
-              final service = context.read<FirebaseService>();
-              await service.addProfessorByEmail(
-                nameController.text.trim(),
-                emailController.text.trim(),
-                institution.id,
-              );
-              if (context.mounted) {
-                Navigator.pop(dialogContext);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                      content: Text('Colaborador adicionado com sucesso!')),
-                );
-              }
-            },
-            style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF7B61FF)),
-            child: const AiTranslatedText('Adicionar'),
-          ),
-        ],
       ),
     );
   }

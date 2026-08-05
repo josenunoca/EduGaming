@@ -263,7 +263,8 @@ class FirebaseService {
   }
 
   Future<void> addProfessorByEmail(
-      String name, String email, String institutionId) async {
+      String name, String email, String institutionId,
+      {UserRole role = UserRole.teacher}) async {
     // Check if user exists
     final snapshot = await _db
         .collection('users')
@@ -274,7 +275,7 @@ class FirebaseService {
     if (snapshot.docs.isNotEmpty) {
       final uid = snapshot.docs.first.id;
       await _db.collection('users').doc(uid).update({
-        'role': UserRole.teacher.name,
+        'role': role.name,
         'institutionId': institutionId,
       });
       await _db.collection('institutions').doc(institutionId).update({
@@ -287,7 +288,7 @@ class FirebaseService {
         id: uid,
         name: name,
         email: email,
-        role: UserRole.teacher,
+        role: role,
         institutionId: institutionId,
         adConsent: true,
         dataConsent: true,
