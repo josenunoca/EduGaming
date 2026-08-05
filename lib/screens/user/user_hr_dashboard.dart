@@ -242,7 +242,8 @@ class _UserHRDashboardState extends State<UserHRDashboard> {
                                     final ref = FirebaseStorage.instance
                                         .ref()
                                         .child('attendance_proofs/${instId}/${widget.user.id}/${DateTime.now().millisecondsSinceEpoch}.jpg');
-                                    await ref.putFile(File(photo.path));
+                                    final bytes = await photo.readAsBytes();
+                                    await ref.putData(bytes);
                                     final photoUrl = await ref.getDownloadURL();
 
                                     // 2. Register attendance

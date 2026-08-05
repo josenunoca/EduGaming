@@ -20,6 +20,7 @@ import '../../widgets/user_notices_widget.dart';
 import 'student_surveys_screen.dart';
 import '../user/user_uniform_catalog_screen.dart';
 import '../user/institutional_ai_chat_screen.dart';
+import '../../widgets/parent_child_attendance_widget.dart';
 
 class StudentDashboard extends StatelessWidget {
   final String? studentId;
@@ -250,6 +251,12 @@ class StudentDashboard extends StatelessWidget {
                         ),
                       ],
                     ),
+                    const SizedBox(height: 12),
+                    ParentChildAttendanceWidget(
+                      child: student,
+                      isViewingAsParent: isViewingAsParent,
+                    ),
+                    const SizedBox(height: 16),
                     const AiTranslatedText('As Tuas Disciplinas',
                         style: TextStyle(
                             fontSize: 22,

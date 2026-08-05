@@ -697,12 +697,55 @@ Regras:
     return response.text ?? '';
   }
 
-  Future<Map<String, dynamic>> generateMeetingMinutes(String audioUrl,
-      {String? context}) async {
-    final prompt =
-        'Com base no seguinte contexto de reunião, cria uma ata profissional:\n${context ?? audioUrl}';
+  Future<Map<String, dynamic>> generateMeetingMinutes(
+    String audioUrl, {
+    String? context,
+    Uint8List? audioBytes,
+  }) async {
+    final systemPrompt = '''
+És um perito em secretariado institucional e atas de reuniões.
+Analisa o áudio/transcrição da reunião e elabora uma ATA DE REUNIÃO oficial, realista e estruturada em Português (Portugal), contendo:
+1. Título e Ordem do Dia baseados no conteúdo real discutido.
+2. Participantes e Tópicos Discutidos.
+3. Deliberações e Decisões Tomadas.
+4. Próximos Passos e Responsáveis.
+
+IMPORTANTE: A ata deve corresponder ESTRITAMENTE ao áudio fornecido e não a reuniões genéricas fictícias.
+''';
+
+    try {
+      Uint8List? bytes = audioBytes;
+      if (bytes == null && audioUrl.startsWith('http')) {
+        try {
+          final res = await http.get(Uri.parse(audioUrl));
+          if (res.statusCode == 200) {
+            bytes = res.bodyBytes;
+          }
+        } catch (_) {}
+      }
+
+      if (bytes != null && bytes.isNotEmpty) {
+        final content = [
+          Content.multi([
+            DataPart('audio/mp3', bytes),
+            TextPart('$systemPrompt\n\nContexto adicional: ${context ?? ''}')
+          ])
+        ];
+        final response = await _model.generateContent(content);
+        final minutes = response.text ?? '';
+        return {
+          'minutes': minutes,
+          'transcript': 'Transcrição processada por IA a partir do áudio gravado.',
+        };
+      }
+    } catch (e) {
+      debugPrint('Erro no áudio multimodal Gemini: $e');
+    }
+
+    final fallbackPrompt =
+        '$systemPrompt\n\nConteúdo/Transcrição:\n${context ?? audioUrl}';
     final response =
-        await _model.generateContent([Content.text(prompt)]);
+        await _model.generateContent([Content.text(fallbackPrompt)]);
     return {'minutes': response.text ?? '', 'transcript': ''};
   }
 

@@ -1325,8 +1325,11 @@ class _MeetingRecordingScreenState extends State<MeetingRecordingScreen> {
           _isUploading = false;
           _isGenerating = true;
         });
-        final result = await aiChatService.generateMeetingMinutes(audioUrl,
-            context: _contextText);
+        final result = await aiChatService.generateMeetingMinutes(
+          audioUrl,
+          context: _contextText,
+          audioBytes: bytes,
+        );
         setState(() {
           _minutesController.text = result['minutes'] ?? '';
           _transcriptController.text = result['transcript'] ?? '';

@@ -45,6 +45,7 @@ class TeacherDashboard extends StatefulWidget {
 class _TeacherDashboardState extends State<TeacherDashboard> {
   String? _selectedYearFilter;
   String _searchQuery = '';
+  int _selectedTabIndex = 0;
 
   void _createNewSubject(BuildContext context, UserModel teacher) {
     if (teacher.institutionId == null || teacher.institutionId!.isEmpty) {
@@ -267,15 +268,17 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
                       ),
                     ],
                   ),
-                  floatingActionButton: Tooltip(
-                    message: 'Criar uma nova disciplina para lecionar',
-                    child: FloatingActionButton.extended(
-                      onPressed: () => _createNewSubject(context, teacher),
-                      label: const AiTranslatedText('Nova Disciplina'),
-                      icon: const Icon(Icons.add),
-                      backgroundColor: const Color(0xFF7B61FF),
-                    ),
-                  ),
+                  floatingActionButton: _selectedTabIndex == 0
+                      ? Tooltip(
+                          message: 'Criar uma nova disciplina para lecionar',
+                          child: FloatingActionButton.extended(
+                            onPressed: () => _createNewSubject(context, teacher),
+                            label: const AiTranslatedText('Nova Disciplina'),
+                            icon: const Icon(Icons.add),
+                            backgroundColor: const Color(0xFF7B61FF),
+                          ),
+                        )
+                      : null,
                   body: Container(
                     decoration: const BoxDecoration(
                       gradient: LinearGradient(
@@ -378,13 +381,18 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
                                 length: 5,
                                 child: Column(
                                   children: [
-                                    const TabBar(
+                                    TabBar(
                                       isScrollable: true,
                                       tabAlignment: TabAlignment.start,
-                                      indicatorColor: Color(0xFF7B61FF),
+                                      indicatorColor: const Color(0xFF7B61FF),
                                       labelColor: Colors.white,
                                       unselectedLabelColor: Colors.white54,
-                                      tabs: [
+                                      onTap: (index) {
+                                        if (_selectedTabIndex != index) {
+                                          setState(() => _selectedTabIndex = index);
+                                        }
+                                      },
+                                      tabs: const [
                                         Tab(text: 'Minhas Turmas'),
                                         Tab(text: 'Minhas Atividades'),
                                         Tab(text: 'Meus Órgãos'),

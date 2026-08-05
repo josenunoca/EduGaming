@@ -383,9 +383,21 @@ class FirebaseService {
   }
 
   Future<String> uploadFile(String filePath, String destination) async {
-    final file = File(filePath);
     final ref = _storage.ref().child(destination);
-    await ref.putFile(file);
+    try {
+      final file = File(filePath);
+      if (await file.exists()) {
+        final bytes = await file.readAsBytes();
+        await ref.putData(bytes);
+        return await ref.getDownloadURL();
+      }
+    } catch (_) {}
+    try {
+      final bytes = await File(filePath).readAsBytes();
+      await ref.putData(bytes);
+    } catch (_) {
+      await ref.putFile(File(filePath));
+    }
     return await ref.getDownloadURL();
   }
 
