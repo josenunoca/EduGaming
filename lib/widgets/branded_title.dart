@@ -5,34 +5,40 @@ class BrandedTitle extends StatelessWidget {
   final String? logoUrl;
   final String? institutionName;
   final String defaultTitle;
+  final VoidCallback? onLogoTap;
 
   const BrandedTitle({
     super.key,
     this.logoUrl,
     this.institutionName,
     required this.defaultTitle,
+    this.onLogoTap,
   });
 
   @override
   Widget build(BuildContext context) {
     if (logoUrl == null &&
-        (institutionName == null || institutionName!.isEmpty)) {
+        (institutionName == null || institutionName!.isEmpty) &&
+        onLogoTap == null) {
       return AiTranslatedText(defaultTitle);
     }
 
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (logoUrl != null && logoUrl!.isNotEmpty) ...[
-          Container(
-            width: 36,
-            height: 36,
-            decoration: const BoxDecoration(
-              color: Colors.white10,
-              shape: BoxShape.circle,
-            ),
-            clipBehavior: Clip.antiAlias,
-            child: Image.network(
+    Widget logoAvatar = Container(
+      width: 38,
+      height: 38,
+      decoration: BoxDecoration(
+        color: Colors.white10,
+        shape: BoxShape.circle,
+        border: onLogoTap != null
+            ? Border.all(color: const Color(0xFF00D1FF), width: 1.5)
+            : null,
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          if (logoUrl != null && logoUrl!.isNotEmpty)
+            Image.network(
               logoUrl!,
               fit: BoxFit.cover,
               errorBuilder: (context, error, stackTrace) {
@@ -49,10 +55,35 @@ class BrandedTitle extends StatelessWidget {
                   ),
                 );
               },
+            )
+          else
+            const Icon(Icons.business, color: Colors.white54, size: 20),
+          if (onLogoTap != null)
+            Container(
+              color: Colors.black45,
+              child: const Icon(Icons.camera_alt,
+                  color: Colors.white, size: 16),
             ),
-          ),
-          const SizedBox(width: 10),
         ],
+      ),
+    );
+
+    if (onLogoTap != null) {
+      logoAvatar = Tooltip(
+        message: 'Carregar/Alterar Logótipo da Instituição',
+        child: InkWell(
+          onTap: onLogoTap,
+          borderRadius: BorderRadius.circular(20),
+          child: logoAvatar,
+        ),
+      );
+    }
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        logoAvatar,
+        const SizedBox(width: 10),
         Flexible(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,

@@ -1,3 +1,5 @@
+import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:provider/provider.dart';
@@ -116,6 +118,7 @@ class InstitutionDashboard extends StatelessWidget {
                       logoUrl: institution.logoUrl,
                       institutionName: institution.name,
                       defaultTitle: 'Painel da Instituição',
+                      onLogoTap: () => _pickAndUploadLogo(context, service, institution.id),
                     ),
                     actions: [
                       IconButton(
@@ -163,8 +166,6 @@ class InstitutionDashboard extends StatelessWidget {
                     child: SingleChildScrollView(
                       child: Column(
                         children: [
-                          _buildBrandingSection(context, service, institution),
-                          const SizedBox(height: 24),
                           UserNoticesWidget(user: user),
                           const SizedBox(height: 24),
                           GridView(
@@ -326,20 +327,30 @@ class InstitutionDashboard extends StatelessWidget {
 
   Future<void> _pickAndUploadLogo(BuildContext context, FirebaseService service,
       String institutionId) async {
-    final result = await FilePicker.platform.pickFiles(type: FileType.image);
-    if (result != null && result.files.single.bytes != null) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: AiTranslatedText('A carregar logótipo...')),
-        );
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.image,
+      withData: true,
+    );
+    if (result != null && result.files.isNotEmpty) {
+      Uint8List? bytes = result.files.single.bytes;
+      if (bytes == null && result.files.single.path != null) {
+        try {
+          bytes = await File(result.files.single.path!).readAsBytes();
+        } catch (_) {}
       }
-      await service.uploadInstitutionLogo(
-          institutionId, result.files.single.bytes!);
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: AiTranslatedText('Logótipo atualizado com sucesso!')),
-        );
+      if (bytes != null) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: AiTranslatedText('A carregar logótipo...')),
+          );
+        }
+        await service.uploadInstitutionLogo(institutionId, bytes);
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+                content: AiTranslatedText('Logótipo atualizado com sucesso!')),
+          );
+        }
       }
     }
   }
