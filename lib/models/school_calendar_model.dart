@@ -2,6 +2,7 @@ class SchoolCalendar {
   final String id;
   final String institutionId;
   final String academicYear; // e.g., "2024/2025"
+  final List<String> targetCycles; // e.g., ['Pré-Escolar'], ['1º Ciclo'], etc.
   final List<SchoolTerm> terms;
   final List<Holiday> holidays;
   final List<VacationPeriod> vacations;
@@ -12,6 +13,7 @@ class SchoolCalendar {
     required this.id,
     required this.institutionId,
     required this.academicYear,
+    this.targetCycles = const ['Todos os Ciclos'],
     this.terms = const [],
     this.holidays = const [],
     this.vacations = const [],
@@ -23,6 +25,7 @@ class SchoolCalendar {
       'id': id,
       'institutionId': institutionId,
       'academicYear': academicYear,
+      'targetCycles': targetCycles,
       'terms': terms.map((t) => t.toMap()).toList(),
       'holidays': holidays.map((h) => h.toMap()).toList(),
       'vacations': vacations.map((v) => v.toMap()).toList(),
@@ -35,6 +38,9 @@ class SchoolCalendar {
       id: map['id'] ?? '',
       institutionId: map['institutionId'] ?? '',
       academicYear: map['academicYear'] ?? '',
+      targetCycles: map['targetCycles'] != null
+          ? List<String>.from(map['targetCycles'])
+          : const ['Todos os Ciclos'],
       terms: (map['terms'] as List? ?? [])
           .map((t) => SchoolTerm.fromMap(t))
           .toList(),

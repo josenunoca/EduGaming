@@ -1125,11 +1125,11 @@ class _AcademicManagementScreenState extends State<AcademicManagementScreen>
 
     return StatefulBuilder(
       builder: (context, setState) {
-        return StreamBuilder<SchoolCalendar?>(
-          stream:
-              service.getSchoolCalendarStream(widget.institution.id, selectedYear),
+        return StreamBuilder<List<SchoolCalendar>>(
+          stream: service.getSchoolCalendarsStream(
+              widget.institution.id, selectedYear),
           builder: (context, snapshot) {
-            final calendar = snapshot.data;
+            final calendars = snapshot.data ?? [];
 
             return SingleChildScrollView(
               padding: const EdgeInsets.all(16),
@@ -1158,37 +1158,130 @@ class _AcademicManagementScreenState extends State<AcademicManagementScreen>
                           },
                         ),
                       ),
-                      if (calendar == null)
-                        CustomButton(
-                          onPressed: () =>
-                              _showCalendarSetupWizard(selectedYear),
-                          label: 'Configurar Calendário',
-                          variant: CustomButtonVariant.secondary,
-                          height: 32,
-                        ),
+                      const SizedBox(width: 12),
+                      CustomButton(
+                        onPressed: () => _showCalendarSetupWizard(selectedYear),
+                        label: '+ Adicionar Calendário por Ciclo',
+                        variant: CustomButtonVariant.secondary,
+                        height: 36,
+                      ),
                     ],
                   ),
                   const SizedBox(height: 24),
-                  if (calendar == null)
-                    const Center(
+                  if (calendars.isEmpty)
+                    Center(
                       child: Padding(
-                        padding: EdgeInsets.symmetric(vertical: 40),
+                        padding: const EdgeInsets.symmetric(vertical: 40),
                         child: Column(
                           children: [
-                            Icon(Icons.calendar_today,
+                            const Icon(Icons.calendar_month,
                                 size: 48, color: Colors.white24),
-                            SizedBox(height: 16),
-                            Text('Nenhum calendário configurado para este ano.',
+                            const SizedBox(height: 16),
+                            const Text(
+                                'Nenhum calendário configurado para este ano letivo.',
                                 style: TextStyle(color: Colors.white54)),
+                            const SizedBox(height: 8),
+                            const Text(
+                                'Clique em "+ Adicionar Calendário por Ciclo" para definir o calendário do Pré-Escolar, 1º Ciclo, 2º/3º Ciclo ou Secundário.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(color: Colors.white38, fontSize: 12)),
+                            const SizedBox(height: 20),
+                            CustomButton(
+                              onPressed: () => _showCalendarSetupWizard(selectedYear),
+                              label: 'Configurar Novo Calendário Escolar',
+                            ),
                           ],
                         ),
                       ),
                     )
-                  else ...[
-                    _buildTermsSection(calendar),
-                    const SizedBox(height: 32),
-                    _buildHolidaysSection(calendar),
-                  ],
+                  else
+                    ...calendars.map((calendar) {
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 24),
+                        child: GlassCard(
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'Calendário Escolar ($selectedYear)',
+                                            style: const TextStyle(
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 16),
+                                          ),
+                                          const SizedBox(height: 6),
+                                          Wrap(
+                                            spacing: 6,
+                                            runSpacing: 4,
+                                            children: calendar.targetCycles
+                                                .map((c) => Container(
+                                                      padding: const EdgeInsets
+                                                          .symmetric(
+                                                          horizontal: 10,
+                                                          vertical: 4),
+                                                      decoration: BoxDecoration(
+                                                        color: const Color(
+                                                                0xFF7B61FF)
+                                                            .withValues(
+                                                                alpha: 0.2),
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                                12),
+                                                        border: Border.all(
+                                                            color: const Color(
+                                                                0xFF7B61FF)),
+                                                      ),
+                                                      child: Text(
+                                                        c,
+                                                        style: const TextStyle(
+                                                            color: Colors.white,
+                                                            fontSize: 11,
+                                                            fontWeight:
+                                                                FontWeight
+                                                                    .bold),
+                                                      ),
+                                                    ))
+                                                .toList(),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(Icons.delete_outline,
+                                          color: Colors.redAccent),
+                                      onPressed: () async {
+                                        await service.deleteSchoolCalendar(calendar.id);
+                                        if (context.mounted) {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            const SnackBar(content: Text('Calendário removido com sucesso!')),
+                                          );
+                                        }
+                                      },
+                                      tooltip: 'Eliminar Calendário',
+                                    ),
+                                  ],
+                                ),
+                                const Divider(color: Colors.white10, height: 24),
+                                _buildTermsSection(calendar),
+                                const SizedBox(height: 24),
+                                _buildHolidaysSection(calendar),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    }),
                 ],
               ),
             );
@@ -1270,16 +1363,29 @@ class _AcademicManagementScreenState extends State<AcademicManagementScreen>
     final yearParts = academicYear.split('/');
     final startYear = int.parse(yearParts[0]);
 
+    final allAvailableCycles = [
+      'Pré-Escolar',
+      '1º Ciclo (1º ao 4º Ano)',
+      '2º Ciclo (5º e 6º Ano)',
+      '3º Ciclo (7º ao 9º Ano)',
+      'Ensino Secundário (10º ao 12º Ano)',
+      'Ensino Superior / Profissional',
+    ];
+
+    List<String> selectedCycles = ['1º Ciclo (1º ao 4º Ano)'];
+
     // Default names based on period count
     String getPeriodName(int count, int index) {
+      if (count == 1) return 'Ano Letivo Contínuo (Sem Pausas)';
       if (count == 2) return '${index + 1}º Semestre';
-      if (count == 3) return '${index + 1}º Quadrimestre';
-      if (count == 4) return '${index + 1}º Trimestre';
+      if (count == 3) return '${index + 1}º Trimestre';
+      if (count == 4) return '${index + 1}º Quadrimestre';
       return 'Período ${index + 1}';
     }
 
     // Default dates based on period count
     DateTime getStartDate(int count, int index) {
+      if (count == 1) return DateTime(startYear, 9, 1);
       if (count == 2) {
         return index == 0
             ? DateTime(startYear, 9, 1)
@@ -1300,6 +1406,7 @@ class _AcademicManagementScreenState extends State<AcademicManagementScreen>
     }
 
     DateTime getEndDate(int count, int index) {
+      if (count == 1) return DateTime(startYear + 1, 7, 31);
       if (count == 2) {
         return index == 0
             ? DateTime(startYear, 12, 20)
@@ -1336,7 +1443,7 @@ class _AcademicManagementScreenState extends State<AcademicManagementScreen>
 
           return AlertDialog(
             backgroundColor: const Color(0xFF1E1E2E),
-            title: Text('Configurar $academicYear',
+            title: Text('Configurar Calendário $academicYear',
                 style: const TextStyle(color: Colors.white)),
             content: SizedBox(
               width: double.maxFinite,
@@ -1345,24 +1452,62 @@ class _AcademicManagementScreenState extends State<AcademicManagementScreen>
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Tipo de Organização:',
-                        style: TextStyle(color: Colors.white70, fontSize: 12)),
+                    const Text('Ciclos de Estudos Abrangidos:',
+                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 6),
+                    const Text('Selecione os ciclos que seguem esta organização de datas:',
+                        style: TextStyle(color: Colors.white54, fontSize: 11)),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      children: allAvailableCycles.map((cycle) {
+                        final isSelected = selectedCycles.contains(cycle);
+                        return FilterChip(
+                          label: Text(cycle,
+                              style: TextStyle(
+                                  color: isSelected ? Colors.white : Colors.white70,
+                                  fontSize: 11)),
+                          selected: isSelected,
+                          selectedColor: const Color(0xFF7B61FF),
+                          backgroundColor: Colors.white10,
+                          onSelected: (val) {
+                            setDialogState(() {
+                              if (val) {
+                                selectedCycles.add(cycle);
+                              } else {
+                                if (selectedCycles.length > 1) {
+                                  selectedCycles.remove(cycle);
+                                }
+                              }
+                            });
+                          },
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 20),
+                    const Text('Organização Letiva:',
+                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 8),
                     DropdownButtonFormField<int>(
                       value: numPeriods,
                       dropdownColor: const Color(0xFF1E1E2E),
                       items: const [
                         DropdownMenuItem(
+                            value: 1,
+                            child: Text('Sem Pausas / Contínuo (Pré-Escolar: Set-Jul)',
+                                style: TextStyle(color: Colors.white))),
+                        DropdownMenuItem(
                             value: 2,
                             child: Text('2 Semestres',
                                 style: TextStyle(color: Colors.white))),
                         DropdownMenuItem(
                             value: 3,
-                            child: Text('3 Quadrimestres',
+                            child: Text('3 Trimestres',
                                 style: TextStyle(color: Colors.white))),
                         DropdownMenuItem(
                             value: 4,
-                            child: Text('4 Trimestres',
+                            child: Text('4 Quadrimestres',
                                 style: TextStyle(color: Colors.white))),
                       ],
                       onChanged: (v) {
@@ -1415,7 +1560,7 @@ class _AcademicManagementScreenState extends State<AcademicManagementScreen>
                                             color: Colors.white54,
                                             fontSize: 10)),
                                     subtitle: Text(
-                                        DateFormat('dd/MM').format(p['start']),
+                                        DateFormat('dd/MM/yyyy').format(p['start']),
                                         style: const TextStyle(
                                             color: Colors.white)),
                                     onTap: () async {
@@ -1438,7 +1583,7 @@ class _AcademicManagementScreenState extends State<AcademicManagementScreen>
                                             color: Colors.white54,
                                             fontSize: 10)),
                                     subtitle: Text(
-                                        DateFormat('dd/MM').format(p['end']),
+                                        DateFormat('dd/MM/yyyy').format(p['end']),
                                         style: const TextStyle(
                                             color: Colors.white)),
                                     onTap: () async {
@@ -1470,9 +1615,10 @@ class _AcademicManagementScreenState extends State<AcademicManagementScreen>
               ElevatedButton(
                 onPressed: () async {
                   final calendar = SchoolCalendar(
-                    id: academicYear.replaceAll('/', '_'),
+                    id: const Uuid().v4(),
                     institutionId: widget.institution.id,
                     academicYear: academicYear,
+                    targetCycles: selectedCycles,
                     terms: List.generate(
                         numPeriods,
                         (i) => SchoolTerm(
@@ -1491,7 +1637,7 @@ class _AcademicManagementScreenState extends State<AcademicManagementScreen>
                   if (mounted) Navigator.pop(ctx);
                   if (mounted) setState(() {});
                 },
-                child: const Text('Finalizar'),
+                child: const Text('Salvar Calendário'),
               ),
             ],
           );

@@ -513,6 +513,10 @@ class FirebaseService {
         .set(calendar.toMap());
   }
 
+  Future<void> deleteSchoolCalendar(String calendarId) async {
+    await _db.collection('school_calendars').doc(calendarId).delete();
+  }
+
   Future<SchoolCalendar?> getSchoolCalendar(
       String institutionId, String academicYear) async {
     final snapshot = await _db
@@ -524,6 +528,20 @@ class FirebaseService {
 
     if (snapshot.docs.isEmpty) return null;
     return SchoolCalendar.fromMap(snapshot.docs.first.data());
+  }
+
+  Stream<List<SchoolCalendar>> getSchoolCalendarsStream(
+      String institutionId, String academicYear) {
+    return _db
+        .collection('school_calendars')
+        .where('institutionId', isEqualTo: institutionId)
+        .where('academicYear', isEqualTo: academicYear)
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs
+          .map((doc) => SchoolCalendar.fromMap(doc.data()))
+          .toList();
+    });
   }
 
   Stream<List<Subject>> getSubjectsByTeacher(String teacherId,
