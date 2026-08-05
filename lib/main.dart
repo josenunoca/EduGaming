@@ -21,6 +21,12 @@ import 'config/app_config.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  FlutterError.onError = (FlutterErrorDetails details) {
+    FlutterError.presentError(details);
+    debugPrint('Global FlutterError: ${details.exception}');
+  };
+
   final localesToInit = [
     'pt_PT', 'pt-PT',
     'pt_BR', 'pt-BR',
@@ -44,17 +50,21 @@ void main() async {
   }
   Intl.defaultLocale = 'pt_PT';
 
-  await Firebase.initializeApp(
-    options: const FirebaseOptions(
-      apiKey: AppConfig.firebaseApiKey,
-      authDomain: AppConfig.firebaseAuthDomain,
-      databaseURL: AppConfig.firebaseDatabaseURL,
-      projectId: AppConfig.firebaseProjectId,
-      storageBucket: AppConfig.firebaseStorageBucket,
-      messagingSenderId: AppConfig.firebaseMessagingSenderId,
-      appId: AppConfig.firebaseAppId,
-    ),
-  );
+  try {
+    await Firebase.initializeApp(
+      options: const FirebaseOptions(
+        apiKey: AppConfig.firebaseApiKey,
+        authDomain: AppConfig.firebaseAuthDomain,
+        databaseURL: AppConfig.firebaseDatabaseURL,
+        projectId: AppConfig.firebaseProjectId,
+        storageBucket: AppConfig.firebaseStorageBucket,
+        messagingSenderId: AppConfig.firebaseMessagingSenderId,
+        appId: AppConfig.firebaseAppId,
+      ),
+    );
+  } catch (e) {
+    debugPrint('Firebase initialization error on startup: $e');
+  }
 
   runApp(
     MultiProvider(

@@ -34,10 +34,6 @@ android {
         versionCode = flutter.versionCode
         versionName = flutter.versionName
         multiDexEnabled = true
-        // Only build for the two most common architectures to avoid Jitsi x86 issues
-        ndk {
-            abiFilters += setOf("arm64-v8a", "armeabi-v7a")
-        }
     }
 
     signingConfigs {
