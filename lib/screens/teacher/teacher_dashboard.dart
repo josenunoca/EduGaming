@@ -42,10 +42,31 @@ class TeacherDashboard extends StatefulWidget {
   State<TeacherDashboard> createState() => _TeacherDashboardState();
 }
 
-class _TeacherDashboardState extends State<TeacherDashboard> {
+class _TeacherDashboardState extends State<TeacherDashboard>
+    with SingleTickerProviderStateMixin {
   String? _selectedYearFilter;
   String _searchQuery = '';
   int _selectedTabIndex = 0;
+  late TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 5, vsync: this);
+    _tabController.addListener(() {
+      if (_tabController.index != _selectedTabIndex) {
+        setState(() {
+          _selectedTabIndex = _tabController.index;
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
 
   void _createNewSubject(BuildContext context, UserModel teacher) {
     if (teacher.institutionId == null || teacher.institutionId!.isEmpty) {
@@ -377,33 +398,28 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
                             ),
                             const SizedBox(height: 16),
                             Expanded(
-                              child: DefaultTabController(
-                                length: 5,
-                                child: Column(
-                                  children: [
-                                    TabBar(
-                                      isScrollable: true,
-                                      tabAlignment: TabAlignment.start,
-                                      indicatorColor: const Color(0xFF7B61FF),
-                                      labelColor: Colors.white,
-                                      unselectedLabelColor: Colors.white54,
-                                      onTap: (index) {
-                                        if (_selectedTabIndex != index) {
-                                          setState(() => _selectedTabIndex = index);
-                                        }
-                                      },
-                                      tabs: const [
-                                        Tab(text: 'Minhas Turmas'),
-                                        Tab(text: 'Minhas Atividades'),
-                                        Tab(text: 'Meus Órgãos'),
-                                        Tab(text: 'Gestão Delegada'),
-                                        Tab(text: 'Inquéritos'),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 12),
-                                    Expanded(
-                                      child: TabBarView(
-                                        children: [
+                               child: Column(
+                                 children: [
+                                   TabBar(
+                                     controller: _tabController,
+                                     isScrollable: true,
+                                     tabAlignment: TabAlignment.start,
+                                     indicatorColor: const Color(0xFF7B61FF),
+                                     labelColor: Colors.white,
+                                     unselectedLabelColor: Colors.white54,
+                                     tabs: const [
+                                       Tab(text: 'Minhas Turmas'),
+                                       Tab(text: 'Minhas Atividades'),
+                                       Tab(text: 'Meus Órgãos'),
+                                       Tab(text: 'Gestão Delegada'),
+                                       Tab(text: 'Inquéritos'),
+                                     ],
+                                   ),
+                                   const SizedBox(height: 12),
+                                   Expanded(
+                                     child: TabBarView(
+                                       controller: _tabController,
+                                       children: [
                                           // TAB 1: Subjects
                                           StreamBuilder<List<Subject>>(
                                             stream: service.getSubjectsByTeacher(teacher.id, academicYear: _selectedYearFilter),
@@ -627,12 +643,11 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
                                           else
                                             const Center(child: CircularProgressIndicator()),
                                         ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
+                                       ),
+                                     ),
+                                   ],
+                                 ),
+                               ),
                           ],
                         ],
                       ),

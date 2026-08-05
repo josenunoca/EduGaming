@@ -19,6 +19,7 @@ class TimetableUserScreen extends StatefulWidget {
 class _TimetableUserScreenState extends State<TimetableUserScreen> {
   DateTime _referenceDate = DateTime.now();
   String _selectedAcademicYear = '2024/2025';
+  bool _isCompactView = false;
 
   @override
   Widget build(BuildContext context) {
@@ -178,74 +179,127 @@ class _TimetableUserScreenState extends State<TimetableUserScreen> {
 
     return Column(
       children: [
-        Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: AiTranslatedText(
-            'Semana de ${DateFormat('dd/MM/yyyy').format(_referenceDate)}',
-            style: const TextStyle(color: Colors.white70, fontSize: 12),
+        // Navigation & Compact/Expanded View Header
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          color: const Color(0xFF1E293B),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.chevron_left, color: Colors.white),
+                    onPressed: () => setState(() =>
+                        _referenceDate = _referenceDate.subtract(const Duration(days: 7))),
+                    tooltip: 'Semana Anterior',
+                  ),
+                  AiTranslatedText(
+                    'Semana de ${DateFormat('dd/MM/yyyy').format(_referenceDate)}',
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.chevron_right, color: Colors.white),
+                    onPressed: () => setState(() =>
+                        _referenceDate = _referenceDate.add(const Duration(days: 7))),
+                    tooltip: 'Próxima Semana',
+                  ),
+                ],
+              ),
+              ElevatedButton.icon(
+                onPressed: () =>
+                    setState(() => _isCompactView = !_isCompactView),
+                icon: Icon(_isCompactView ? Icons.add : Icons.compress, size: 14),
+                label: AiTranslatedText(
+                  _isCompactView ? 'Horário Alargado (+)' : 'Horário Reduzido',
+                  style: const TextStyle(fontSize: 11),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _isCompactView
+                      ? const Color(0xFF7B61FF)
+                      : const Color(0xFF00D1FF),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                ),
+              ),
+            ],
           ),
         ),
-        // Header
-        Row(
-          children: [
-            const SizedBox(width: 60),
-            ...days.map((d) => Expanded(
-                  child: Container(
-                    padding: const EdgeInsets.all(8),
-                    alignment: Alignment.center,
-                    child: AiTranslatedText(d,
-                        style: const TextStyle(
-                            color: Colors.white, fontWeight: FontWeight.bold)),
-                  ),
-                )),
-          ],
-        ),
-        Expanded(
-          child: SingleChildScrollView(
+
+        if (_isCompactView)
+          Expanded(
+            child: _buildCompactView(entries, subjects),
+          )
+        else
+          Expanded(
             child: Column(
-              children: List.generate((endHour - startHour + 1) * 2, (index) {
-                final hour = startHour + (index ~/ 2);
-                final minute = (index % 2) * 30;
-                final timeStr =
-                    '${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}';
-
-                return Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
                   children: [
-                    Container(
-                      width: 60,
-                      constraints: const BoxConstraints(minHeight: 50),
-                      alignment: Alignment.center,
-                      child: Text(timeStr,
-                          style: const TextStyle(
-                              color: Colors.white54, fontSize: 10)),
-                    ),
-                    ...List.generate(6, (dayIndex) {
-                      final slotEntries = entries
-                          .where((e) =>
-                              e.weekday == dayIndex + 1 &&
-                              _isTimeInSlot(e, timeStr))
-                          .toList();
-
-                      return Expanded(
-                        child: Container(
-                          constraints: const BoxConstraints(minHeight: 50),
-                          margin: const EdgeInsets.all(1),
-                          child: Column(
-                            children: slotEntries
-                                .map((e) => _buildEntryWidget(
-                                    e, subjects, teachers, classrooms))
-                                .toList(),
+                    const SizedBox(width: 60),
+                    ...days.map((d) => Expanded(
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            alignment: Alignment.center,
+                            child: AiTranslatedText(d,
+                                style: const TextStyle(
+                                    color: Colors.white, fontWeight: FontWeight.bold)),
                           ),
-                        ),
-                      );
-                    }),
+                        )),
                   ],
-                );
-              }),
+                ),
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      children: List.generate((endHour - startHour + 1) * 2, (index) {
+                        final hour = startHour + (index ~/ 2);
+                        final minute = (index % 2) * 30;
+                        final timeStr =
+                            '${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}';
+
+                        return Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              width: 60,
+                              constraints: const BoxConstraints(minHeight: 50),
+                              alignment: Alignment.center,
+                              child: Text(timeStr,
+                                  style: const TextStyle(
+                                      color: Colors.white54, fontSize: 10)),
+                            ),
+                            ...List.generate(6, (dayIndex) {
+                              final slotEntries = entries
+                                  .where((e) =>
+                                      e.weekday == dayIndex + 1 &&
+                                      _isTimeInSlot(e, timeStr))
+                                  .toList();
+
+                              return Expanded(
+                                child: Container(
+                                  constraints: const BoxConstraints(minHeight: 50),
+                                  margin: const EdgeInsets.all(1),
+                                  child: Column(
+                                    children: slotEntries
+                                        .map((e) => _buildEntryWidget(
+                                            e, subjects, teachers, classrooms))
+                                        .toList(),
+                                  ),
+                                ),
+                              );
+                            }),
+                          ],
+                        );
+                      }),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-        ),
       ],
     );
   }
@@ -347,6 +401,120 @@ class _TimetableUserScreenState extends State<TimetableUserScreen> {
           ],
         ],
       ),
+    );
+  }
+
+  String _calcEndTime(TimetableEntry e) {
+    try {
+      final parts = e.startTime.split(':');
+      final h = int.parse(parts[0]);
+      final m = int.parse(parts[1]);
+      final totalMin = h * 60 + m + e.durationMinutes;
+      final endH = (totalMin ~/ 60) % 24;
+      final endM = totalMin % 60;
+      return '${endH.toString().padLeft(2, '0')}:${endM.toString().padLeft(2, '0')}';
+    } catch (_) {
+      return e.startTime;
+    }
+  }
+
+  Widget _buildCompactView(List<TimetableEntry> entries, List<Subject> subjects) {
+    final dayNames = {
+      1: 'Segunda-feira',
+      2: 'Terça-feira',
+      3: 'Quarta-feira',
+      4: 'Quinta-feira',
+      5: 'Sexta-feira',
+      6: 'Sábado',
+    };
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: 6,
+      itemBuilder: (context, index) {
+        final weekday = index + 1;
+        final dayName = dayNames[weekday] ?? 'Dia';
+        final dayEntries = entries.where((e) => e.weekday == weekday && !e.isBreak).toList();
+
+        if (dayEntries.isEmpty) {
+          return Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.03),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.white10),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(dayName, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                const AiTranslatedText('Sem aulas agendadas', style: TextStyle(color: Colors.white38, fontSize: 12)),
+              ],
+            ),
+          );
+        }
+
+        dayEntries.sort((a, b) => a.startTime.compareTo(b.startTime));
+        final firstEntry = dayEntries.first;
+        final lastEntry = dayEntries.last;
+        final exitTime = _calcEndTime(lastEntry);
+
+        return Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1E293B),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: const Color(0xFF00D1FF).withValues(alpha: 0.3)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(dayName, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15)),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF00D1FF).withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      'Entrada: ${firstEntry.startTime}  •  Saída: $exitTime',
+                      style: const TextStyle(color: Color(0xFF00D1FF), fontWeight: FontWeight.bold, fontSize: 12),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '${dayEntries.length} aulas: ' +
+                    dayEntries.map((e) {
+                      final s = subjects.firstWhere(
+                        (sub) => sub.id == e.subjectId,
+                        orElse: () => Subject(
+                          id: '',
+                          name: 'Disciplina',
+                          level: '',
+                          academicYear: '',
+                          teacherId: '',
+                          institutionId: '',
+                          courseId: '',
+                          allowedStudentEmails: const [],
+                          contents: const [],
+                          games: const [],
+                        ),
+                      );
+                      return '${s.name} (${e.startTime}-${_calcEndTime(e)})';
+                    }).join(', '),
+                style: const TextStyle(color: Colors.white54, fontSize: 12),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

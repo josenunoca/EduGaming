@@ -1,3 +1,5 @@
+import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -43,6 +45,7 @@ class _HRAbsenceJustificationScreenState extends State<HRAbsenceJustificationScr
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['pdf', 'jpg', 'png', 'doc', 'docx'],
+      withData: true,
     );
 
     if (result != null) {
@@ -73,9 +76,17 @@ class _HRAbsenceJustificationScreenState extends State<HRAbsenceJustificationScr
       final service = context.read<FirebaseService>();
       String? documentUrl;
 
-      if (_selectedFile != null && _selectedFile!.path != null) {
+      if (_selectedFile != null) {
         final destination = 'hr_absences/${widget.user.institutionId}/${widget.user.id}/${const Uuid().v4()}_${_selectedFile!.name}';
-        documentUrl = await service.uploadFile(_selectedFile!.path!, destination);
+        Uint8List? bytes = _selectedFile!.bytes;
+        if (bytes == null && _selectedFile!.path != null) {
+          try {
+            bytes = await File(_selectedFile!.path!).readAsBytes();
+          } catch (_) {}
+        }
+        if (bytes != null) {
+          documentUrl = await service.uploadFileBytes(bytes, destination);
+        }
       }
 
       final absence = HRAbsence(

@@ -388,11 +388,17 @@ class _MeetingRecordingScreenState extends State<MeetingRecordingScreen> {
             ],
           ),
           actions: [
-            if (_minutesController.text.isNotEmpty)
-              IconButton(
-                icon: const Icon(Icons.picture_as_pdf, color: Colors.white),
-                onPressed: () => _exportToPdf(),
-              ),
+            IconButton(
+              icon: const Icon(Icons.picture_as_pdf, color: Colors.white),
+              onPressed: () {
+                if (_minutesController.text.isNotEmpty) {
+                  _exportToPdf();
+                } else {
+                  _exportConvocatoriaToPdf();
+                }
+              },
+              tooltip: 'Exportar PDF',
+            ),
           ],
         ),
         body: TabBarView(
@@ -756,19 +762,41 @@ class _MeetingRecordingScreenState extends State<MeetingRecordingScreen> {
   }
 
   Future<void> _exportConvocatoriaToPdf() async {
-    final instService =
-        Provider.of<InstitutionalService>(context, listen: false);
-    final organs = await instService.getOrgans(widget.meeting.institutionId);
-    if (!mounted) return;
-    final organ = organs.firstWhere((o) => o.id == widget.meeting.organId);
+    try {
+      final instService =
+          Provider.of<InstitutionalService>(context, listen: false);
+      final organs = await instService.getOrgans(widget.meeting.institutionId);
+      if (!mounted) return;
 
-    await PdfService.generateConvocatoriaPDF(
-      organ: organ,
-      meeting: widget.meeting.copyWith(
-        agenda: _agendaController.text,
-        location: _locationController.text,
-      ),
-    );
+      InstitutionOrgan organ;
+      if (organs.any((o) => o.id == widget.meeting.organId)) {
+        organ = organs.firstWhere((o) => o.id == widget.meeting.organId);
+      } else {
+        organ = InstitutionOrgan(
+          id: widget.meeting.organId.isEmpty ? 'organ_default' : widget.meeting.organId,
+          name: 'Órgão Institucional',
+          description: '',
+          memberIds: const [],
+          institutionId: widget.meeting.institutionId,
+          createdAt: DateTime.now(),
+        );
+      }
+
+      await PdfService.generateConvocatoriaPDF(
+        organ: organ,
+        meeting: widget.meeting.copyWith(
+          agenda: _agendaController.text,
+          location: _locationController.text,
+        ),
+      );
+    } catch (e) {
+      debugPrint('Erro ao exportar PDF da convocatória: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erro ao gerar PDF: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
   }
 
   Widget _buildPresenceTab() {
