@@ -4,6 +4,7 @@ import '../../../models/user_model.dart';
 import '../../../models/institution_model.dart';
 import '../../../services/ai_chat_service.dart';
 import '../../../services/institutional_knowledge_service.dart';
+import '../../../services/edugaming_help_ai_service.dart';
 import '../../../widgets/ai_translated_text.dart';
 import '../../../widgets/glass_card.dart';
 import '../../../services/firebase_service.dart';
@@ -79,9 +80,13 @@ class _InstitutionalAiChatScreenState extends State<InstitutionalAiChatScreen> {
 
     _scrollToBottom();
 
-    final aiService = context.read<AiChatService>();
-    String responseContent = '';
-    
+    final firebaseService = context.read<FirebaseService>();
+    final aiChatService = context.read<AiChatService>();
+    InstitutionalKnowledgeService? knowledgeService;
+    try {
+      knowledgeService = context.read<InstitutionalKnowledgeService>();
+    } catch (_) {}
+
     setState(() {
       _messages.add({
         'role': 'ai', 
@@ -91,29 +96,31 @@ class _InstitutionalAiChatScreenState extends State<InstitutionalAiChatScreen> {
       });
     });
 
-    aiService.sendMessage(userMsg).listen(
-      (chunk) {
-        if (chunk.startsWith('ERRO_IA:')) {
-          setState(() {
-            _isTyping = false;
-            _messages.last['content'] = 'Ocorreu um erro técnico: ${chunk.replaceFirst('ERRO_IA:', '')}';
-          });
-          return;
-        }
-        responseContent += chunk;
+    try {
+      final stream = EduGamingHelpAiService.askHelp(
+        user: widget.user,
+        userQuestion: userMsg,
+        firebaseService: firebaseService,
+        aiChatService: aiChatService,
+        knowledgeService: knowledgeService,
+      );
+
+      await for (final chunk in stream) {
+        if (!mounted) return;
         setState(() {
-          _messages.last['content'] = responseContent;
+          _messages.last['content'] = (_messages.last['content'] ?? '') + chunk;
         });
         _scrollToBottom();
-      },
-      onDone: () => setState(() => _isTyping = false),
-      onError: (e) {
+      }
+    } catch (e) {
+      if (mounted) {
         setState(() {
-          _isTyping = false;
-          _messages.last['content'] = 'Desculpe, ocorreu um erro na ligação com a Instituição. Detalhes: $e';
+          _messages.last['content'] = 'Erro ao processar resposta de apoio: $e';
         });
-      },
-    );
+      }
+    } finally {
+      if (mounted) setState(() => _isTyping = false);
+    }
   }
 
   void _scrollToBottom() {
