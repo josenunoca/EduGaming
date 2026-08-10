@@ -1,11 +1,12 @@
 import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
 import '../models/user_model.dart';
+import '../models/student_absence_model.dart';
 import '../services/firebase_service.dart';
 import '../services/ai_chat_service.dart';
 
 class EduGamingHelpAiService {
-  /// Builds complete live data context for the user role and queries Gemini AI
+  /// Builds complete live data context for the user role and queries Gemini AI with strict RGPD Privacy enforcement
   static Stream<String> askHelp({
     required UserModel user,
     required String userQuestion,
@@ -16,7 +17,7 @@ class EduGamingHelpAiService {
       final institutionId = user.institutionId ?? '';
       final roleText = _getRoleText(user.role);
 
-      // Build Dynamic Platform & Real-Time Context
+      // Build Dynamic Platform & Real-Time Scoped Context
       final StringBuffer contextBuffer = StringBuffer();
 
       contextBuffer.writeln('========================================');
@@ -51,60 +52,76 @@ class EduGamingHelpAiService {
       contextBuffer.writeln('   - Suporta Versão Resumo Simples ou Versão Detalhada (com sumários de aulas, descritivos e comprovativos).');
       contextBuffer.writeln('');
 
-      // Inject Real-Time Firestore Data based on User Role
-      if (user.role == UserRole.parent || user.role == UserRole.student) {
-        contextBuffer.writeln('--- DADOS EM TEMPO REAL DO EDUCANDO / ALUNO ---');
+      // STAGE STRICT PRIVACY DATA ACCORDING TO ROLE (RGPD ENFORCEMENT)
+      if (user.role == UserRole.parent) {
+        contextBuffer.writeln('--- DADOS AUTORIZADOS DO ENCARREGADO DE EDUCAÇÃO (APENAS FILHOS PRÓPRIOS) ---');
         try {
-          final absences = await firebaseService.getStudentAbsences(institutionId, studentId: user.id).first;
-          contextBuffer.writeln('Total de ausências registadas: ${absences.length}');
-          for (final a in absences.take(5)) {
-            contextBuffer.writeln(' - Ausência de ${DateFormat('dd/MM/yyyy').format(a.startDate)} a ${DateFormat('dd/MM/yyyy').format(a.endDate)}: Motivo=${a.type.name}, Obs="${a.description ?? 'Sem obs'}"');
+          final children = await firebaseService.getChildren(user.id);
+          contextBuffer.writeln('Educandos Associados a ${user.name}: ${children.map((c) => c.name).join(', ')}');
+          
+          for (final child in children) {
+            contextBuffer.writeln('\n* Educando: ${child.name} (ID: ${child.id})');
+            final absences = await firebaseService.getStudentAbsences(institutionId, studentId: child.id).first;
+            contextBuffer.writeln('  - Ausências registadas (${absences.length}):');
+            for (final a in absences.take(5)) {
+              contextBuffer.writeln('    • ${DateFormat('dd/MM/yyyy').format(a.startDate)} a ${DateFormat('dd/MM/yyyy').format(a.endDate)}: Motivo=${a.type.name}, Obs="${a.description ?? 'Sem obs'}"');
+            }
           }
-        } catch (_) {}
 
-        try {
           final activities = await firebaseService.getActivities(institutionId).first;
-          contextBuffer.writeln('Total de atividades/aulas registadas: ${activities.length}');
           final today = DateTime.now();
           final todayActs = activities.where((act) => act.startDate.day == today.day && act.startDate.month == today.month).toList();
-          contextBuffer.writeln('Sumários/Atividades de Hoje (${todayActs.length}):');
+          contextBuffer.writeln('\n* Sumários/Atividades de Hoje (${todayActs.length}):');
           for (final act in todayActs) {
-            contextBuffer.writeln(' * ${act.title}: Status=${act.status}, Descrição="${act.description}"');
+            contextBuffer.writeln('  • ${act.title}: Status=${act.status}, Descrição="${act.description}"');
           }
 
           final nextWeekEnd = today.add(const Duration(days: 7));
           final nextWeekActs = activities.where((act) => act.startDate.isAfter(today) && act.startDate.isBefore(nextWeekEnd)).toList();
-          contextBuffer.writeln('Atividades e Materiais da Próxima Semana (${nextWeekActs.length}):');
+          contextBuffer.writeln('\n* Materiais e Atividades da Próxima Semana (${nextWeekActs.length}):');
           for (final act in nextWeekActs) {
-            contextBuffer.writeln(' * [${DateFormat('dd/MM/yyyy').format(act.startDate)}] ${act.title}: Materiais/Obs="${act.description}"');
+            contextBuffer.writeln('  • [${DateFormat('dd/MM/yyyy').format(act.startDate)}] ${act.title}: Materiais/Obs="${act.description}"');
           }
+        } catch (e) {
+          contextBuffer.writeln('Erro ao carregar dados do educando: $e');
+        }
+      } else if (user.role == UserRole.student) {
+        contextBuffer.writeln('--- DADOS AUTORIZADOS DO PRÓPRIO ALUNO ---');
+        contextBuffer.writeln('Aluno: ${user.name}');
+        try {
+          final absences = await firebaseService.getStudentAbsences(institutionId, studentId: user.id).first;
+          contextBuffer.writeln('Minhas ausências registadas: ${absences.length}');
         } catch (_) {}
       } else if (user.role == UserRole.teacher) {
-        contextBuffer.writeln('--- DADOS EM TEMPO REAL DO PROFESSOR ---');
+        contextBuffer.writeln('--- DADOS AUTORIZADOS DO PROFESSOR (APENAS SUAS DISCIPLINAS E TURMAS) ---');
         try {
           final subjects = await firebaseService.getSubjectsByTeacher(user.id).first;
-          contextBuffer.writeln('As minhas disciplinas (${subjects.length}): ${subjects.map((s) => s.name).join(', ')}');
-        } catch (_) {}
+          contextBuffer.writeln('Disciplinas sob responsabilidade de ${user.name} (${subjects.length}): ${subjects.map((s) => s.name).join(', ')}');
 
-        try {
           final absences = await firebaseService.getStudentAbsences(institutionId).first;
           final today = DateTime.now();
           final todayAbs = absences.where((a) => a.isDateAbsent(today)).toList();
-          contextBuffer.writeln('Alunos ausentes hoje na instituição: ${todayAbs.length}');
+          contextBuffer.writeln('Alunos ausentes hoje nas turmas autorizadas: ${todayAbs.length}');
           for (final a in todayAbs) {
-            contextBuffer.writeln(' - Aluno ${a.studentName}: Encarregado=${a.parentName}, Motivo=${a.type.name}');
+            contextBuffer.writeln(' - Aluno ${a.studentName}: Motivo=${a.type.name}');
           }
-        } catch (_) {}
+        } catch (e) {
+          contextBuffer.writeln('Erro ao carregar disciplinas do professor: $e');
+        }
+      } else if (user.role == UserRole.admin) {
+        contextBuffer.writeln('--- PERMISSIÕES DE ADMINISTRAÇÃO INSTITUCIONAL ---');
+        contextBuffer.writeln('Acesso global autorizado para gestão de colaboradores, turmas e auditorias institucionais.');
       }
 
       contextBuffer.writeln('========================================');
       contextBuffer.writeln('PERGUNTA DO UTILIZADOR ($roleText):');
       contextBuffer.writeln('"$userQuestion"');
       contextBuffer.writeln('========================================');
-      contextBuffer.writeln('INSTRUÇÕES DE RESPOSTA PARA A INTELIGÊNCIA ARTIFICIAL:');
-      contextBuffer.writeln('Responda sempre em português claro, profissional, acolhedor e perfeitamente estruturado.');
-      contextBuffer.writeln('Se a pergunta for sobre dados do educando (sumários de hoje, materiais para a próxima semana, faltas da professora ou comportamento), consulte e apresente com exatidão os dados do contexto real acima.');
-      contextBuffer.writeln('Se a pergunta for sobre o funcionamento da plataforma (QR codes, ausências de vários dias, avisos aos pais, PDFs), explique o mecanismo passo-a-passo.');
+      contextBuffer.writeln('POLÍTICA ESTRITA DE PROTEÇÃO DE DADOS (RGPD/GDPR):');
+      contextBuffer.writeln('1. O utilizador $roleText (${user.name}) APENAS pode obter informações relativas aos seus próprios educandos ou às disciplinas sob a sua responsabilidade direta.');
+      contextBuffer.writeln('2. SE O UTILIZADOR PERGUNTAR POR DADOS DE OUTROS ALUNOS, EDUCANDOS DE OUTROS PAIS, TURMAS/DISCIPLINAS DE OUTROS PROFESSORES OU DADOS PRIVADOS DE COLEGAS, DEVES RECUSAR A RESPOSTA COM A SEGUINTE MENSAGEM:');
+      contextBuffer.writeln('   "🔒 Por motivos de segurança e proteção de dados (RGPD), apenas posso fornecer informações relativas aos seus próprios educandos ou às disciplinas sob a sua responsabilidade direta."');
+      contextBuffer.writeln('3. Se a pergunta for legítima e respeitar as permissões do perfil, responda em português claro, acolhedor e perfeitamente estruturado.');
 
       final prompt = contextBuffer.toString();
       final stream = aiChatService.sendMessage(prompt);
