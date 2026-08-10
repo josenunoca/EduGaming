@@ -341,8 +341,11 @@ Estás a agir como especialista em: ${contextData.map((c) => c.name).join(', ')}
       _history.add(Content.model([TextPart(fullResponse.toString())]));
     } catch (e) {
       debugPrint('AI Chat Service Error: $e');
-      yield 'Erro de comunicação: $e';
-      rethrow;
+      if (e.toString().contains('API key not valid') || e.toString().contains('API_KEY_INVALID')) {
+        yield 'ERRO_API_KEY_INVALID';
+      } else {
+        yield 'ERRO_IA: $e';
+      }
     }
   }
 
@@ -389,7 +392,11 @@ Estás a agir como especialista em: ${contextData.map((c) => c.name).join(', ')}
       _history.add(Content.model([TextPart(fullResponse.toString())]));
     } catch (e) {
       debugPrint('Web-enriched search error: $e');
-      yield 'Erro ao processar pesquisa: $e';
+      if (e.toString().contains('API key not valid') || e.toString().contains('API_KEY_INVALID')) {
+        yield 'ERRO_API_KEY_INVALID';
+      } else {
+        yield 'ERRO_IA: $e';
+      }
     }
   }
 

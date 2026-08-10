@@ -150,7 +150,7 @@ class EduGamingHelpAiService {
       try {
         final stream = aiChatService.sendMessage(prompt);
         await for (final chunk in stream) {
-          if (chunk.contains('API key not valid') || chunk.contains('API_KEY_INVALID') || chunk.contains('Erro de comunicação')) {
+          if (chunk == 'ERRO_API_KEY_INVALID' || chunk.startsWith('ERRO_IA:') || chunk.contains('API key not valid') || chunk.contains('API_KEY_INVALID') || chunk.contains('Erro de comunicação')) {
             throw Exception(chunk);
           }
           hasStreamed = true;
