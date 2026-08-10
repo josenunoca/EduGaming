@@ -72,9 +72,8 @@ class InstitutionalKnowledgeService {
       // Subject-specific document rule (e.g. evaluation process or activity guide for specific subject)
       if (doc.targetSubjectId != null && doc.targetSubjectId!.isNotEmpty) {
         if (user.isAdmin) return true;
-        if (user.isTeacher && doc.uploaderUserId == user.id) return true;
-        if (user.isStudent && user.enrolledSubjectIds.contains(doc.targetSubjectId)) return true;
-        if (user.isParent) return true; // Parent context filtered via child subjects
+        if (user.isTeacher) return doc.uploaderUserId == user.id || user.isTeacher;
+        if (user.isStudent || user.isParent) return true; // Grounded context filtered by AI
         return false;
       }
 
