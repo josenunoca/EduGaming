@@ -23,6 +23,7 @@ import '../institution/institutional_management_screen.dart';
 import '../institution/academic_management_screen.dart';
 import '../institution/activity_details_screen.dart';
 import '../institution/institution_collaborator_management_screen.dart';
+import '../common/edugaming_help_center_screen.dart';
 import '../institution/credit_management_screen.dart';
 import '../institution/lifestyle_management_screen.dart';
 import '../institution/delegation_management_screen.dart';
@@ -196,6 +197,7 @@ class _TeacherDashboardState extends State<TeacherDashboard>
                 final institution = instSnap.data;
 
                 return Scaffold(
+                  floatingActionButton: EduGamingHelpButton(user: teacher),
                   appBar: AppBar(
                     title: BrandedTitle(
                       logoUrl: institution?.logoUrl,

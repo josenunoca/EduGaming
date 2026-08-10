@@ -18,6 +18,7 @@ import '../user/institutional_ai_chat_screen.dart';
 import '../user/user_uniform_catalog_screen.dart';
 import '../user/user_order_history_screen.dart';
 import '../../services/procurement_service.dart';
+import '../common/edugaming_help_center_screen.dart';
 
 class ParentDashboard extends StatelessWidget {
   const ParentDashboard({super.key});
@@ -76,6 +77,7 @@ class ParentDashboard extends StatelessWidget {
 
         return Scaffold(
           backgroundColor: const Color(0xFF0F172A),
+          floatingActionButton: EduGamingHelpButton(user: parent),
           appBar: AppBar(
             title: StreamBuilder<InstitutionModel?>(
               stream: parent.institutionId != null

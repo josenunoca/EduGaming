@@ -21,6 +21,7 @@ import 'student_surveys_screen.dart';
 import '../user/user_uniform_catalog_screen.dart';
 import '../user/institutional_ai_chat_screen.dart';
 import '../../widgets/parent_child_attendance_widget.dart';
+import '../common/edugaming_help_center_screen.dart';
 
 class StudentDashboard extends StatelessWidget {
   final String? studentId;
@@ -132,6 +133,7 @@ class StudentDashboard extends StatelessWidget {
             }
             return Scaffold(
               backgroundColor: const Color(0xFF0F172A),
+              floatingActionButton: EduGamingHelpButton(user: student),
               appBar: AppBar(
                 title: StreamBuilder<InstitutionModel?>(
                   stream: student.institutionId != null

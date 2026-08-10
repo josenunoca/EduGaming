@@ -10,6 +10,7 @@ import 'knowledge/knowledge_management_screen.dart';
 import 'activity_management_screen.dart';
 import '../user/institutional_ai_chat_screen.dart';
 import 'surveys/survey_list_screen.dart';
+import '../common/edugaming_help_center_screen.dart';
 
 import '../../widgets/app_tile.dart';
 import 'erp/erp_dashboard.dart';
@@ -29,6 +30,7 @@ class InstitutionalManagementScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF0F172A),
+      floatingActionButton: currentUser != null ? EduGamingHelpButton(user: currentUser!) : null,
       appBar: AppBar(
         title: AiTranslatedText('Gestão 360º - ${institution.name}'),
         actions: [
