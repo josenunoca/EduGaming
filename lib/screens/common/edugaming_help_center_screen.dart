@@ -4,6 +4,7 @@ import '../../models/user_model.dart';
 import '../../services/firebase_service.dart';
 import '../../services/ai_chat_service.dart';
 import '../../services/edugaming_help_ai_service.dart';
+import '../../services/institutional_knowledge_service.dart';
 import '../../widgets/ai_translated_text.dart';
 import '../../widgets/glass_card.dart';
 
@@ -102,6 +103,10 @@ class _EduGamingHelpCenterScreenState
 
     final firebaseService = context.read<FirebaseService>();
     final aiChatService = context.read<AiChatService>();
+    InstitutionalKnowledgeService? knowledgeService;
+    try {
+      knowledgeService = context.read<InstitutionalKnowledgeService>();
+    } catch (_) {}
 
     try {
       final stream = EduGamingHelpAiService.askHelp(
@@ -109,6 +114,7 @@ class _EduGamingHelpCenterScreenState
         userQuestion: question,
         firebaseService: firebaseService,
         aiChatService: aiChatService,
+        knowledgeService: knowledgeService,
       );
 
       await for (final chunk in stream) {

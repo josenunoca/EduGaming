@@ -2,16 +2,19 @@ import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
 import '../models/user_model.dart';
 import '../models/student_absence_model.dart';
+import '../models/institutional_knowledge_model.dart';
 import '../services/firebase_service.dart';
 import '../services/ai_chat_service.dart';
+import '../services/institutional_knowledge_service.dart';
 
 class EduGamingHelpAiService {
-  /// Builds complete live data context for the user role and queries Gemini AI with strict RGPD Privacy enforcement
+  /// Builds complete live data context for the user role and queries Gemini AI with strict RGPD Privacy & Document Eligibility enforcement
   static Stream<String> askHelp({
     required UserModel user,
     required String userQuestion,
     required FirebaseService firebaseService,
     required AiChatService aiChatService,
+    InstitutionalKnowledgeService? knowledgeService,
   }) async* {
     try {
       final institutionId = user.institutionId ?? '';
@@ -51,6 +54,26 @@ class EduGamingHelpAiService {
       contextBuffer.writeln('   - Permite escolher Visão Global (Todas as Disciplinas) ou Disciplina Específica.');
       contextBuffer.writeln('   - Suporta Versão Resumo Simples ou Versão Detalhada (com sumários de aulas, descritivos e comprovativos).');
       contextBuffer.writeln('');
+
+      // INJECT ELIGIBLE INSTITUTIONAL KNOWLEDGE DOCUMENTS FOR THIS USER ROLE
+      if (knowledgeService != null && institutionId.isNotEmpty) {
+        try {
+          final eligibleDocs = await knowledgeService.getVisibleDocuments(institutionId, user);
+          contextBuffer.writeln('--- DOCUMENTOS E REGULAMENTOS INSTITUCIONAIS ELEGÍVEIS PARA ESTE PERFIL (${user.role.name.toUpperCase()}) ---');
+          contextBuffer.writeln('O utilizador tem autorização para consultar ${eligibleDocs.length} documentos da base de conhecimento:');
+          for (final doc in eligibleDocs) {
+            contextBuffer.writeln('\n📄 [DOCUMENTO AUTORIZADO] Título: "${doc.title}"');
+            contextBuffer.writeln('   Público-Alvo: ${doc.accessType.name}');
+            contextBuffer.writeln('   Descrição: "${doc.description}"');
+            if (doc.extractedContent != null && doc.extractedContent!.isNotEmpty) {
+              contextBuffer.writeln('   Conteúdo/Texto Extraído: "${doc.extractedContent}"');
+            }
+          }
+          contextBuffer.writeln('');
+        } catch (e) {
+          contextBuffer.writeln('Erro ao carregar documentos elegíveis da instituição: $e');
+        }
+      }
 
       // STAGE STRICT PRIVACY DATA ACCORDING TO ROLE (RGPD ENFORCEMENT)
       if (user.role == UserRole.parent) {
