@@ -468,13 +468,14 @@ class _LoginScreenState extends State<LoginScreen> {
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
+                      content: Text('Erro ao enviar email: $e'),
                       backgroundColor: Colors.red,
                     ),
                   );
                 }
               }
             },
-            child: const Text('Enviar Link'),
+            label: const Text('Enviar Link'),
           ),
         ],
       ),
