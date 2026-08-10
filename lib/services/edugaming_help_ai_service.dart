@@ -62,11 +62,10 @@ class EduGamingHelpAiService {
           contextBuffer.writeln('--- DOCUMENTOS E REGULAMENTOS INSTITUCIONAIS ELEGÍVEIS PARA ESTE PERFIL (${user.role.name.toUpperCase()}) ---');
           contextBuffer.writeln('O utilizador tem autorização para consultar ${eligibleDocs.length} documentos da base de conhecimento:');
           for (final doc in eligibleDocs) {
-            contextBuffer.writeln('\n📄 [DOCUMENTO AUTORIZADO] Título: "${doc.title}"');
-            contextBuffer.writeln('   Público-Alvo: ${doc.accessType.name}');
-            contextBuffer.writeln('   Descrição: "${doc.description}"');
-            if (doc.extractedContent != null && doc.extractedContent!.isNotEmpty) {
-              contextBuffer.writeln('   Conteúdo/Texto Extraído: "${doc.extractedContent}"');
+            contextBuffer.writeln('\n📄 [DOCUMENTO AUTORIZADO] Título: "${doc.title}" (Ficheiro: ${doc.fileName})');
+            contextBuffer.writeln('   Público-Alvo: ${doc.accessType.name} | Categoria: ${doc.category}');
+            if (doc.extractedText != null && doc.extractedText!.isNotEmpty) {
+              contextBuffer.writeln('   Conteúdo/Texto Extraído: "${doc.extractedText}"');
             }
           }
           contextBuffer.writeln('');
