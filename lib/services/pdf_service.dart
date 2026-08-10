@@ -2557,66 +2557,6 @@ class PdfService {
             ),
             pw.SizedBox(height: 16),
 
-            // Summary Metric Cards
-            pw.Row(
-              mainAxisAlignment: pw.MainAxisAlignment.spaceAround,
-              children: [
-                _buildSummaryBox('Presenças Registadas', totalCheckIns.toString(), PdfColors.green),
-                _buildSummaryBox('Ausências Comunicadas', totalAbsences.toString(), PdfColors.orange),
-                _buildSummaryBox('Atividades Realizadas', totalActivities.toString(), PdfColors.indigo),
-              ],
-            ),
-            pw.SizedBox(height: 20),
-
-            // Presenças & Entradas Table
-            _sectionTitle('1. Registos de Entrada e Saída (Presenças)'),
-            if (attendanceRecords.isEmpty)
-              pw.Text('Sem registos de presenças presenciais no período selecionado.', style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey600))
-            else
-              pw.TableHelper.fromTextArray(
-                headers: ['Data / Hora', 'Tipo', 'Código / Ponto'],
-                data: attendanceRecords.map((r) => [
-                  DateFormat('dd/MM/yyyy HH:mm').format(r.timestamp),
-                  r.type == AttendanceType.checkIn ? 'Entrada' : 'Saída',
-                  r.qrCodeUsed ?? 'Ponto Digital',
-                ]).toList(),
-              ),
-            pw.SizedBox(height: 20),
-
-            // Ausências & Faltas Comunicadas Table
-            _sectionTitle('2. Ausências e Férias Comunicadas pelos Pais'),
-            if (absences.isEmpty)
-              pw.Text('Sem ausências comunicadas no período selecionado.', style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey600))
-            else
-              pw.TableHelper.fromTextArray(
-                headers: ['Período', 'Motivo', 'Descritivo / Observações', 'Comprovativo'],
-                data: absences.map((a) => [
-                  '${DateFormat('dd/MM/yyyy').format(a.startDate)} a ${DateFormat('dd/MM/yyyy').format(a.endDate)}',
-                  a.type.name.toUpperCase(),
-                  isDetailed ? (a.description ?? 'Sem obs.') : 'Comunicado',
-                  a.proofUrl != null ? 'Sim (Anexo)' : 'Não',
-                ]).toList(),
-              ),
-            pw.SizedBox(height: 20),
-
-            // Detailed Activities & Lessons Section
-            if (isDetailed) ...[
-              _sectionTitle('3. Atividades e Aulas Realizadas no Período'),
-              if (activities.isEmpty)
-                pw.Text('Sem atividades letivas registadas para este período.', style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey600))
-              else
-                pw.TableHelper.fromTextArray(
-                  headers: ['Data', 'Título da Atividade / Conteúdo', 'Local / Sala', 'Estado'],
-                  data: activities.map((act) => [
-                    DateFormat('dd/MM/yyyy').format(act.startDate),
-                    act.title,
-                    act.location,
-                    act.status == 'completed' ? 'Concluída' : 'Planeada',
-                  ]).toList(),
-                ),
-              pw.SizedBox(height: 20),
-            ],
-
             pw.Divider(),
             pw.SizedBox(height: 8),
             pw.Row(

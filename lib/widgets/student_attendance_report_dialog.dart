@@ -87,10 +87,12 @@ class _StudentAttendanceReportDialogState
           InstitutionModel(
             id: institutionId,
             name: 'EduGaming Portugal',
-            code: 'EDUGAMING',
+            nif: '500000000',
             address: '',
             phone: '',
             email: '',
+            educationLevels: [],
+            createdAt: DateTime.now(),
           );
 
       // Fetch Attendance Records
@@ -248,7 +250,7 @@ class _StudentAttendanceReportDialogState
             ),
             const SizedBox(height: 8),
             StreamBuilder<List<Subject>>(
-              stream: service.getSubjects(institutionId),
+              stream: service.getSubjectsByInstitution(institutionId),
               builder: (context, snapshot) {
                 final subjects = snapshot.data ?? [];
 

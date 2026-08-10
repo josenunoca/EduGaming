@@ -9,6 +9,7 @@ import '../models/hr/hr_attendance_model.dart';
 import '../models/hr/hr_absence_model.dart';
 import '../services/firebase_service.dart';
 import 'glass_card.dart';
+import 'ai_translated_text.dart';
 import '../screens/user/widgets/hr_attendance_scanner.dart';
 import '../screens/parent/student_absence_registration_screen.dart';
 import 'student_attendance_report_dialog.dart';
