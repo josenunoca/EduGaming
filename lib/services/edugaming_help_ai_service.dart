@@ -56,7 +56,7 @@ class EduGamingHelpAiService {
       if (user.role == UserRole.parent) {
         contextBuffer.writeln('--- DADOS AUTORIZADOS DO ENCARREGADO DE EDUCAÇÃO (APENAS FILHOS PRÓPRIOS) ---');
         try {
-          final children = await firebaseService.getChildren(user.id);
+          final children = await firebaseService.getChildrenByParent(user.id).first;
           contextBuffer.writeln('Educandos Associados a ${user.name}: ${children.map((c) => c.name).join(', ')}');
           
           for (final child in children) {
