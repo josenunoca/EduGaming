@@ -475,7 +475,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 }
               }
             },
-            label: const Text('Enviar Link'),
           ),
         ],
       ),
