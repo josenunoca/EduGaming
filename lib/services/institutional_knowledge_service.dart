@@ -69,11 +69,20 @@ class InstitutionalKnowledgeService {
         .toList();
 
     bool isVisible(InstitutionalKnowledgeDocument doc) {
+      // Subject-specific document rule (e.g. evaluation process or activity guide for specific subject)
+      if (doc.targetSubjectId != null && doc.targetSubjectId!.isNotEmpty) {
+        if (user.isAdmin) return true;
+        if (user.isTeacher && doc.uploaderUserId == user.id) return true;
+        if (user.isStudent && user.enrolledSubjectIds.contains(doc.targetSubjectId)) return true;
+        if (user.isParent) return true; // Parent context filtered via child subjects
+        return false;
+      }
+
       if (doc.accessType == KnowledgeAccessType.all) return true;
       if (doc.restrictedEmails.contains(user.email)) return true;
       switch (doc.accessType) {
         case KnowledgeAccessType.students:
-          return user.isStudent;
+          return user.isStudent || user.isParent;
         case KnowledgeAccessType.parents:
           return user.isParent;
         case KnowledgeAccessType.staff:

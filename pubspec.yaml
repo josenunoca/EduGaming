@@ -1,6 +1,6 @@
 name: edugaming
 description: Plataforma educacional gamificada para gestão institucional inteligente.
-version: 1.0.18+19
+version: 1.0.19+20
 
 environment:
   sdk: '>=3.0.0 <4.0.0'

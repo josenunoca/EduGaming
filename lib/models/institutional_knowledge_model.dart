@@ -21,6 +21,9 @@ class InstitutionalKnowledgeDocument {
   final DocumentStatus documentStatus; // 'active' or 'archived'
   final DateTime? validFrom; // Optional: start of validity period
   final DateTime? validUntil; // Optional: end of validity period
+  final String? targetSubjectId; // Optional: specific subject target
+  final String? targetSubjectName; // Display name of subject
+  final String? uploaderUserId; // User ID of creator/teacher
 
   InstitutionalKnowledgeDocument({
     required this.id,
@@ -38,6 +41,9 @@ class InstitutionalKnowledgeDocument {
     this.documentStatus = DocumentStatus.active,
     this.validFrom,
     this.validUntil,
+    this.targetSubjectId,
+    this.targetSubjectName,
+    this.uploaderUserId,
   });
 
   /// Returns true if the document is currently in its validity window (or has no window set).
@@ -92,6 +98,9 @@ class InstitutionalKnowledgeDocument {
       'documentStatus': documentStatus.name,
       'validFrom': validFrom != null ? Timestamp.fromDate(validFrom!) : null,
       'validUntil': validUntil != null ? Timestamp.fromDate(validUntil!) : null,
+      'targetSubjectId': targetSubjectId,
+      'targetSubjectName': targetSubjectName,
+      'uploaderUserId': uploaderUserId,
     };
   }
 
@@ -132,6 +141,9 @@ class InstitutionalKnowledgeDocument {
       documentStatus: status,
       validFrom: parseTimestamp(map['validFrom']),
       validUntil: parseTimestamp(map['validUntil']),
+      targetSubjectId: map['targetSubjectId'],
+      targetSubjectName: map['targetSubjectName'],
+      uploaderUserId: map['uploaderUserId'],
     );
   }
 }

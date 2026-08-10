@@ -7,6 +7,7 @@ import 'package:uuid/uuid.dart';
 import 'package:syncfusion_flutter_pdf/pdf.dart';
 import 'package:intl/intl.dart';
 import '../../../models/institution_model.dart';
+import '../../../models/subject_model.dart';
 import '../../../models/institutional_knowledge_model.dart';
 import '../../../services/institutional_knowledge_service.dart';
 import '../../../services/firebase_service.dart';
@@ -15,8 +16,15 @@ import '../../../widgets/ai_translated_text.dart';
 
 class KnowledgeManagementScreen extends StatefulWidget {
   final InstitutionModel institution;
+  final String? initialSubjectId;
+  final String? initialSubjectName;
 
-  const KnowledgeManagementScreen({super.key, required this.institution});
+  const KnowledgeManagementScreen({
+    super.key,
+    required this.institution,
+    this.initialSubjectId,
+    this.initialSubjectName,
+  });
 
   @override
   State<KnowledgeManagementScreen> createState() => _KnowledgeManagementScreenState();
@@ -31,6 +39,8 @@ class _KnowledgeManagementScreenState extends State<KnowledgeManagementScreen>
   DateTime? _validFrom;
   DateTime? _validUntil;
   late TabController _tabController;
+  String? _selectedSubjectId;
+  String? _selectedSubjectName;
 
   static final _dateFmt = DateFormat('dd/MM/yyyy');
 
@@ -38,6 +48,8 @@ class _KnowledgeManagementScreenState extends State<KnowledgeManagementScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _selectedSubjectId = widget.initialSubjectId;
+    _selectedSubjectName = widget.initialSubjectName;
   }
 
   @override
@@ -122,6 +134,9 @@ class _KnowledgeManagementScreenState extends State<KnowledgeManagementScreen>
         documentStatus: DocumentStatus.active,
         validFrom: _validFrom,
         validUntil: _validUntil,
+        targetSubjectId: _selectedSubjectId,
+        targetSubjectName: _selectedSubjectName,
+        uploaderUserId: firebase.currentUserModel?.id,
       );
 
       await service.addDocument(doc);
@@ -384,6 +399,41 @@ class _KnowledgeManagementScreenState extends State<KnowledgeManagementScreen>
                 enabledBorder:
                     UnderlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
               ),
+            ),
+            const SizedBox(height: 16),
+            StreamBuilder<List<Subject>>(
+              stream: context.read<FirebaseService>().getSubjectsByInstitution(widget.institution.id),
+              builder: (context, snapshot) {
+                final subjects = snapshot.data ?? [];
+                return DropdownButtonFormField<String?>(
+                  value: _selectedSubjectId,
+                  dropdownColor: const Color(0xFF1E293B),
+                  style: const TextStyle(color: Colors.white, fontSize: 13),
+                  decoration: const InputDecoration(
+                    labelText: 'Associar a Disciplina Específica (Opcional)',
+                    labelStyle: TextStyle(color: Colors.white54),
+                  ),
+                  items: [
+                    const DropdownMenuItem(
+                      value: null,
+                      child: Text('🌐 Toda a Instituição (Sem disciplina específica)'),
+                    ),
+                    ...subjects.map((sub) {
+                      return DropdownMenuItem(
+                        value: sub.id,
+                        child: Text('📚 ${sub.name} (${sub.level})'),
+                      );
+                    }),
+                  ],
+                  onChanged: (val) {
+                    final sub = subjects.firstWhere((s) => s.id == val, orElse: () => subjects.first);
+                    setState(() {
+                      _selectedSubjectId = val;
+                      _selectedSubjectName = val != null ? sub.name : null;
+                    });
+                  },
+                );
+              },
             ),
             const SizedBox(height: 16),
             DropdownButtonFormField<KnowledgeAccessType>(

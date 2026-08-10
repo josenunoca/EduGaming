@@ -18,6 +18,8 @@ import 'gamification/exam_monitor_screen.dart';
 import 'subject_statistics_screen.dart';
 import 'attendance_matrix_screen.dart';
 import '../student/ai_game_player_screen.dart';
+import '../institution/knowledge/knowledge_management_screen.dart';
+import '../../models/institution_model.dart';
 
 
 class SubjectDetailsScreen extends StatefulWidget {
@@ -88,6 +90,33 @@ class _SubjectDetailsScreenState extends State<SubjectDetailsScreen>
                   );
                 },
                 tooltip: 'Matriz de Presenças',
+              ),
+              IconButton(
+                icon: const Icon(Icons.upload_file, color: Color(0xFF00FF85)),
+                tooltip: 'Alimentar IA com Documentos / Regulamentos da Disciplina',
+                onPressed: () {
+                  final instId = _currentSubject.institutionId ?? '';
+                  final institution = InstitutionModel(
+                    id: instId,
+                    name: 'EduGaming',
+                    nif: '500000000',
+                    address: '',
+                    phone: '',
+                    email: '',
+                    educationLevels: [],
+                    createdAt: DateTime.now(),
+                  );
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => KnowledgeManagementScreen(
+                        institution: institution,
+                        initialSubjectId: _currentSubject.id,
+                        initialSubjectName: _currentSubject.name,
+                      ),
+                    ),
+                  );
+                },
               ),
             ],
             bottom: TabBar(
