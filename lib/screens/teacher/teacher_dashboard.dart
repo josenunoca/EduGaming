@@ -197,7 +197,6 @@ class _TeacherDashboardState extends State<TeacherDashboard>
                 final institution = instSnap.data;
 
                 return Scaffold(
-                  floatingActionButton: EduGamingHelpButton(user: teacher),
                   appBar: AppBar(
                     title: BrandedTitle(
                       logoUrl: institution?.logoUrl,
@@ -291,8 +290,14 @@ class _TeacherDashboardState extends State<TeacherDashboard>
                       ),
                     ],
                   ),
-                  floatingActionButton: _selectedTabIndex == 0
-                      ? Tooltip(
+                  floatingActionButton: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      EduGamingHelpButton(user: teacher),
+                      if (_selectedTabIndex == 0) ...[
+                        const SizedBox(height: 12),
+                        Tooltip(
                           message: 'Criar uma nova disciplina para lecionar',
                           child: FloatingActionButton.extended(
                             onPressed: () => _createNewSubject(context, teacher),
@@ -300,8 +305,10 @@ class _TeacherDashboardState extends State<TeacherDashboard>
                             icon: const Icon(Icons.add),
                             backgroundColor: const Color(0xFF7B61FF),
                           ),
-                        )
-                      : null,
+                        ),
+                      ],
+                    ],
+                  ),
                   body: Container(
                     decoration: const BoxDecoration(
                       gradient: LinearGradient(

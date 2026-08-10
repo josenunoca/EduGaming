@@ -77,7 +77,6 @@ class ParentDashboard extends StatelessWidget {
 
         return Scaffold(
           backgroundColor: const Color(0xFF0F172A),
-          floatingActionButton: EduGamingHelpButton(user: parent),
           appBar: AppBar(
             title: StreamBuilder<InstitutionModel?>(
               stream: parent.institutionId != null
@@ -369,12 +368,20 @@ class ParentDashboard extends StatelessWidget {
               },
             ),
           ),
-          floatingActionButton: FloatingActionButton.extended(
-            onPressed: () =>
-                _showRegisterChildDialog(context, service, currentUserId),
-            label: const AiTranslatedText('Registar Filho'),
-            icon: const Icon(Icons.add),
-            backgroundColor: const Color(0xFF7B61FF),
+          floatingActionButton: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              EduGamingHelpButton(user: parent),
+              const SizedBox(height: 12),
+              FloatingActionButton.extended(
+                onPressed: () =>
+                    _showRegisterChildDialog(context, service, currentUserId),
+                label: const AiTranslatedText('Registar Filho'),
+                icon: const Icon(Icons.add),
+                backgroundColor: const Color(0xFF7B61FF),
+              ),
+            ],
           ),
         );
       },
