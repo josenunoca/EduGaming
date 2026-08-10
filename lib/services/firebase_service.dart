@@ -6,8 +6,12 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 import 'package:rxdart/rxdart.dart' hide Subject;
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
+import 'email_invitation_service.dart';
 import '../models/agenda_item_model.dart';
 import '../models/user_model.dart';
+import '../models/student_absence_model.dart';
 import '../models/erp_record_model.dart';
 import '../models/marketing_event_model.dart';
 import '../models/management_document_model.dart';
@@ -81,14 +85,66 @@ class FirebaseService {
     }
   }
 
+  Future<void> sendPasswordResetEmail(String email) async {
+    await _auth.sendPasswordResetEmail(email: email.trim());
+  }
+
   Future<UserCredential?> signInWithGoogle() async {
-    debugPrint('Google Sign-In logic placeholder');
-    return null;
+    try {
+      GoogleAuthProvider googleProvider = GoogleAuthProvider();
+      googleProvider.addScope('email');
+      googleProvider.addScope('profile');
+
+      UserCredential userCredential;
+      if (kIsWeb) {
+        userCredential = await _auth.signInWithPopup(googleProvider);
+      } else {
+        userCredential = await _auth.signInWithProvider(googleProvider);
+      }
+      await _ensureSocialUserProfileCreated(userCredential);
+      return userCredential;
+    } catch (e) {
+      debugPrint('Error signing in with Google: $e');
+      rethrow;
+    }
   }
 
   Future<UserCredential?> signInWithFacebook() async {
-    debugPrint('Facebook Sign-In logic placeholder');
-    return null;
+    try {
+      final LoginResult result = await FacebookAuth.instance.login(
+        permissions: ['email', 'public_profile'],
+      );
+      if (result.status == LoginStatus.success) {
+        final OAuthCredential credential =
+            FacebookAuthProvider.credential(result.accessToken!.tokenString);
+        final userCredential = await _auth.signInWithCredential(credential);
+        await _ensureSocialUserProfileCreated(userCredential);
+        return userCredential;
+      }
+      return null;
+    } catch (e) {
+      debugPrint('Error signing in with Facebook: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> _ensureSocialUserProfileCreated(UserCredential credential) async {
+    final user = credential.user;
+    if (user == null) return;
+    final doc = await _db.collection('users').doc(user.uid).get();
+    if (!doc.exists) {
+      final newUser = UserModel(
+        id: user.uid,
+        name: user.displayName ?? 'Utilizador',
+        email: user.email ?? '',
+        role: UserRole.other,
+        photoUrl: user.photoURL,
+        institutionId: null,
+        adConsent: true,
+        dataConsent: true,
+      );
+      await _db.collection('users').doc(user.uid).set(newUser.toMap());
+    }
   }
 
   Future<void> updatePassword(String newPassword) async {
@@ -265,6 +321,9 @@ class FirebaseService {
   Future<void> addProfessorByEmail(
       String name, String email, String institutionId,
       {UserRole role = UserRole.teacher}) async {
+    final inst = await getInstitution(institutionId);
+    final instName = inst?.name ?? 'Instituição';
+
     // Check if user exists
     final snapshot = await _db
         .collection('users')
@@ -297,24 +356,30 @@ class FirebaseService {
       await _db.collection('institutions').doc(institutionId).update({
         'authorizedProfessorIds': FieldValue.arrayUnion([uid])
       });
+
+      // Send automatic email invitation
+      await EmailInvitationService.sendInvitationEmail(
+        toEmail: email,
+        recipientName: name,
+        role: role.name,
+        institutionName: instName,
+        invitedByName: _cachedUserModel?.name,
+      );
     }
   }
 
   Future<void> addStudentByEmail(
       String name, String email, String institutionId) async {
+    final inst = await getInstitution(institutionId);
+    final instName = inst?.name ?? 'Instituição';
+
     final snapshot = await _db
         .collection('users')
         .where('email', isEqualTo: email)
         .limit(1)
         .get();
 
-    if (snapshot.docs.isNotEmpty) {
-      final uid = snapshot.docs.first.id;
-      await _db.collection('users').doc(uid).update({
-        'institutionId': institutionId,
-      });
-    } else {
-      // Create skeleton student
+    if (snapshot.docs.isEmpty) {
       final uid = const Uuid().v4();
       final newUser = UserModel(
         id: uid,
@@ -326,6 +391,15 @@ class FirebaseService {
         dataConsent: true,
       );
       await _db.collection('users').doc(uid).set(newUser.toMap());
+
+      // Send automatic email invitation
+      await EmailInvitationService.sendInvitationEmail(
+        toEmail: email,
+        recipientName: name,
+        role: UserRole.student.name,
+        institutionName: instName,
+        invitedByName: _cachedUserModel?.name,
+      );
     }
   }
 
@@ -808,6 +882,96 @@ class FirebaseService {
         .map((snapshot) => snapshot.docs
             .map((doc) => Enrollment.fromMap(doc.data()))
             .toList());
+  }
+
+  Future<void> addStudentToSubject({
+    required String subjectId,
+    required String institutionId,
+    required String name,
+    required String email,
+    String? birthDate,
+  }) async {
+    final enrollmentId = '${const Uuid().v4()}_$subjectId';
+    final enrollment = Enrollment(
+      id: enrollmentId,
+      userId: const Uuid().v4(),
+      studentName: name,
+      studentEmail: email,
+      birthDate: birthDate,
+      subjectId: subjectId,
+      institutionId: institutionId,
+      status: 'accepted',
+      timestamp: DateTime.now(),
+    );
+    await _db
+        .collection('enrollments')
+        .doc(enrollment.id)
+        .set(enrollment.toMap());
+  }
+
+  Future<void> removeStudentFromSubject(String enrollmentId) async {
+    await _db.collection('enrollments').doc(enrollmentId).delete();
+  }
+
+  Future<void> bulkImportStudentsToSubject({
+    required String subjectId,
+    required String institutionId,
+    required List<Map<String, String>> students,
+  }) async {
+    final batch = _db.batch();
+    for (final st in students) {
+      final name = st['name'] ?? st['nome'] ?? '';
+      final email = st['email'] ?? st['mail'] ?? '';
+      final birthDate = st['birthDate'] ?? st['dataNascimento'] ?? st['data_nascimento'] ?? '';
+      if (name.isEmpty) continue;
+
+      final enrollmentId = '${const Uuid().v4()}_$subjectId';
+      final enrollment = Enrollment(
+        id: enrollmentId,
+        userId: const Uuid().v4(),
+        studentName: name,
+        studentEmail: email,
+        birthDate: birthDate.isNotEmpty ? birthDate : null,
+        subjectId: subjectId,
+        institutionId: institutionId,
+        status: 'accepted',
+        timestamp: DateTime.now(),
+      );
+      final ref = _db.collection('enrollments').doc(enrollment.id);
+      batch.set(ref, enrollment.toMap());
+    }
+    await batch.commit();
+  }
+
+  Future<void> copyStudentsBetweenSubjects({
+    required String sourceSubjectId,
+    required String targetSubjectId,
+    required String institutionId,
+  }) async {
+    final sourceSnap = await _db
+        .collection('enrollments')
+        .where('subjectId', isEqualTo: sourceSubjectId)
+        .get();
+
+    final batch = _db.batch();
+    for (final doc in sourceSnap.docs) {
+      final existing = Enrollment.fromMap(doc.data());
+      final newEnrollmentId = '${const Uuid().v4()}_$targetSubjectId';
+      final newEnrollment = Enrollment(
+        id: newEnrollmentId,
+        userId: existing.userId,
+        studentName: existing.studentName,
+        studentEmail: existing.studentEmail,
+        birthDate: existing.birthDate,
+        subjectId: targetSubjectId,
+        institutionId: institutionId,
+        status: 'accepted',
+        timestamp: DateTime.now(),
+      );
+      final ref = _db.collection('enrollments').doc(newEnrollment.id);
+      batch.set(ref, newEnrollment.toMap());
+    }
+    await batch.commit();
   }
 
   Future<void> adminApprovePayment(String enrollmentId) async {
@@ -4257,5 +4421,30 @@ Este documento foi gerado com assistência de IA.
         .collection('finance_budgets')
         .doc(budget.id.isEmpty ? null : budget.id)
         .set(budget.toMap(), SetOptions(merge: true));
+  }
+
+  // Student Absence / Leave Registration methods for Parents & Teachers
+  Future<void> saveStudentAbsence(StudentAbsence absence) async {
+    await _db
+        .collection('institutions')
+        .doc(absence.institutionId)
+        .collection('student_absences')
+        .doc(absence.id)
+        .set(absence.toMap(), SetOptions(merge: true));
+  }
+
+  Stream<List<StudentAbsence>> getStudentAbsences(String institutionId, {String? studentId}) {
+    Query query = _db
+        .collection('institutions')
+        .doc(institutionId)
+        .collection('student_absences');
+
+    if (studentId != null && studentId.isNotEmpty) {
+      query = query.where('studentId', isEqualTo: studentId);
+    }
+
+    return query.snapshots().map((snapshot) => snapshot.docs
+        .map((doc) => StudentAbsence.fromMap(doc.data() as Map<String, dynamic>))
+        .toList());
   }
 }

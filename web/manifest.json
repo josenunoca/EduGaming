@@ -1,11 +1,11 @@
 {
-    "name": "loan_calc_mvp",
-    "short_name": "loan_calc_mvp",
+    "name": "EduGaming",
+    "short_name": "EduGaming",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "Plataforma Educacional Inteligente",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

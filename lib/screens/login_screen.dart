@@ -243,7 +243,21 @@ class _LoginScreenState extends State<LoginScreen> {
                                 ),
                               ),
                             ),
-                            const SizedBox(height: 26),
+                            // Forgot Password Link
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: TextButton(
+                                onPressed: _showForgotPasswordDialog,
+                                child: const Text(
+                                  'Esqueceu-se da palavra-passe?',
+                                  style: TextStyle(
+                                      color: Color(0xFF00D1FF),
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 16),
 
                             // Submit Button
                             _isLoading
@@ -375,6 +389,98 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
+  void _showForgotPasswordDialog() {
+    final emailController = TextEditingController(text: _emailController.text);
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1E1E2E),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.lock_reset, color: Color(0xFF00D1FF)),
+            SizedBox(width: 10),
+            Text('Recuperar Palavra-passe',
+                style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Insira o seu email de registo. Enviaremos um link seguro para redefinir a sua palavra-passe.',
+              style: TextStyle(color: Colors.white70, fontSize: 13),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: emailController,
+              style: const TextStyle(color: Colors.white, fontSize: 14),
+              keyboardType: TextInputType.emailAddress,
+              decoration: InputDecoration(
+                labelText: 'Endereço de E-mail',
+                labelStyle: const TextStyle(color: Colors.white54),
+                prefixIcon: const Icon(Icons.email_outlined, color: Color(0xFF00D1FF)),
+                filled: true,
+                fillColor: Colors.white.withValues(alpha: 0.05),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancelar', style: TextStyle(color: Colors.white54)),
+          ),
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF7B61FF),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            icon: const Icon(Icons.send_rounded, size: 16),
+            label: const Text('Enviar Link'),
+            onPressed: () async {
+              final email = emailController.text.trim();
+              if (email.isEmpty || !email.contains('@') || !email.contains('.')) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Por favor, introduza um endereço de e-mail válido.'),
+                    backgroundColor: Colors.orange,
+                  ),
+                );
+                return;
+              }
+              try {
+                final service = context.read<FirebaseService>();
+                await service.sendPasswordResetEmail(email);
+                if (mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Email de redefinição enviado com sucesso para $email!'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              }
+            },
+            child: const Text('Enviar Link'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _performLogin() async {
     if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -436,32 +542,72 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _loginWithGoogle() async {
+    setState(() => _isLoading = true);
     final service = context.read<FirebaseService>();
-    final creds = await service.signInWithGoogle();
-    if (!mounted) return;
-    if (creds != null) {
+    try {
+      final creds = await service.signInWithGoogle();
+      if (!mounted) return;
+      if (creds != null) {
+        final userProfile = await service.getUserModel(creds.user!.uid);
+        final role = userProfile?.role ?? UserRole.other;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('Login com Google bem-sucedido!'),
+              backgroundColor: Colors.green),
+        );
+        _navigateToDashboard(role);
+      }
+    } catch (e) {
+      if (!mounted) return;
+      final errorStr = e.toString();
+      final msg = errorStr.contains('operation-not-allowed')
+          ? 'O login com Google precisa de ser ativado no Firebase Console > Authentication > Sign-in method.'
+          : 'Erro ao iniciar sessão com Google: $e';
+
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Login com Google bem-sucedido!')),
+        SnackBar(
+          content: Text(msg),
+          backgroundColor: Colors.redAccent,
+          duration: const Duration(seconds: 5),
+        ),
       );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Configuração de Google Sign-In pendente.')),
-      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
   Future<void> _loginWithFacebook() async {
+    setState(() => _isLoading = true);
     final service = context.read<FirebaseService>();
-    final creds = await service.signInWithFacebook();
-    if (!mounted) return;
-    if (creds != null) {
+    try {
+      final creds = await service.signInWithFacebook();
+      if (!mounted) return;
+      if (creds != null) {
+        final userProfile = await service.getUserModel(creds.user!.uid);
+        final role = userProfile?.role ?? UserRole.other;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('Login com Facebook bem-sucedido!'),
+              backgroundColor: Colors.green),
+        );
+        _navigateToDashboard(role);
+      }
+    } catch (e) {
+      if (!mounted) return;
+      final errorStr = e.toString();
+      final msg = errorStr.contains('operation-not-allowed')
+          ? 'O login com Facebook precisa de ser ativado no Firebase Console > Authentication > Sign-in method.'
+          : 'Erro ao iniciar sessão com Facebook: $e';
+
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Login com Facebook bem-sucedido!')),
+        SnackBar(
+          content: Text(msg),
+          backgroundColor: Colors.redAccent,
+          duration: const Duration(seconds: 5),
+        ),
       );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Configuração de Facebook Auth pendente.')),
-      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 

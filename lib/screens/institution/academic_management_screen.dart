@@ -15,6 +15,8 @@ import '../../services/firebase_service.dart';
 import '../../widgets/ai_translated_text.dart';
 import '../coordinator/course_report_screen.dart';
 
+import '../../widgets/subject_student_management_dialog.dart';
+
 class AcademicManagementScreen extends StatefulWidget {
   final InstitutionModel institution;
   final int? initialTab;
@@ -982,135 +984,181 @@ class _AcademicManagementScreenState extends State<AcademicManagementScreen>
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) {
-          return Dialog(
-            backgroundColor: const Color(0xFF1E1E2E),
-            child: Container(
-              width: MediaQuery.of(context).size.width * 0.9,
-              height: MediaQuery.of(context).size.height * 0.9,
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
+          return StreamBuilder<List<UserModel>>(
+            stream: service.streamInstitutionMembers(widget.institution.id),
+            builder: (context, membersSnap) {
+              final members = membersSnap.data ?? [];
+              final teacherMap = {for (var m in members) m.id: m.name};
+
+              return StreamBuilder<List<StudyCycle>>(
+                stream: service.getStudyCycles(widget.institution.id),
+                builder: (context, cyclesSnap) {
+                  final cycles = cyclesSnap.data ?? [];
+                  final cycleMap = {for (var c in cycles) c.id: c.name};
+
+                  final cycleDisplayName =
+                      cycleMap[course.studyCycleId] ?? course.studyCycleId;
+
+                  return Dialog(
+                    backgroundColor: const Color(0xFF1E1E2E),
+                    child: Container(
+                      width: MediaQuery.of(context).size.width * 0.9,
+                      height: MediaQuery.of(context).size.height * 0.9,
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Disciplinas: ${course.name}',
-                              style: const TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white)),
-                          Text('Ciclo: ${course.studyCycleId}',
-                              style: const TextStyle(
-                                  fontSize: 12, color: Colors.white54)),
-                        ],
-                      ),
-                      IconButton(
-                        onPressed: () => Navigator.pop(context),
-                        icon: const Icon(Icons.close, color: Colors.white54),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  if (course.academicYears.isNotEmpty)
-                    SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        children: course.academicYears.map((year) {
-                          final isSelected = filterYear == year;
-                          return Padding(
-                            padding: const EdgeInsets.only(right: 8.0),
-                            child: ChoiceChip(
-                              label: Text(year),
-                              selected: isSelected,
-                              onSelected: (selected) {
-                                if (selected) {
-                                  setDialogState(() => filterYear = year);
-                                }
-                              },
-                              backgroundColor: const Color(0xFF2E2E3E),
-                              selectedColor: const Color(0xFF7B61FF),
-                              labelStyle: TextStyle(
-                                color:
-                                    isSelected ? Colors.white : Colors.white70,
-                                fontSize: 12,
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text('Disciplinas: ${course.name}',
+                                      style: const TextStyle(
+                                          fontSize: 20,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.white)),
+                                  Text('Ciclo: $cycleDisplayName',
+                                      style: const TextStyle(
+                                          fontSize: 12, color: Colors.white54)),
+                                ],
+                              ),
+                              IconButton(
+                                onPressed: () => Navigator.pop(context),
+                                icon: const Icon(Icons.close,
+                                    color: Colors.white54),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          if (course.academicYears.isNotEmpty)
+                            SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              child: Row(
+                                children: course.academicYears.map((year) {
+                                  final isSelected = filterYear == year;
+                                  return Padding(
+                                    padding: const EdgeInsets.only(right: 8.0),
+                                    child: ChoiceChip(
+                                      label: Text(year),
+                                      selected: isSelected,
+                                      onSelected: (selected) {
+                                        if (selected) {
+                                          setDialogState(
+                                              () => filterYear = year);
+                                        }
+                                      },
+                                      backgroundColor: const Color(0xFF2E2E3E),
+                                      selectedColor: const Color(0xFF7B61FF),
+                                      labelStyle: TextStyle(
+                                        color: isSelected
+                                            ? Colors.white
+                                            : Colors.white70,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  );
+                                }).toList(),
                               ),
                             ),
-                          );
-                        }).toList(),
+                          const Divider(color: Colors.white12, height: 32),
+                          Expanded(
+                            child: StreamBuilder<List<Subject>>(
+                              stream: service
+                                  .getSubjectsStreamByCourse(course.id),
+                              builder: (context, snapshot) {
+                                var subjects = snapshot.data ?? [];
+                                if (filterYear != null) {
+                                  subjects = subjects
+                                      .where((s) => s.academicYear == filterYear)
+                                      .toList();
+                                }
+                                subjects.sort((a, b) =>
+                                    a.cycleYear.compareTo(b.cycleYear));
+
+                                if (subjects.isEmpty) {
+                                  return const Center(
+                                    child: Text(
+                                        'Nenhuma disciplina neste ano letivo.',
+                                        style: TextStyle(color: Colors.white38)),
+                                  );
+                                }
+                                return ListView.builder(
+                                  itemCount: subjects.length,
+                                  itemBuilder: (context, index) {
+                                    final sub = subjects[index];
+                                    final profName = teacherMap[sub.teacherId] ??
+                                        sub.teacherId;
+
+                                    return ListTile(
+                                      leading: Container(
+                                        width: 32,
+                                        height: 32,
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFF00D1FF)
+                                              .withValues(alpha: 0.1),
+                                          borderRadius:
+                                              BorderRadius.circular(8),
+                                        ),
+                                        child: Center(
+                                          child: Text('Y${sub.cycleYear}',
+                                              style: const TextStyle(
+                                                  color: Color(0xFF00D1FF),
+                                                  fontSize: 10,
+                                                  fontWeight: FontWeight.bold)),
+                                        ),
+                                      ),
+                                      title: Text(sub.name,
+                                          style: const TextStyle(
+                                              color: Colors.white)),
+                                      subtitle: Text(
+                                          'ECTS: ${sub.ects} | ${sub.academicYear} | Prof: $profName',
+                                          style: const TextStyle(
+                                              color: Colors.white54,
+                                              fontSize: 12)),
+                                      trailing: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          IconButton(
+                                            icon: const Icon(Icons.people_alt,
+                                                color: Color(0xFF00D1FF)),
+                                            tooltip: 'Gerir Alunos da Disciplina',
+                                            onPressed: () =>
+                                                SubjectStudentManagementDialog
+                                                    .show(
+                                                        context,
+                                                        sub,
+                                                        widget.institution.id),
+                                          ),
+                                          IconButton(
+                                            icon: const Icon(Icons.delete_outline,
+                                                color: Colors.redAccent),
+                                            tooltip: 'Eliminar Disciplina',
+                                            onPressed: () async {
+                                              await service
+                                                  .deleteSubject(sub.id);
+                                            },
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  },
+                                );
+                              },
+                            ),
+                          ),
+                          const Divider(color: Colors.white12, height: 32),
+                          _AddSubjectForm(
+                              course: course,
+                              institutionId: widget.institution.id),
+                        ],
                       ),
                     ),
-                  const Divider(color: Colors.white12, height: 32),
-                  Expanded(
-                    child: StreamBuilder<List<Subject>>(
-                      stream: service.getSubjectsStreamByCourse(course.id),
-                      builder: (context, snapshot) {
-                        var subjects = snapshot.data ?? [];
-                        if (filterYear != null) {
-                          subjects = subjects
-                              .where((s) => s.academicYear == filterYear)
-                              .toList();
-                        }
-                        // Sort by cycle year
-                        subjects
-                            .sort((a, b) => a.cycleYear.compareTo(b.cycleYear));
-
-                        if (subjects.isEmpty) {
-                          return const Center(
-                            child: Text('Nenhuma disciplina neste ano letivo.',
-                                style: TextStyle(color: Colors.white38)),
-                          );
-                        }
-                        return ListView.builder(
-                          itemCount: subjects.length,
-                          itemBuilder: (context, index) {
-                            final sub = subjects[index];
-                            return ListTile(
-                              leading: Container(
-                                width: 32,
-                                height: 32,
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF00D1FF)
-                                      .withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Center(
-                                  child: Text('Y${sub.cycleYear}',
-                                      style: const TextStyle(
-                                          color: Color(0xFF00D1FF),
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.bold)),
-                                ),
-                              ),
-                              title: Text(sub.name,
-                                  style: const TextStyle(color: Colors.white)),
-                              subtitle: Text(
-                                  'ECTS: ${sub.ects} | ${sub.academicYear} | Prof: ${sub.teacherId}',
-                                  style: const TextStyle(
-                                      color: Colors.white54, fontSize: 12)),
-                              trailing: IconButton(
-                                icon: const Icon(Icons.delete_outline,
-                                    color: Colors.redAccent),
-                                onPressed: () async {
-                                  // Logic to remove subject or delete if standalone for this course
-                                  // For simplicity, we just delete the subject if it belongs only to this course
-                                  await service.deleteSubject(sub.id);
-                                },
-                              ),
-                            );
-                          },
-                        );
-                      },
-                    ),
-                  ),
-                  const Divider(color: Colors.white12, height: 32),
-                  _AddSubjectForm(
-                      course: course, institutionId: widget.institution.id),
-                ],
-              ),
-            ),
+                  );
+                },
+              );
+            },
           );
         },
       ),

@@ -14,6 +14,7 @@ import '../models/institution_organ_model.dart';
 import '../models/activity_model.dart';
 import '../models/marketing_event_model.dart';
 import '../models/marketing_report_draft.dart';
+import '../models/marketing_report_draft.dart';
 import '../models/annual_report_draft.dart';
 import '../models/survey_response_summary_model.dart';
 import '../models/hr/hr_attendance_model.dart';
@@ -21,6 +22,7 @@ import '../models/finance/finance_models.dart';
 import '../models/hr/hr_absence_model.dart';
 import '../models/hr/hr_schedule_model.dart';
 import '../models/procurement/procurement_models.dart';
+import '../models/student_absence_model.dart';
 
 class PdfService {
   static Future<void> generateMarketingReportPDF(
@@ -2487,6 +2489,170 @@ class PdfService {
     );
     await Printing.layoutPdf(onLayout: (format) async => pdf.save(), name: 'PO_${order.id}.pdf');
   }
+
+  /// Generates a visual & printable PDF report of Student Attendance, Absences & Activities
+  /// Filters by Day, Week, Month or Custom Period. Supports Global or Subject-Specific scope,
+  /// and Simple Summary vs Detailed versions.
+  static Future<void> generateStudentAttendanceReportPDF({
+    required InstitutionModel institution,
+    required UserModel student,
+    required DateTime startDate,
+    required DateTime endDate,
+    required List<HRAttendanceRecord> attendanceRecords,
+    required List<StudentAbsence> absences,
+    required List<InstitutionalActivity> activities,
+    String? subjectName,
+    bool isDetailed = true,
+  }) async {
+    final pdf = pw.Document();
+    final logoImage = await _fetchLogo(institution.logoUrl);
+    final periodStr = '${DateFormat('dd/MM/yyyy').format(startDate)} a ${DateFormat('dd/MM/yyyy').format(endDate)}';
+    final scopeTitle = subjectName != null && subjectName.isNotEmpty ? 'Disciplina: $subjectName' : 'Visão Global (Todas as Disciplinas)';
+
+    final totalCheckIns = attendanceRecords.where((r) => r.type == AttendanceType.checkIn).length;
+    final totalAbsences = absences.length;
+    final totalActivities = activities.length;
+
+    pdf.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        header: (context) => _buildHeader(
+          context,
+          'Relatório de Assiduidade e Atividades ($scopeTitle)',
+          institution,
+          logoImage,
+        ),
+        build: (pw.Context context) {
+          return [
+            // Student & Period Header Box
+            pw.Container(
+              padding: const pw.EdgeInsets.all(12),
+              decoration: pw.BoxDecoration(
+                color: PdfColors.blueGrey50,
+                borderRadius: pw.BorderRadius.circular(8),
+                border: pw.Border.all(color: PdfColors.blueGrey200),
+              ),
+              child: pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Text('Aluno / Educando: ${student.name}', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 13)),
+                      pw.Text('Email: ${student.email}', style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey700)),
+                      if (student.birthDate != null)
+                        pw.Text('Data Nasc.: ${DateFormat('dd/MM/yyyy').format(student.birthDate!)}', style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey700)),
+                    ],
+                  ),
+                  pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.end,
+                    children: [
+                      pw.Text('Período: $periodStr', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 12, color: PdfColors.indigo900)),
+                      pw.Text('Âmbito: $scopeTitle', style: const pw.TextStyle(fontSize: 10, color: PdfColors.indigo700)),
+                      pw.Text('Modo: ${isDetailed ? "Relatório Detalhado" : "Resumo Simples"}', style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey600)),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            pw.SizedBox(height: 16),
+
+            // Summary Metric Cards
+            pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceAround,
+              children: [
+                _buildSummaryBox('Presenças Registadas', totalCheckIns.toString(), PdfColors.green),
+                _buildSummaryBox('Ausências Comunicadas', totalAbsences.toString(), PdfColors.orange),
+                _buildSummaryBox('Atividades Realizadas', totalActivities.toString(), PdfColors.indigo),
+              ],
+            ),
+            pw.SizedBox(height: 20),
+
+            // Presenças & Entradas Table
+            _sectionTitle('1. Registos de Entrada e Saída (Presenças)'),
+            if (attendanceRecords.isEmpty)
+              pw.Text('Sem registos de presenças presenciais no período selecionado.', style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey600))
+            else
+              pw.TableHelper.fromTextArray(
+                headers: ['Data / Hora', 'Tipo', 'Código / Ponto'],
+                data: attendanceRecords.map((r) => [
+                  DateFormat('dd/MM/yyyy HH:mm').format(r.timestamp),
+                  r.type == AttendanceType.checkIn ? 'Entrada' : 'Saída',
+                  r.qrCodeUsed ?? 'Ponto Digital',
+                ]).toList(),
+              ),
+            pw.SizedBox(height: 20),
+
+            // Ausências & Faltas Comunicadas Table
+            _sectionTitle('2. Ausências e Férias Comunicadas pelos Pais'),
+            if (absences.isEmpty)
+              pw.Text('Sem ausências comunicadas no período selecionado.', style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey600))
+            else
+              pw.TableHelper.fromTextArray(
+                headers: ['Período', 'Motivo', 'Descritivo / Observações', 'Comprovativo'],
+                data: absences.map((a) => [
+                  '${DateFormat('dd/MM/yyyy').format(a.startDate)} a ${DateFormat('dd/MM/yyyy').format(a.endDate)}',
+                  a.type.name.toUpperCase(),
+                  isDetailed ? (a.description ?? 'Sem obs.') : 'Comunicado',
+                  a.proofUrl != null ? 'Sim (Anexo)' : 'Não',
+                ]).toList(),
+              ),
+            pw.SizedBox(height: 20),
+
+            // Detailed Activities & Lessons Section
+            if (isDetailed) ...[
+              _sectionTitle('3. Atividades e Aulas Realizadas no Período'),
+              if (activities.isEmpty)
+                pw.Text('Sem atividades letivas registadas para este período.', style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey600))
+              else
+                pw.TableHelper.fromTextArray(
+                  headers: ['Data', 'Título da Atividade / Conteúdo', 'Local / Sala', 'Estado'],
+                  data: activities.map((act) => [
+                    DateFormat('dd/MM/yyyy').format(act.startDate),
+                    act.title,
+                    act.location,
+                    act.status == 'completed' ? 'Concluída' : 'Planeada',
+                  ]).toList(),
+                ),
+              pw.SizedBox(height: 20),
+            ],
+
+            pw.Divider(),
+            pw.SizedBox(height: 8),
+            pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              children: [
+                pw.Text('Emitido por EduGaming 360 & Gestão Escolar Inteligente', style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey)),
+                pw.Text('Página 1 de 1', style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey)),
+              ],
+            ),
+          ];
+        },
+      ),
+    );
+
+    await Printing.layoutPdf(
+      onLayout: (format) async => pdf.save(),
+      name: 'Assiduidade_${student.name.replaceAll(' ', '_')}.pdf',
+    );
+  }
+
+  static pw.Widget _buildSummaryBox(String label, String value, PdfColor color) {
+    return pw.Container(
+      width: 150,
+      padding: const pw.EdgeInsets.all(10),
+      decoration: pw.BoxDecoration(
+        color: color.shade(0.05),
+        borderRadius: pw.BorderRadius.circular(6),
+        border: pw.Border.all(color: color),
+      ),
+      child: pw.Column(
+        children: [
+          pw.Text(value, style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold, color: color)),
+          pw.SizedBox(height: 4),
+          pw.Text(label, style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey800), textAlign: pw.TextAlign.center),
+        ],
+      ),
+    );
+  }
 }
-
-

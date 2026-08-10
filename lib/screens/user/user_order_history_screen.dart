@@ -59,8 +59,22 @@ class UserOrderHistoryScreen extends StatelessWidget {
               );
             }
 
-            final activeOrders = orders.where((o) => [OrderStatus.pending, OrderStatus.preparing, OrderStatus.ready].contains(o.status)).toList();
-            final finishedOrders = orders.where((o) => [OrderStatus.delivered, OrderStatus.cancelled].contains(o.status)).toList();
+            final activeOrders = orders
+                .where((o) => [
+                      OrderStatus.pending,
+                      OrderStatus.paid,
+                      OrderStatus.preparing,
+                      OrderStatus.ready
+                    ].contains(o.status))
+                .toList();
+
+            final finishedOrders = orders
+                .where((o) => [
+                      OrderStatus.delivered,
+                      OrderStatus.invoiced,
+                      OrderStatus.cancelled
+                    ].contains(o.status))
+                .toList();
 
             return TabBarView(
               children: [
@@ -76,7 +90,9 @@ class UserOrderHistoryScreen extends StatelessWidget {
 
   Widget _buildOrderList(BuildContext context, List<ProcurementOrder> orders) {
     if (orders.isEmpty) {
-      return const Center(child: AiTranslatedText('Sem encomendas nesta categoria.', style: TextStyle(color: Colors.white54)));
+      return const Center(
+          child: AiTranslatedText('Sem encomendas nesta categoria.',
+              style: TextStyle(color: Colors.white54)));
     }
     return ListView.builder(
       padding: const EdgeInsets.all(24),
@@ -86,6 +102,13 @@ class UserOrderHistoryScreen extends StatelessWidget {
   }
 
   Widget _buildOrderCard(BuildContext context, ProcurementOrder order) {
+    final isFinished = [OrderStatus.delivered, OrderStatus.invoiced]
+        .contains(order.status);
+    final invNum = (order.invoiceNumber != null && order.invoiceNumber!.isNotEmpty)
+        ? order.invoiceNumber!
+        : 'Pendente de inserção (Software externo)';
+    final invAmt = order.invoiceAmount ?? order.totalAmount;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 24),
       child: GlassCard(
@@ -97,59 +120,89 @@ class UserOrderHistoryScreen extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('Pedido #${order.id.substring(0, 8).toUpperCase()}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  Text(
+                      'Pedido #${order.id.substring(0, 8).toUpperCase()}',
+                      style: const TextStyle(
+                          color: Colors.white, fontWeight: FontWeight.bold)),
                   _buildStatusBadge(order.status),
                 ],
               ),
               const SizedBox(height: 8),
-              Text(DateFormat('dd/MM/yyyy HH:mm').format(order.orderDate), style: const TextStyle(color: Colors.white24, fontSize: 12)),
+              Text(
+                  DateFormat('dd/MM/yyyy HH:mm').format(order.orderDate),
+                  style: const TextStyle(color: Colors.white24, fontSize: 12)),
               const Divider(color: Colors.white10, height: 32),
               ...order.items.map((item) => Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Row(
-                  children: [
-                    Text('${item.quantity}x ${item.itemName}', style: const TextStyle(color: Colors.white70)),
-                    const Spacer(),
-                    Text('€ ${(item.unitPrice * item.quantity).toStringAsFixed(2)}', style: const TextStyle(color: Colors.white54)),
-                  ],
-                ),
-              )),
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Row(
+                      children: [
+                        Text('${item.quantity}x ${item.itemName}',
+                            style: const TextStyle(color: Colors.white70)),
+                        const Spacer(),
+                        Text(
+                            '€ ${(item.unitPrice * item.quantity).toStringAsFixed(2)}',
+                            style: const TextStyle(color: Colors.white54)),
+                      ],
+                    ),
+                  )),
               const Divider(color: Colors.white10, height: 32),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const AiTranslatedText('TOTAL', style: TextStyle(color: Colors.white54, fontSize: 12)),
-                  Text('€ ${order.totalAmount.toStringAsFixed(2)}', style: const TextStyle(color: Color(0xFFFF9F1C), fontSize: 18, fontWeight: FontWeight.bold)),
+                  const AiTranslatedText('TOTAL',
+                      style: TextStyle(color: Colors.white54, fontSize: 12)),
+                  Text('€ ${order.totalAmount.toStringAsFixed(2)}',
+                      style: const TextStyle(
+                          color: Color(0xFFFF9F1C),
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold)),
                 ],
               ),
-              if (order.invoiceNumber != null || order.invoiceNotes != null || order.invoiceAmount != null) ...[
-                const SizedBox(height: 20),
+              if (isFinished) ...[
+                const SizedBox(height: 16),
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.greenAccent.withValues(alpha: 0.05),
+                    color: Colors.greenAccent.withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.greenAccent.withValues(alpha: 0.1)),
+                    border: Border.all(
+                        color: Colors.greenAccent.withValues(alpha: 0.2)),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Row(
                         children: [
-                          Icon(Icons.local_shipping, color: Colors.greenAccent, size: 16),
+                          Icon(Icons.check_circle,
+                              color: Colors.greenAccent, size: 16),
                           SizedBox(width: 8),
-                          AiTranslatedText('Informação de Entrega:', style: TextStyle(color: Colors.greenAccent, fontSize: 12, fontWeight: FontWeight.bold)),
+                          AiTranslatedText('Encomenda Finalizada & Faturada',
+                              style: TextStyle(
+                                  color: Colors.greenAccent,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold)),
                         ],
                       ),
                       const SizedBox(height: 8),
-                      if (order.invoiceNumber != null)
-                        Text('Guia/Fatura Nº: ${order.invoiceNumber}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                      if (order.invoiceAmount != null)
-                        Text('Valor Liquidado: € ${order.invoiceAmount!.toStringAsFixed(2)}', style: const TextStyle(color: Color(0xFF00FF85), fontSize: 12, fontWeight: FontWeight.bold)),
-                      if (order.invoiceNotes != null) ...[
+                      Text('Fatura Nº: $invNum',
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13)),
+                      const SizedBox(height: 4),
+                      Text(
+                          'Valor Liquidado: € ${invAmt.toStringAsFixed(2)}',
+                          style: const TextStyle(
+                              color: Color(0xFF00FF85),
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold)),
+                      if (order.invoiceNotes != null &&
+                          order.invoiceNotes!.isNotEmpty) ...[
                         const SizedBox(height: 4),
-                        Text(order.invoiceNotes!, style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                        Text('Observações: ${order.invoiceNotes}',
+                            style: const TextStyle(
+                                color: Colors.white70, fontSize: 12)),
                       ],
                     ],
                   ),

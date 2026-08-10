@@ -18,24 +18,80 @@ class ProcurementOrdersTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final service = context.read<ProcurementService>();
 
-    return StreamBuilder<List<ProcurementOrder>>(
-      stream: FirebaseFirestore.instance
-          .collection('institutions')
-          .doc(institution.id)
-          .collection('procurement_orders')
-          .orderBy('orderDate', descending: true)
-          .snapshots()
-          .map((snap) => snap.docs.map((doc) => ProcurementOrder.fromMap(doc.id, doc.data())).toList()),
-      builder: (context, snapshot) {
-        if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-        final orders = snapshot.data!;
+    return DefaultTabController(
+      length: 2,
+      child: Column(
+        children: [
+          const TabBar(
+            tabs: [
+              Tab(text: 'Em Curso'),
+              Tab(text: 'Finalizadas'),
+            ],
+            indicatorColor: Color(0xFFFF9F1C),
+            labelColor: Color(0xFFFF9F1C),
+            unselectedLabelColor: Colors.white54,
+          ),
+          Expanded(
+            child: StreamBuilder<List<ProcurementOrder>>(
+              stream: FirebaseFirestore.instance
+                  .collection('institutions')
+                  .doc(institution.id)
+                  .collection('procurement_orders')
+                  .orderBy('orderDate', descending: true)
+                  .snapshots()
+                  .map((snap) => snap.docs
+                      .map((doc) => ProcurementOrder.fromMap(doc.id, doc.data()))
+                      .toList()),
+              builder: (context, snapshot) {
+                if (!snapshot.hasData) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                final orders = snapshot.data!;
 
-        return ListView.builder(
-          padding: const EdgeInsets.all(24),
-          itemCount: orders.length,
-          itemBuilder: (context, index) => _buildOrderCard(context, service, orders[index]),
-        );
-      },
+                final activeOrders = orders
+                    .where((o) => [
+                          OrderStatus.pending,
+                          OrderStatus.paid,
+                          OrderStatus.preparing,
+                          OrderStatus.ready
+                        ].contains(o.status))
+                    .toList();
+
+                final finishedOrders = orders
+                    .where((o) => [
+                          OrderStatus.delivered,
+                          OrderStatus.invoiced,
+                          OrderStatus.cancelled
+                        ].contains(o.status))
+                    .toList();
+
+                return TabBarView(
+                  children: [
+                    _buildOrderList(context, service, activeOrders),
+                    _buildOrderList(context, service, finishedOrders),
+                  ],
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOrderList(BuildContext context, ProcurementService service,
+      List<ProcurementOrder> orders) {
+    if (orders.isEmpty) {
+      return const Center(
+        child: AiTranslatedText('Sem encomendas nesta categoria.',
+            style: TextStyle(color: Colors.white54)),
+      );
+    }
+    return ListView.builder(
+      padding: const EdgeInsets.all(24),
+      itemCount: orders.length,
+      itemBuilder: (context, index) =>
+          _buildOrderCard(context, service, orders[index]),
     );
   }
 
@@ -168,9 +224,9 @@ class ProcurementOrdersTab extends StatelessWidget {
 
   void _showFulfillmentDialog(BuildContext context, ProcurementService service, ProcurementOrder order, FirebaseService firebaseService) {
     String? selectedWarehouseId;
-    final invoiceController = TextEditingController();
-    final notesController = TextEditingController();
-    double? order_invoice_amount;
+    final invoiceController = TextEditingController(text: order.invoiceNumber ?? '');
+    final amountController = TextEditingController(text: (order.invoiceAmount ?? order.totalAmount).toStringAsFixed(2));
+    final notesController = TextEditingController(text: order.invoiceNotes ?? '');
 
     showDialog(
       context: context,
@@ -189,6 +245,9 @@ class ProcurementOrdersTab extends StatelessWidget {
                   stream: service.getWarehouses(institution.id),
                   builder: (context, snap) {
                     final warehouses = snap.data ?? [];
+                    if (selectedWarehouseId == null && warehouses.isNotEmpty) {
+                      selectedWarehouseId = warehouses.first.id;
+                    }
                     return DropdownButtonFormField<String>(
                       value: selectedWarehouseId,
                       dropdownColor: const Color(0xFF1E293B),
@@ -204,13 +263,15 @@ class ProcurementOrdersTab extends StatelessWidget {
                   },
                 ),
                 const SizedBox(height: 20),
-                const AiTranslatedText('Nº da Guia / Fatura (Opcional):', style: TextStyle(color: Colors.white54, fontSize: 12)),
+                const AiTranslatedText('Nº da Fatura Externa (Inserção Manual):', style: TextStyle(color: Colors.white54, fontSize: 12)),
+                const SizedBox(height: 4),
+                const AiTranslatedText('(Faturação emitida no seu programa de faturação)', style: TextStyle(color: Colors.white38, fontSize: 10)),
                 const SizedBox(height: 8),
                 TextField(
                   controller: invoiceController,
                   style: const TextStyle(color: Colors.white),
                   decoration: InputDecoration(
-                    hintText: 'Ex: FT 2024/123',
+                    hintText: 'Ex: FT 2026/0142',
                     hintStyle: const TextStyle(color: Colors.white24),
                     filled: true,
                     fillColor: Colors.white.withValues(alpha: 0.05),
@@ -218,13 +279,12 @@ class ProcurementOrdersTab extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 20),
-                const AiTranslatedText('Valor da Fatura (Opcional):', style: TextStyle(color: Colors.white54, fontSize: 12)),
+                const AiTranslatedText('Valor Total Faturado (€):', style: TextStyle(color: Colors.white54, fontSize: 12)),
                 const SizedBox(height: 8),
                 TextField(
-                  controller: TextEditingController(text: ''), 
+                  controller: amountController,
                   keyboardType: TextInputType.number,
                   style: const TextStyle(color: Colors.white),
-                  onChanged: (v) => order_invoice_amount = double.tryParse(v),
                   decoration: InputDecoration(
                     hintText: 'Ex: 45.00',
                     hintStyle: const TextStyle(color: Colors.white24),
@@ -256,14 +316,18 @@ class ProcurementOrdersTab extends StatelessWidget {
             ElevatedButton(
               onPressed: selectedWarehouseId == null ? null : () async {
                 Navigator.pop(context);
+                final invNum = invoiceController.text.trim().isNotEmpty ? invoiceController.text.trim() : null;
+                final invAmt = double.tryParse(amountController.text.trim()) ?? order.totalAmount;
+                final notes = notesController.text.trim().isNotEmpty ? notesController.text.trim() : null;
+
                 await service.fulfillOrder(
                   institution.id, 
                   order.id, 
                   selectedWarehouseId!, 
                   firebaseService.currentUserModel!,
-                  invoiceNumber: invoiceController.text.isEmpty ? null : invoiceController.text,
-                  invoiceNotes: notesController.text.isEmpty ? null : notesController.text,
-                  invoiceAmount: order_invoice_amount,
+                  invoiceNumber: invNum,
+                  invoiceNotes: notes,
+                  invoiceAmount: invAmt,
                 );
                 // Auto generate PDF after fulfillment
                 await service.generateInvoicePdf(order, institution.name);
@@ -278,36 +342,47 @@ class ProcurementOrdersTab extends StatelessWidget {
   }
 
   void _showInvoicingDialog(BuildContext context, ProcurementService service, ProcurementOrder order, FirebaseService firebaseService) {
-    final invoiceController = TextEditingController(text: order.invoiceNumber);
-    final amountController = TextEditingController(text: order.invoiceAmount?.toString() ?? order.totalAmount.toString());
-    final notesController = TextEditingController(text: order.invoiceNotes);
+    final invoiceController = TextEditingController(text: order.invoiceNumber ?? '');
+    final amountController = TextEditingController(text: (order.invoiceAmount ?? order.totalAmount).toStringAsFixed(2));
+    final notesController = TextEditingController(text: order.invoiceNotes ?? '');
 
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF1E293B),
-        title: const AiTranslatedText('Registar Faturação'),
+        title: const AiTranslatedText('Registar Nº de Fatura Externa'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const AiTranslatedText('Introduza os dados da fatura emitida no software externo.', style: TextStyle(color: Colors.white70, fontSize: 13)),
+            const AiTranslatedText('Insira manualmente o número da fatura emitida no seu programa de faturação externo.', style: TextStyle(color: Colors.white70, fontSize: 13)),
             const SizedBox(height: 24),
             TextField(
               controller: invoiceController,
-              decoration: const InputDecoration(labelText: 'Número da Fatura', border: OutlineInputBorder()),
+              decoration: const InputDecoration(
+                labelText: 'Número da Fatura Externa (Manual)',
+                hintText: 'Ex: FT 2026/0142',
+                border: OutlineInputBorder(),
+              ),
               style: const TextStyle(color: Colors.white),
             ),
             const SizedBox(height: 16),
             TextField(
               controller: amountController,
-              decoration: const InputDecoration(labelText: 'Valor Total Faturado (€)', border: OutlineInputBorder()),
+              decoration: const InputDecoration(
+                labelText: 'Valor Total Faturado (€)',
+                border: OutlineInputBorder(),
+              ),
               keyboardType: TextInputType.number,
               style: const TextStyle(color: Colors.white),
             ),
             const SizedBox(height: 16),
             TextField(
               controller: notesController,
-              decoration: const InputDecoration(labelText: 'Notas / Observações', border: OutlineInputBorder()),
+              decoration: const InputDecoration(
+                labelText: 'Notas / Observações',
+                border: OutlineInputBorder(),
+              ),
               style: const TextStyle(color: Colors.white),
               maxLines: 2,
             ),
@@ -317,19 +392,25 @@ class ProcurementOrdersTab extends StatelessWidget {
           TextButton(onPressed: () => Navigator.pop(context), child: const AiTranslatedText('Cancelar')),
           ElevatedButton(
             onPressed: () async {
-              if (invoiceController.text.isEmpty) return;
+              final invNum = invoiceController.text.trim();
+              if (invNum.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Por favor introduza o número da fatura externa.')),
+                );
+                return;
+              }
               await service.invoiceOrder(
                 institution.id, 
                 order.id, 
                 firebaseService.currentUserModel!,
-                invoiceNumber: invoiceController.text,
-                invoiceAmount: double.tryParse(amountController.text),
-                invoiceNotes: notesController.text,
+                invoiceNumber: invNum,
+                invoiceAmount: double.tryParse(amountController.text) ?? order.totalAmount,
+                invoiceNotes: notesController.text.trim().isNotEmpty ? notesController.text.trim() : null,
               );
               if (context.mounted) Navigator.pop(context);
             },
             style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF9F1C)),
-            child: const AiTranslatedText('Confirmar e Finalizar'),
+            child: const AiTranslatedText('Confirmar e Guardar Fatura'),
           ),
         ],
       ),

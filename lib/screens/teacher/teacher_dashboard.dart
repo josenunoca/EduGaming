@@ -52,7 +52,7 @@ class _TeacherDashboardState extends State<TeacherDashboard>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 5, vsync: this);
+    _tabController = TabController(length: 6, vsync: this);
     _tabController.addListener(() {
       if (_tabController.index != _selectedTabIndex) {
         setState(() {
@@ -409,6 +409,7 @@ class _TeacherDashboardState extends State<TeacherDashboard>
                                      unselectedLabelColor: Colors.white54,
                                      tabs: const [
                                        Tab(text: 'Minhas Turmas'),
+                                       Tab(text: 'Ausências de Alunos'),
                                        Tab(text: 'Minhas Atividades'),
                                        Tab(text: 'Meus Órgãos'),
                                        Tab(text: 'Gestão Delegada'),

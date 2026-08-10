@@ -9,7 +9,9 @@ import '../models/hr/hr_attendance_model.dart';
 import '../models/hr/hr_absence_model.dart';
 import '../services/firebase_service.dart';
 import 'glass_card.dart';
-import 'ai_translated_text.dart';
+import '../screens/user/widgets/hr_attendance_scanner.dart';
+import '../screens/parent/student_absence_registration_screen.dart';
+import 'student_attendance_report_dialog.dart';
 
 class ParentChildAttendanceWidget extends StatefulWidget {
   final UserModel child;
@@ -47,25 +49,48 @@ class _ParentChildAttendanceWidgetState
             const Icon(Icons.qr_code_scanner, size: 64, color: Color(0xFF00D1FF)),
             const SizedBox(height: 16),
             const AiTranslatedText(
-              'Aproxime o telemóvel do QR Code afixado no colégio ou confirme o registo abaixo:',
+              'Utilize a câmara do dispositivo para ler o QR Code Dinâmico afixado ou selecione uma opção:',
               style: TextStyle(color: Colors.white70, fontSize: 13),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 20),
             ElevatedButton.icon(
+              onPressed: () {
+                Navigator.pop(ctx);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => HRAttendanceScanner(
+                      onScan: (scannedCode) async {
+                        await _registerAttendance(type, scannedCode);
+                      },
+                    ),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.camera_alt),
+              label: const AiTranslatedText('📸 Abrir Câmara / Ler QR Code'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF00D1FF),
+                foregroundColor: Colors.black,
+                minimumSize: const Size(double.infinity, 46),
+              ),
+            ),
+            const SizedBox(height: 10),
+            OutlinedButton.icon(
               onPressed: () async {
                 Navigator.pop(ctx);
-                await _registerAttendance(type, 'QR_CODE_COLEGIO');
+                await _registerAttendance(type, 'QR_CODE_DYNAMIC_DIRECT');
               },
-              icon: const Icon(Icons.check),
+              icon: const Icon(Icons.check_circle_outline, color: Colors.white70),
               label: AiTranslatedText(
                 type == AttendanceType.checkIn
-                    ? 'Confirmar Entrada Agora'
-                    : 'Confirmar Saída Agora',
+                    ? 'Confirmar Entrada Direta'
+                    : 'Confirmar Saída Direta',
+                style: const TextStyle(color: Colors.white),
               ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF7B61FF),
-                foregroundColor: Colors.white,
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: Colors.white24),
                 minimumSize: const Size(double.infinity, 44),
               ),
             ),
@@ -543,6 +568,63 @@ class _ParentChildAttendanceWidgetState
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        final parent = context.read<FirebaseService>().currentUserModel ?? widget.child;
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => StudentAbsenceRegistrationScreen(
+                              child: widget.child,
+                              parent: parent,
+                            ),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.event_note, color: Colors.orangeAccent, size: 18),
+                      label: const AiTranslatedText(
+                        '📝 Comunicar Ausência',
+                        style: TextStyle(color: Colors.orangeAccent, fontSize: 12, fontWeight: FontWeight.bold),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Colors.orangeAccent),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        showDialog(
+                          context: context,
+                          builder: (context) => StudentAttendanceReportDialog(student: widget.child),
+                        );
+                      },
+                      icon: const Icon(Icons.print_rounded, size: 18),
+                      label: const AiTranslatedText(
+                        '🖨️ Imprimir Mapa',
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF7B61FF),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
                     ),
                   ),

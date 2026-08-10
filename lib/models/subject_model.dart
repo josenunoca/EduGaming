@@ -40,6 +40,7 @@ class Enrollment {
   final String userId;
   final String studentName;
   final String studentEmail;
+  final String? birthDate;
   final String subjectId;
   final String institutionId;
   final String
@@ -56,6 +57,7 @@ class Enrollment {
     required this.userId,
     required this.studentName,
     required this.studentEmail,
+    this.birthDate,
     required this.subjectId,
     required this.institutionId,
     required this.status,
@@ -81,6 +83,7 @@ class Enrollment {
       'userId': userId,
       'studentName': studentName,
       'studentEmail': studentEmail,
+      if (birthDate != null) 'birthDate': birthDate,
       'subjectId': subjectId,
       'institutionId': institutionId,
       'status': status,
@@ -99,6 +102,7 @@ class Enrollment {
       userId: map['userId'] ?? '',
       studentName: map['studentName'] ?? '',
       studentEmail: map['studentEmail'] ?? '',
+      birthDate: map['birthDate'],
       subjectId: map['subjectId'] ?? '',
       institutionId: map['institutionId'] ?? '',
       status: map['status'] ?? 'pending_admin',
